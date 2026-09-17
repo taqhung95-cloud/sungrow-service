@@ -1,0 +1,13 @@
+# Source data and temporary Office lock files must stay local.
+*.xlsx
+*.xls
+~$*
+
+# Local analysis artifacts.
+analysis/
+*.log
+
+# OS/editor files.
+.DS_Store
+Thumbs.db
+.vscode/
