@@ -32,7 +32,7 @@
       const body = new URLSearchParams({payload: JSON.stringify({action:'dashboard.read', idToken:token, period:selectedPeriod(), center:q('#sg-center').value})});
       const response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow'});
       const result = await response.json();
-      if (!result.ok) throw new Error(result.error?.message || 'API error');
+      if (!result.ok) throw new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
       live = result.data;
       renderAll();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});

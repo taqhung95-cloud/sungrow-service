@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
 const DEFAULT_CENTERS = [
   { id: 'sungrow', name: 'Sungrow Service Center', aliases: ['WSHCM', 'Sungrow Service Center'] },
@@ -96,7 +96,12 @@ function getDashboard_(request, actor) {
   if (cached) return JSON.parse(cached);
 
   const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID;
-  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  let spreadsheet;
+  try {
+    spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  } catch (_) {
+    throw apiError_('SOURCE_ACCESS_DENIED', 'Apps Script không thể mở Google Sheet nguồn. Kiểm tra Spreadsheet ID và quyền của tài khoản deploy.');
+  }
   const sheet = spreadsheet.getSheetByName(String(period.year));
   if (!sheet) throw apiError_('SOURCE_TAB_NOT_FOUND', 'Không tìm thấy tab dữ liệu ' + period.year + '.');
   const values = sheet.getDataRange().getValues();
@@ -106,7 +111,7 @@ function getDashboard_(request, actor) {
   const records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers); })
     .filter(function (r) { return r.hasData && scope.includes(r.center); });
   const output = buildDashboard_(records, period, scope, sheet, spreadsheetId, actor);
-  cache.put(cacheKey, JSON.stringify(output), 300);
+  safeCachePut_(cache, cacheKey, output, 300);
   return output;
 }
 
@@ -161,7 +166,7 @@ function buildDashboard_(records, period, scope, sheet, spreadsheetId, actor) {
     source: {
       spreadsheetId: undefined,
       sheetName: sheet.getName(),
-      sourceUpdatedAt: DriveApp.getFileById(spreadsheetId).getLastUpdated().toISOString(),
+      sourceUpdatedAt: new Date().toISOString(),
       rowCount: records.length,
       status: 'ok'
     },
@@ -329,6 +334,14 @@ function iso_(value) { return value ? Utilities.formatDate(value, Session.getScr
 function clean_(value) { return value === null || value === undefined ? '' : String(value).trim(); }
 function number_(value) { const n = Number(value); return isFinite(n) && n > 0 ? n : 1; }
 function digest_(value) { return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value)).slice(0, 40); }
+function safeCachePut_(cache, key, value, ttl) {
+  try {
+    const serialized = JSON.stringify(value);
+    if (Utilities.newBlob(serialized).getBytes().length <= 95000) cache.put(key, serialized, ttl);
+  } catch (error) {
+    console.warn('Dashboard cache skipped: ' + String(error && error.message || error));
+  }
+}
 function parseJson_(value) { if (!value) return null; try { return JSON.parse(value); } catch (_) { return null; } }
 function parseJsonProperty_(props, key, fallback) { const value = parseJson_(props.getProperty(key)); return value === null ? fallback : value; }
 function apiError_(code, message) { const e = new Error(code); e.code = code; e.publicMessage = message; return e; }
