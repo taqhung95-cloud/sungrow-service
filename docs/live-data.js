@@ -85,7 +85,7 @@
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
-    q('#sg-errors').innerHTML = live.errors.slice(0,5).map(x => `<div class="sg-error-line"><span>${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
+    q('#sg-errors').innerHTML = live.errors.slice(0,5).map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
     q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays).slice(0,4));
   }
 
@@ -166,7 +166,7 @@
     const rows = live.models;
     const total = rows.reduce((n,x) => n+x.count, 0);
     q('#sg-model-total').textContent = `${total} thiết bị · ${rows.length} nhóm model`;
-    q('#sg-model-bars').innerHTML = rows.map((x,i) => `<button class="sg-model-row ${/chưa/i.test(x.name)?'unknown':''}" aria-pressed="${i===0}"><span class="sg-model-name">${esc(x.name)}</span><span class="sg-model-track"><i style="width:${total?100*x.count/total:0}%"></i></span><span class="sg-model-value"><strong>${x.count}</strong>${total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}%</span></button>`).join('');
+    q('#sg-model-bars').innerHTML = rows.map((x,i) => `<button class="sg-model-row ${/chưa/i.test(x.name)?'unknown':''}" aria-pressed="${i===0}"><span class="sg-model-name" title="${esc(x.name)}">${esc(x.name)}</span><span class="sg-model-track"><i style="width:${total?100*x.count/total:0}%"></i></span><span class="sg-model-value"><strong>${x.count}</strong>${total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}%</span></button>`).join('');
     q('#sg-model-denominator').textContent = `Mẫu số: ${total} thiết bị tiếp nhận · ${live.period.label}.`;
     if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} thiết bị trong kỳ đang chọn.</div>`;
   }
@@ -209,10 +209,25 @@
 
   function setPeriodLabels() {
     const current = cfg.defaultPeriod || new Date().toISOString().slice(0,7);
-    const d = new Date(current+'-01T00:00:00');
-    const prev = new Date(d.getFullYear(),d.getMonth()-1,1);
-    const keys = [current,`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`];
-    [...q('#sg-period').options].forEach((o,i) => {o.dataset.livePeriod=keys[i];o.textContent=`Tháng ${keys[i].slice(5)}/${keys[i].slice(0,4)}`;});
+    const maxYear = Number(current.slice(0,4));
+    const maxMonth = Number(current.slice(5,7));
+    const select = q('#sg-period');
+    select.innerHTML = '';
+    for (let year = maxYear; year >= 2024; year -= 1) {
+      const group = document.createElement('optgroup');
+      group.label = String(year);
+      const lastMonth = year === maxYear ? maxMonth : 12;
+      for (let month = lastMonth; month >= 1; month -= 1) {
+        const key = String(year) + '-' + String(month).padStart(2,'0');
+        const option = document.createElement('option');
+        option.value = key;
+        option.dataset.livePeriod = key;
+        option.textContent = 'Tháng ' + String(month).padStart(2,'0') + '/' + year;
+        option.selected = key === current;
+        group.appendChild(option);
+      }
+      select.appendChild(group);
+    }
   }
 
   function initGoogle() {

@@ -107,3 +107,27 @@
 #sg-preview #sg-overview .sg-command-attention td{padding-top:7px;padding-bottom:7px}
 }
 
+/* September 2026: improve scanning, keep labels on one line, and group chart controls. */
+#sg-preview h1{font-weight:600}
+#sg-preview h2,#sg-preview th,#sg-preview strong,#sg-preview .sg-sn,#sg-preview .sg-command-grid .sg-eyebrow{font-weight:500}
+#sg-preview .sg-kpi-value{font-weight:600}
+#sg-preview .sg-nav button[aria-current=page]{font-weight:500}
+#sg-preview .sg-model-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;margin-left:auto}
+#sg-preview .sg-model-head-tools .sg-model-total{white-space:nowrap}
+#sg-preview .sg-model-head-tools .sg-command-select{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;white-space:nowrap}
+#sg-preview .sg-model-head-tools .sg-command-select>span{color:var(--sg-muted)}
+#sg-preview .sg-model-head-tools .sg-command-select .sg-control{width:154px;min-height:32px}
+#sg-preview #sg-overview .sg-command-model .sg-model-row{grid-template-columns:minmax(145px,165px) minmax(45px,1fr) 78px}
+#sg-preview #sg-overview .sg-command-errors .sg-error-line{grid-template-columns:minmax(135px,150px) minmax(45px,1fr) 22px}
+#sg-preview .sg-model-name,#sg-preview .sg-error-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:1500px){
+#sg-preview #sg-overview .sg-command-model .sg-model-row{grid-template-columns:minmax(125px,140px) minmax(40px,1fr) 72px}
+#sg-preview #sg-overview .sg-command-errors .sg-error-line{grid-template-columns:minmax(115px,130px) minmax(40px,1fr) 22px}
+#sg-preview .sg-model-head-tools{gap:6px}
+#sg-preview .sg-model-head-tools .sg-command-select .sg-control{width:138px}
+}
+@media(max-width:700px){
+#sg-preview .sg-model-head-tools{width:100%;justify-content:space-between;flex-wrap:wrap}
+#sg-preview .sg-model-head-tools .sg-command-select{flex:1;justify-content:flex-end}
+#sg-preview .sg-model-head-tools .sg-command-select .sg-control{width:min(170px,60vw)}
+}
