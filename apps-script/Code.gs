@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
 const DEFAULT_CENTERS = [
   { id: 'sungrow', name: 'Sungrow Service Center', aliases: ['WSHCM', 'Sungrow Service Center'] },
@@ -95,27 +95,51 @@ function getDashboard_(request, actor) {
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
-  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID;
-  let spreadsheet;
-  try {
-    spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-  } catch (_) {
-    throw apiError_('SOURCE_ACCESS_DENIED', 'Apps Script không thể mở Google Sheet nguồn. Kiểm tra Spreadsheet ID và quyền của tài khoản deploy.');
-  }
-  const sheet = spreadsheet.getSheetByName(String(period.year));
-  if (!sheet) throw apiError_('SOURCE_TAB_NOT_FOUND', 'Không tìm thấy tab dữ liệu ' + period.year + '.');
-  const values = sheet.getDataRange().getValues();
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
+  const source = readSheetValues_(spreadsheetId, String(period.year));
+  const values = source.values;
   if (!values.length) throw apiError_('SOURCE_EMPTY', 'Tab dữ liệu không có nội dung.');
   validateSchema_(values[0]);
 
   const records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers); })
     .filter(function (r) { return r.hasData && scope.includes(r.center); });
-  const output = buildDashboard_(records, period, scope, sheet, spreadsheetId, actor);
+  const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor);
   safeCachePut_(cache, cacheKey, output, 300);
   return output;
 }
 
-function buildDashboard_(records, period, scope, sheet, spreadsheetId, actor) {
+function readSheetValues_(spreadsheetId, sheetName) {
+  const range = "'" + String(sheetName).replace(/'/g, "''") + "'!A:AE";
+  const url = 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(spreadsheetId)
+    + '/values/' + encodeURIComponent(range)
+    + '?majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER';
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  const status = response.getResponseCode();
+  let payload = {};
+  try { payload = JSON.parse(response.getContentText() || '{}'); } catch (_) {}
+  const detail = String(payload.error && payload.error.message || '');
+  if (status === 401 || status === 403) {
+    if (/disabled|has not been used/i.test(detail)) {
+      throw apiError_('SOURCE_API_DISABLED', 'Google Sheets API chưa được bật cho Apps Script project.');
+    }
+    throw apiError_('SOURCE_ACCESS_DENIED', 'Tài khoản deploy không có quyền đọc Google Sheet nguồn.');
+  }
+  if (status === 400 || status === 404) {
+    throw apiError_('SOURCE_TAB_NOT_FOUND', 'Không tìm thấy tab dữ liệu ' + sheetName + ' hoặc Spreadsheet ID không đúng.');
+  }
+  if (status < 200 || status >= 300) {
+    throw apiError_('SOURCE_READ_FAILED', 'Google Sheets API không trả về dữ liệu hợp lệ.');
+  }
+  const values = Array.isArray(payload.values) ? payload.values : [];
+  return { values: values, sheetName: sheetName, lastRow: values.length };
+}
+
+function buildDashboard_(records, period, scope, sheetName, sourceLastRow, spreadsheetId, actor) {
   const periodRows = records.filter(function (r) { return inPeriod_(r.receivedDate, period); });
   const prior = previousPeriod_(period);
   const centerMetrics = scope.map(function (center) {
@@ -155,7 +179,7 @@ function buildDashboard_(records, period, scope, sheet, spreadsheetId, actor) {
   const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
   const errors = groupCountMulti_(periodRows, function (r) { return r.issues; });
   const parts = groupParts_(records.filter(function (r) { return inPeriod_(r.checkDate, period); }));
-  const quality = qualitySummary_(records, periodRows, sheet);
+  const quality = qualitySummary_(records, periodRows, sourceLastRow);
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
@@ -165,7 +189,7 @@ function buildDashboard_(records, period, scope, sheet, spreadsheetId, actor) {
     actor: { email: actor.email, role: actor.role, centers: scope },
     source: {
       spreadsheetId: undefined,
-      sheetName: sheet.getName(),
+      sheetName: sheetName,
       sourceUpdatedAt: new Date().toISOString(),
       rowCount: records.length,
       status: 'ok'
@@ -241,7 +265,7 @@ function publicTicket_(r) {
   };
 }
 
-function qualitySummary_(records, periodRows, sheet) {
+function qualitySummary_(records, periodRows, sourceLastRow) {
   const seen = {};
   records.forEach(function (r) { if (r.sourceNo) seen[r.sourceNo] = (seen[r.sourceNo] || 0) + 1; });
   return {
@@ -251,7 +275,7 @@ function qualitySummary_(records, periodRows, sheet) {
     deliveredMissingReturnDate: records.filter(function (r) { return /đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate; }).length,
     unnamedColumnADRows: records.filter(function (r) { return r.unnamedAD; }).length,
     unnamedColumnAERows: records.filter(function (r) { return r.unnamedAE; }).length,
-    sourceLastRow: sheet.getLastRow()
+    sourceLastRow: sourceLastRow
   };
 }
 
@@ -328,7 +352,15 @@ function dataCoverage_(rows) {
 }
 function median_(values) { if (!values.length) return null; const a = values.slice().sort(function (x, y) { return x - y; }); const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2); }
 function ageDays_(a, b) { if (!a || !b) return -1; return Math.floor((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000); }
-function date_(value) { return value instanceof Date && !isNaN(value) ? value : null; }
+function date_(value) {
+  if (value instanceof Date && !isNaN(value)) return value;
+  if (typeof value === 'number' && isFinite(value)) return new Date(Date.UTC(1899, 11, 30) + Math.round(value * 86400000));
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = new Date(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
 function time_(value) { return value ? value.getTime() : 0; }
 function iso_(value) { return value ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : null; }
 function clean_(value) { return value === null || value === undefined ? '' : String(value).trim(); }
