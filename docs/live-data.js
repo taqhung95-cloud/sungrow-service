@@ -134,13 +134,21 @@
     q('#sg-system-trend').className = 'sg-trend-badge ' + systemTone;
     q('#sg-system-trend').textContent = systemTone === 'good' ? 'Đang cải thiện' : systemTone === 'bad' ? 'Cần chú ý' : 'Ổn định';
     const previousByCenter = Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; }));
-    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Đã giao</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Tín hiệu</th></tr></thead><tbody>' + live.centers.map(function(x) {
+    const deltaHtml = function(current, previous, lowerIsBetter, suffix) {
+      if (previous === null || previous === undefined || current === null || current === undefined) return '<span class="sg-cell-delta neutral">Chưa có kỳ trước</span>';
+      const delta = current - previous;
+      const tone = delta === 0 ? 'neutral' : (lowerIsBetter ? delta < 0 : delta > 0) ? 'good' : 'bad';
+      const text = delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta) + (suffix || '');
+      return '<span class="sg-cell-delta ' + tone + '">' + text + '</span>';
+    };
+    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Đã giao</th><th>Tồn cuối</th><th>Quá hạn</th><th>TAT</th><th>Xu hướng</th></tr></thead><tbody>' + live.centers.map(function(x) {
       const p = previousByCenter[x.center] || {};
-      const openDelta = x.open - (p.open || 0);
-      const lateDelta = x.overdue - (p.overdue || 0);
-      const tone = openDelta < 0 && lateDelta <= 0 ? 'good' : openDelta > 0 || lateDelta > 0 ? 'bad' : 'neutral';
-      const label = tone === 'good' ? 'Cải thiện' : tone === 'bad' ? 'Cần chú ý' : 'Ổn định';
-      return '<tr><td><strong>' + esc(x.center) + '</strong></td><td>' + x.received + '<span class="sg-small">Trước: ' + (p.received ?? '—') + '</span></td><td>' + x.completed + '<span class="sg-small">Trước: ' + (p.completed ?? '—') + '</span></td><td>' + x.open + '<span class="sg-small">Trước: ' + (p.open ?? '—') + '</span></td><td class="sg-delta ' + (openDelta>0?'up':openDelta<0?'down':'') + '">' + (openDelta>0?'+':'') + openDelta + '</td><td>' + x.overdue + '<span class="sg-small">Trước: ' + (p.overdue ?? '—') + '</span></td><td>' + (x.medianDays===null?'—':x.medianDays+' ngày') + '<span class="sg-small">Trước: ' + (p.medianDays===null||p.medianDays===undefined?'—':p.medianDays+' ngày') + '</span></td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
+      const openDelta = p.open === undefined ? null : x.open - p.open;
+      const lateDelta = p.overdue === undefined ? null : x.overdue - p.overdue;
+      const tone = openDelta === null ? 'neutral' : openDelta < 0 && lateDelta <= 0 ? 'good' : openDelta > 0 || lateDelta > 0 ? 'bad' : 'neutral';
+      const label = openDelta === null ? 'Chưa có nền' : tone === 'good' ? 'Cải thiện' : tone === 'bad' ? 'Cần chú ý' : 'Ổn định';
+      const tat = x.medianDays === null ? '—' : x.medianDays + ' ngày';
+      return '<tr><td><strong>' + esc(x.center) + '</strong></td><td><strong>' + x.received + '</strong>' + deltaHtml(x.received,p.received,false,'') + '</td><td><strong>' + x.completed + '</strong>' + deltaHtml(x.completed,p.completed,false,'') + '</td><td><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</td><td><strong>' + x.overdue + '</strong>' + deltaHtml(x.overdue,p.overdue,true,'') + '</td><td><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
     }).join('') + '</tbody></table>';
     q('#sg-compare-note').textContent = 'Khối lượng tiếp nhận mô tả tải công việc và không dùng để xếp hạng center. Nếu tháng đang chọn chưa kết thúc, biến động chỉ là tín hiệu vận hành tạm thời.';
   }
