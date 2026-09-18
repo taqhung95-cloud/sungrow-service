@@ -131,3 +131,14 @@
 #sg-preview .sg-model-head-tools .sg-command-select{flex:1;justify-content:flex-end}
 #sg-preview .sg-model-head-tools .sg-command-select .sg-control{width:min(170px,60vw)}
 }
+/* Compact one-page mode for standard 1366x768 browser viewports. */
+@media(min-width:1101px) and (min-height:650px) and (max-height:759px){
+#sg-preview:has(#sg-overview:not(.sg-hidden)) .sg-heading{margin-bottom:6px}
+#sg-preview #sg-overview .sg-kpis{flex-basis:90px;margin-bottom:10px}
+#sg-preview #sg-overview .sg-kpi{padding:9px 13px}
+#sg-preview #sg-overview .sg-kpi:first-child{padding-top:9px}
+#sg-preview #sg-overview .sg-kpi-value{font-size:30px;margin:3px 0 1px}
+#sg-preview #sg-overview .sg-command-grid{grid-template-rows:minmax(190px,1.15fr) minmax(150px,.85fr);gap:12px}
+#sg-preview #sg-overview .sg-panel{padding:9px 11px}
+#sg-preview #sg-overview .sg-panel-head{margin-bottom:5px}
+}
