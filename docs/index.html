@@ -320,7 +320,18 @@
   <main class="sg-main">
    <div class="sg-top"><span>Service Center <span style="margin:0 9px;color:#bdc7ce">/</span> <span id="sg-crumb">Tổng quan</span></span><span class="sg-demo">Bản xem trước · Dữ liệu minh họa</span></div>
    <div class="sg-content">
-    <div class="sg-heading"><div><div class="sg-eyebrow">VẬN HÀNH DỊCH VỤ</div><h1 id="sg-title">Tổng quan trung tâm</h1><p class="sg-sub" id="sg-subtitle">Đã xử lý = hoàn tất kỹ thuật, gồm thiết bị chờ giao và đã giao.</p></div><div><div class="sg-controls"><label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label><label class="sg-control-label">Tháng đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label><label class="sg-control-label">Kỳ so sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label></div><div class="sg-period">Kỳ báo cáo minh họa · <span id="sg-period-date">01–17/09/2026</span></div></div></div>
+    <div class="sg-heading">
+     <div class="sg-heading-copy"><div class="sg-eyebrow">VẬN HÀNH DỊCH VỤ</div><h1 id="sg-title">Tổng quan trung tâm</h1><p class="sg-sub" id="sg-subtitle">Đã xử lý = hoàn tất kỹ thuật, gồm thiết bị chờ giao và đã giao.</p></div>
+     <div class="sg-filter-panel">
+      <div class="sg-controls">
+       <label class="sg-control-label">Kỳ đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label>
+       <label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label>
+       <label class="sg-control-label">So sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label>
+       <div class="sg-year-total" title="Tổng thiết bị tiếp nhận trong năm theo phạm vi center đang chọn"><span>Tổng tiếp nhận <b id="sg-year-label">2026</b></span><strong id="sg-year-received">—</strong><small>thiết bị</small></div>
+      </div>
+      <div class="sg-period">Kỳ báo cáo · <span id="sg-period-date">01–17/09/2026</span></div>
+     </div>
+    </div>
     <section id="sg-overview">
      <div class="sg-kpis" id="sg-kpis"></div>
      <div class="sg-command-grid">
@@ -362,7 +373,7 @@
   <aside class="sg-panel sg-center-detail" id="sg-center-detail" aria-live="polite"></aside>
  </div>
  <div class="sg-panel sg-monthly-trend"><div class="sg-panel-head"><div><h2>Xu hướng tồn cuối tháng</h2><div class="sg-caption">Tồn giảm là tín hiệu tích cực khi chất lượng không giảm</div></div><div class="sg-legend" id="sg-center-trend-legend"></div></div><div class="sg-center-trend" id="sg-center-trend"></div></div>
- <div class="sg-center-method"><strong>Phương án đánh giá:</strong> 3 KPI chính gồm hoàn thành đúng hạn, thiết bị mở quá hạn và tỷ lệ quay lại sửa. Khối lượng, tồn đọng, thời gian xử lý và chờ linh kiện dùng để giải thích. Chưa dùng điểm tổng cho đến khi thống nhất SLA và độ phức tạp.</div>
+ <div class="sg-center-method"><strong>Nguyên tắc đánh giá:</strong> Khối lượng tiếp nhận cho biết tải công việc, không tự động phản ánh hiệu quả hoặc tỷ lệ hỏng. Center có dưới 5 thiết bị/tháng được gắn nhãn mẫu nhỏ và chưa xếp hạng. Hiệu quả dựa trên cân bằng thiết bị ra/vào, tồn cuối kỳ, tỷ lệ quá hạn và TAT. Muốn tính tỷ lệ hư hỏng sản phẩm cần thêm số máy bán hoặc đang vận hành theo model và khu vực.</div>
 </section>
 
 <section id="sg-tickets" class="sg-hidden"><div class="sg-panel"><div class="sg-toolbar"><h2>Danh sách thiết bị</h2><div class="sg-controls"><input class="sg-control sg-search" id="sg-search" placeholder="Tìm mã thiết bị, S/N, model…" aria-label="Tìm thiết bị"><select class="sg-control" id="sg-status" aria-label="Trạng thái thiết bị"><option value="all">Tất cả trạng thái</option><option>Chờ linh kiện</option><option>Đang kiểm tra</option><option>Chờ test</option><option>Chờ giao</option><option>Đã trả</option></select></div></div><div class="sg-table-wrap" id="sg-tickets-table"></div><div class="sg-caption" id="sg-result-count" aria-live="polite" style="margin-top:14px"></div></div></section>

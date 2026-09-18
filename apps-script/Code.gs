@@ -141,6 +141,10 @@ function readSheetValues_(spreadsheetId, sheetName) {
 
 function buildDashboard_(records, period, scope, sheetName, sourceLastRow, spreadsheetId, actor) {
   const periodRows = records.filter(function (r) { return inPeriod_(r.receivedDate, period); });
+  const yearRows = records.filter(function (r) { return inYear_(r.receivedDate, period.year); });
+  const yearReturned = records.filter(function (r) { return inYear_(r.returnDate, period.year); });
+  const yearParts = groupParts_(records.filter(function (r) { return inYear_(r.checkDate, period.year); }));
+  const yearPartQuantity = yearParts.reduce(function (sum, item) { return sum + item.quantity; }, 0);
   const prior = previousPeriod_(period);
   const centerMetrics = scope.map(function (center) {
     const rows = records.filter(function (r) { return r.center === center; });
@@ -153,21 +157,35 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     const durations = completed.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
     const coverage = dataCoverage_(currentReceived);
     const delta = open.length - priorOpen.length;
+    const volumeShare = periodRows.length ? currentReceived.length / periodRows.length : 0;
+    const overdueRate = open.length ? overdue.length / open.length : 0;
+    const outflowInflowRatio = currentReceived.length ? completed.length / currentReceived.length : null;
+    const lowVolume = currentReceived.length < 5;
     let status = 'good';
-    if (overdue.length >= 3 || coverage < 85) status = 'action';
-    else if (overdue.length || delta > 0 || coverage < 95) status = 'watch';
-    const reason = status === 'action' ? 'Quá hạn hoặc độ đầy đủ dữ liệu cần xử lý' : status === 'watch' ? 'Có chỉ số cần theo dõi trong kỳ' : 'Dòng công việc đang ổn định';
+    if (coverage < 85 || (open.length >= 3 && overdueRate >= 0.3)) status = 'action';
+    else if (lowVolume || overdue.length || delta > 0 || coverage < 95) status = 'watch';
+    let reason = 'Dòng công việc cân bằng; chưa thấy tín hiệu tồn hoặc quá hạn tăng';
+    if (!currentReceived.length) reason = 'Không có thiết bị tiếp nhận; chưa đủ cơ sở đánh giá hiệu quả';
+    else if (coverage < 85) reason = 'Dữ liệu chưa đủ để đánh giá đáng tin cậy';
+    else if (status === 'action') reason = 'Quá hạn chiếm ' + Math.round(overdueRate * 100) + '% trên ' + open.length + ' thiết bị đang mở' + (lowVolume ? '; mẫu tiếp nhận còn nhỏ' : '');
+    else if (lowVolume) reason = currentReceived.length + ' thiết bị trong kỳ; mẫu nhỏ, chỉ theo dõi và chưa xếp hạng';
+    else if (delta > 0) reason = 'Tồn tăng ' + delta + ' thiết bị; cần kiểm tra năng lực xử lý và chờ linh kiện';
+    else if (overdue.length) reason = overdue.length + ' thiết bị quá hạn, chiếm ' + Math.round(overdueRate * 100) + '% tồn đang mở';
     return {
       center: center,
       received: currentReceived.length,
       completed: completed.length,
+      volumeShare: volumeShare,
+      outflowInflowRatio: outflowInflowRatio,
       open: open.length,
       delta: delta,
       overdue: overdue.length,
+      overdueRate: overdueRate,
       waitingParts: waitingParts.length,
       medianDays: median_(durations),
       repeatRate: null,
       coverage: coverage,
+      lowVolume: lowVolume,
       status: status,
       reason: reason
     };
@@ -183,7 +201,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.0',
+    schemaVersion: '1.1',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf) },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -201,6 +219,20 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       waitingDelivery: waitingDelivery.length,
       returned: returned.length,
       overdue: openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > 14; }).length
+    },
+    annual: {
+      year: period.year,
+      received: yearRows.length,
+      returned: yearReturned.length,
+      partsQuantity: yearPartQuantity,
+      partTypes: yearParts.length,
+      parts: yearParts
+    },
+    evaluation: {
+      minimumSampleSize: 5,
+      failureRateAvailable: false,
+      incidentDenominator: 'Thiết bị tiếp nhận tại service center',
+      failureRateRequirement: 'Cần số máy bán hoặc đang vận hành theo model và khu vực'
     },
     centers: centerMetrics,
     trends: backlogTrend_(records, period, scope),
@@ -342,6 +374,7 @@ function normalizePeriod_(value) {
 
 function previousPeriod_(period) { return normalizePeriod_(Utilities.formatDate(new Date(period.year, period.month - 1, 1), Session.getScriptTimeZone(), 'yyyy-MM')); }
 function inPeriod_(date, period) { return date && date >= period.start && date <= period.end; }
+function inYear_(date, year) { return !!date && date.getFullYear() === year; }
 function isOpenAt_(r, date) { return !!r.receivedDate && r.receivedDate <= date && !(r.returnDate && r.returnDate <= date) && !(/đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate && periodIsCurrent_(date)); }
 function periodIsCurrent_(date) { const now = new Date(); return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth(); }
 function dataCoverage_(rows) {
