@@ -167,7 +167,73 @@
 @media(max-width:580px){#sg-preview .sg-center-health-grid{grid-template-columns:1fr}#sg-preview .sg-center-summary{grid-template-columns:1fr 1fr;gap:8px}#sg-preview .sg-center-summary-item{padding:13px 10px}#sg-preview .sg-center-summary-item strong{font-size:25px}#sg-preview .sg-center-card{min-height:0}#sg-preview .sg-center-card-metrics{grid-template-columns:repeat(4,1fr)}#sg-preview .sg-center-card-metrics strong{font-size:15px}#sg-preview .sg-center-detail{display:block}#sg-preview .sg-health-legend{gap:8px}#sg-preview .sg-center-trend{height:180px;gap:4px;padding-left:0;padding-right:0}#sg-preview .sg-trend-bar{width:20%;max-width:12px}}
 
 </style>
-<div id="sg-preview" aria-label="Bản xem trước Sungrow Service Center">
+<style id="sg-management-refresh">
+#sg-preview{font-size:16px;line-height:1.58}
+#sg-preview .sg-shell{grid-template-columns:214px minmax(0,1fr)}
+#sg-preview .sg-side{padding:32px 18px 24px}
+#sg-preview .sg-nav-label,#sg-preview .sg-brand small{font-size:12px}
+#sg-preview .sg-nav button{font-size:14px;min-height:50px;padding:13px 12px}
+#sg-preview .sg-top{font-size:13px;padding:16px 28px}
+#sg-preview .sg-content{padding:32px 30px 24px}
+#sg-preview h1{font-size:34px;line-height:1.18;margin-bottom:10px}
+#sg-preview .sg-sub{font-size:15px;max-width:680px}
+#sg-preview .sg-eyebrow{font-size:12px}
+#sg-preview .sg-control-label{font-size:13px}
+#sg-preview .sg-control,#sg-preview .sg-button{font-size:14px;min-height:46px;padding:10px 12px}
+#sg-preview .sg-period{font-size:13px}
+#sg-preview .sg-kpis{gap:16px;margin-bottom:22px}
+#sg-preview .sg-kpi{padding:22px 18px;min-height:158px;display:flex;flex-direction:column}
+#sg-preview .sg-kpi:first-child{padding-top:22px}
+#sg-preview .sg-kpi-label{font-size:14px;min-height:0}
+#sg-preview .sg-kpi-value{font-size:42px;margin:12px 0 8px}
+#sg-preview .sg-kpi-value small{font-size:13px}
+#sg-preview .sg-kpi-note{font-size:13px;line-height:1.5;margin-top:auto}
+#sg-preview .sg-kpi-change{display:inline-flex;margin-left:5px;font-weight:600}
+#sg-preview .sg-kpi-change.good{color:#2f704d}
+#sg-preview .sg-kpi-change.bad{color:#a33b34}
+#sg-preview .sg-kpi-change.neutral{color:#606060}
+#sg-preview .sg-panel{padding:24px 22px}
+#sg-preview .sg-panel-head{margin-bottom:22px}
+#sg-preview h2{font-size:18px;line-height:1.4}
+#sg-preview .sg-caption,#sg-preview .sg-legend{font-size:13px}
+#sg-preview .sg-grid{gap:20px;margin-bottom:22px}
+#sg-preview .sg-error-line{font-size:14px;grid-template-columns:145px 1fr 28px}
+#sg-preview table{font-size:14px;line-height:1.55}
+#sg-preview th{font-size:12px;padding:13px 12px}
+#sg-preview td{padding:15px 12px}
+#sg-preview .sg-small,#sg-preview .sg-status,#sg-preview .sg-notice,#sg-preview .sg-footer{font-size:12px}
+#sg-preview .sg-model-panel{margin-bottom:22px;padding:26px 22px}
+#sg-preview .sg-model-row{font-size:14px;grid-template-columns:150px minmax(60px,1fr) 105px;padding:13px 6px}
+#sg-preview .sg-model-value{font-size:13px}
+#sg-preview .sg-model-insight h3{font-size:20px}
+#sg-preview .sg-model-selected-number{font-size:34px}
+#sg-preview .sg-center-summary{gap:16px;margin-bottom:22px}
+#sg-preview .sg-center-summary-item{padding:20px 18px}
+#sg-preview .sg-center-summary-item span{font-size:13px}
+#sg-preview .sg-center-summary-item strong{font-size:36px}
+#sg-preview .sg-center-health-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#sg-preview .sg-center-card{padding:20px;min-height:190px}
+#sg-preview .sg-center-card h3{font-size:16px}
+#sg-preview .sg-health-label{font-size:12px;padding:5px 8px}
+#sg-preview .sg-center-card-metrics span{font-size:12px}
+#sg-preview .sg-center-card-metrics strong{font-size:22px}
+#sg-preview .sg-center-card-reason{font-size:12px}
+#sg-preview .sg-month-compare{margin-bottom:22px;border-top:3px solid var(--sg-orange)}
+#sg-preview .sg-month-compare-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+#sg-preview .sg-month-compare-item{background:#f7f7f7;border-radius:7px;padding:15px}
+#sg-preview .sg-month-compare-item span{display:block;color:var(--sg-muted);font-size:12px}
+#sg-preview .sg-month-compare-item strong{display:block;font-size:23px;margin:5px 0}
+#sg-preview .sg-month-compare-item small{font-size:12px;color:var(--sg-muted)}
+#sg-preview .sg-trend-badge{display:inline-flex;padding:4px 7px;border-radius:4px;font-size:12px;font-weight:600;white-space:nowrap}
+#sg-preview .sg-trend-badge.good{background:#e8f3ed;color:#296344}
+#sg-preview .sg-trend-badge.bad{background:#faeae8;color:#98342f}
+#sg-preview .sg-trend-badge.neutral{background:#ededed;color:#505050}
+#sg-preview .sg-compare-note{margin-top:14px;padding:12px 14px;background:#fff7ef;border-left:3px solid var(--sg-orange);font-size:12px;color:#555}
+#sg-preview .sg-live-text{font-size:12px!important}
+@media(max-width:1050px){#sg-preview .sg-shell{grid-template-columns:190px minmax(0,1fr)}#sg-preview .sg-kpis,#sg-preview .sg-month-compare-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){#sg-preview .sg-content{padding:24px 18px}#sg-preview h1{font-size:29px}#sg-preview .sg-center-health-grid{grid-template-columns:1fr}#sg-preview .sg-kpi-value{font-size:36px}}
+@media(max-width:580px){#sg-preview .sg-kpis,#sg-preview .sg-month-compare-grid{grid-template-columns:1fr}#sg-preview .sg-kpi{min-height:132px}#sg-preview .sg-panel{padding:18px 14px}}
+</style><div id="sg-preview" aria-label="Bản xem trước Sungrow Service Center">
  <div class="sg-shell">
   <aside class="sg-side">
    <div class="sg-brand"><div class="sg-official-logo"><svg role="img" aria-label="Sungrow" xmlns="http://www.w3.org/2000/svg" width="150" height="20" viewBox="0 0 150 20" fill="none">
@@ -193,9 +259,15 @@
   <main class="sg-main">
    <div class="sg-top"><span>Service Center <span style="margin:0 9px;color:#bdc7ce">/</span> <span id="sg-crumb">Tổng quan</span></span><span class="sg-demo">Bản xem trước · Dữ liệu minh họa</span></div>
    <div class="sg-content">
-    <div class="sg-heading"><div><div class="sg-eyebrow">VẬN HÀNH DỊCH VỤ</div><h1 id="sg-title">Tổng quan trung tâm</h1><p class="sg-sub" id="sg-subtitle">Theo dõi tiếp nhận, sửa chữa và giao trả thiết bị.</p></div><div><div class="sg-controls"><label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label><label class="sg-control-label">Thời gian<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label></div><div class="sg-period">Kỳ báo cáo minh họa · <span id="sg-period-date">01–17/09/2026</span></div></div></div>
+    <div class="sg-heading"><div><div class="sg-eyebrow">VẬN HÀNH DỊCH VỤ</div><h1 id="sg-title">Tổng quan trung tâm</h1><p class="sg-sub" id="sg-subtitle">Đánh giá tình trạng center, tiến độ sửa chữa và biến động so với tháng trước.</p></div><div><div class="sg-controls"><label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label><label class="sg-control-label">Tháng đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label><label class="sg-control-label">Kỳ so sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label></div><div class="sg-period">Kỳ báo cáo minh họa · <span id="sg-period-date">01–17/09/2026</span></div></div></div>
     <section id="sg-overview">
      <div class="sg-kpis" id="sg-kpis"></div>
+     <section class="sg-panel sg-month-compare" aria-label="So sánh theo tháng">
+      <div class="sg-panel-head"><div><div class="sg-eyebrow">ĐÁNH GIÁ THEO THÁNG</div><h2>Biến động so với tháng trước</h2><div class="sg-caption" id="sg-compare-period">Đang tải kỳ so sánh…</div></div><span class="sg-trend-badge neutral" id="sg-system-trend">Chưa đánh giá</span></div>
+      <div class="sg-month-compare-grid" id="sg-month-compare-grid"></div>
+      <div class="sg-table-wrap" id="sg-month-center-table"></div>
+      <div class="sg-compare-note" id="sg-compare-note">Khối lượng tiếp nhận dùng để mô tả tải công việc, không dùng để xếp hạng center.</div>
+     </section>
 <section class="sg-panel sg-model-panel" aria-label="Cơ cấu model tiếp nhận">
  <div class="sg-panel-head"><div><div class="sg-eyebrow">CƠ CẤU TIẾP NHẬN</div><h2>Model nào đang gửi về nhiều nhất?</h2><div class="sg-caption">Theo ngày tiếp nhận · cùng kỳ và trung tâm đang chọn</div></div><span class="sg-model-total" id="sg-model-total" aria-live="polite"></span></div>
  <div class="sg-model-tools"><label class="sg-control-label">Loại thiết bị<select class="sg-control" id="sg-model-type"><option value="all">Tất cả thiết bị</option><option value="Inverter">Inverter</option><option value="Monitoring">Monitoring</option><option value="Fan">Fan</option></select></label><div><span class="sg-model-label">Đơn vị thống kê</span><div class="sg-tabs sg-model-units"><button data-unit="visits" class="active" aria-pressed="true">Lượt tiếp nhận</button><button data-unit="devices" aria-pressed="false">Số thiết bị</button></div></div></div>
@@ -225,7 +297,7 @@
 </section>
 
 <section id="sg-tickets" class="sg-hidden"><div class="sg-panel"><div class="sg-toolbar"><h2>Danh sách phiếu</h2><div class="sg-controls"><input class="sg-control sg-search" id="sg-search" placeholder="Tìm mã phiếu, S/N, model…" aria-label="Tìm phiếu"><select class="sg-control" id="sg-status" aria-label="Trạng thái phiếu"><option value="all">Tất cả trạng thái</option><option>Chờ linh kiện</option><option>Đang kiểm tra</option><option>Chờ test</option><option>Chờ giao</option><option>Đã trả</option></select></div></div><div class="sg-table-wrap" id="sg-tickets-table"></div><div class="sg-caption" id="sg-result-count" aria-live="polite" style="margin-top:14px"></div></div></section>
-    <section id="sg-parts" class="sg-hidden"><div class="sg-tabs" aria-label="Loại nghiệp vụ linh kiện"><button class="active" data-part="repair" aria-pressed="true">Thay sửa</button><button data-part="warehouse" aria-pressed="false">Xuất kho</button></div><div class="sg-panel"><div class="sg-panel-head"><div><h2 id="sg-part-title">Linh kiện đã thay sửa</h2><div class="sg-caption" id="sg-part-sub" style="margin-top:3px">Ghi nhận theo ngày sử dụng</div></div><i data-lucide="package" aria-hidden="true" style="color:#8193a0"></i></div><div class="sg-part-metrics" id="sg-part-metrics"></div><div class="sg-table-wrap" id="sg-part-table"></div><div class="sg-notice" id="sg-part-note"></div></div></section>
+    <section id="sg-parts" class="sg-hidden"><div class="sg-panel"><div class="sg-panel-head"><div><h2 id="sg-part-title">Linh kiện đã thay sửa</h2><div class="sg-caption" id="sg-part-sub" style="margin-top:3px">Chỉ gồm linh kiện ghi nhận trong phiếu sửa chữa · chưa sử dụng sheet CCVT</div></div><i data-lucide="package" aria-hidden="true" style="color:#8193a0"></i></div><div class="sg-part-metrics" id="sg-part-metrics"></div><div class="sg-table-wrap" id="sg-part-table"></div><div class="sg-notice" id="sg-part-note"></div></div></section>
     <section id="sg-quality" class="sg-hidden"><div class="sg-panel"><div class="sg-panel-head"><div><h2>Cần bổ sung trước khi tính báo cáo</h2><div class="sg-caption" style="margin-top:4px">Các tình huống minh họa · chưa kết nối nguồn</div></div></div><div class="sg-quality"><div class="sg-quality-item"><div>Đã giao máy, thiếu ngày trả<span class="sg-small">Chưa xác định được kỳ giao trả</span></div><strong>3</strong></div><div class="sg-quality-item"><div>Linh kiện chưa có ngày sử dụng<span class="sg-small">Chưa đưa vào tổng đã thay sửa theo tháng</span></div><strong>5</strong></div><div class="sg-quality-item"><div>Phiếu có khả năng trùng<span class="sg-small">Cùng S/N và ngày tiếp nhận</span></div><strong>2</strong></div></div></div></section>
     <section id="sg-detail" class="sg-detail sg-hidden" aria-label="Chi tiết phiếu" aria-live="polite"></section>
     <div class="sg-footer"><span>SUNGROW · Service Center Dashboard</span><span>Giao diện mẫu v0.4 · Chưa kết nối Google Sheets</span></div>
@@ -251,7 +323,7 @@
  {id:'SC-260910',sn:'DEMO-A260078',model:'SG110CX',center:'BKE Center',error:'Lỗi giao tiếp',status:'Chờ test',age:16,warranty:'Trong bảo hành',received:'01/09/2026'},
  {id:'SC-260911',sn:'DEMO-A260084',model:'SG125CX-P2',center:'BKE Center',error:'Hỏng AC Relay',status:'Chờ linh kiện',age:19,warranty:'Trong bảo hành',received:'29/08/2026'}
  ];
- const titles={overview:['Tổng quan','Tổng quan trung tâm','Theo dõi tiếp nhận, sửa chữa và giao trả thiết bị.'],tickets:['Phiếu sửa chữa','Phiếu sửa chữa','Tra cứu thiết bị và theo dõi tiến độ từng phiếu.'],parts:['Linh kiện','Theo dõi linh kiện','Tách biệt linh kiện thay sửa và linh kiện xuất kho.'],quality:['Kiểm tra dữ liệu','Kiểm tra dữ liệu','Những thông tin cần hoàn thiện để báo cáo chính xác.'],centers:['Service center','Tổng quan các service center','Theo dõi sức khỏe vận hành và điểm cần hành động theo tháng.']};
+ const titles={overview:['Tổng quan','Tổng quan trung tâm','Đánh giá tình trạng center, tiến độ sửa chữa và biến động so với tháng trước.'],tickets:['Phiếu sửa chữa','Phiếu sửa chữa','Tra cứu thiết bị và theo dõi tiến độ từng phiếu.'],parts:['Linh kiện','Theo dõi linh kiện','Tách biệt linh kiện thay sửa và linh kiện xuất kho.'],quality:['Kiểm tra dữ liệu','Kiểm tra dữ liệu','Những thông tin cần hoàn thiện để báo cáo chính xác.'],centers:['Service center','Tổng quan các service center','Theo dõi sức khỏe vận hành và điểm cần hành động theo tháng.']};
  function activeRows(){return tickets.filter(t=>q('#sg-center').value==='all'||t.center===q('#sg-center').value)}
  function badge(s){return s==='Chờ linh kiện'?'wait':s==='Chờ test'?'test':['Chờ giao','Đã trả'].includes(s)?'done':''}
  function table(rows){return '<table><thead><tr><th>Thiết bị / Phiếu</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi phiếu</th><th></th></tr></thead><tbody>'+rows.map(t=>'<tr><td><span class="sg-sn">'+t.model+'</span><span class="sg-small">'+t.id+'</span></td><td>'+t.error+'</td><td>'+t.center+'</td><td><span class="sg-status '+badge(t.status)+'">'+t.status+'</span></td><td class="sg-age '+(t.age>14?'old':'')+'">'+t.age+' ngày</td><td><button class="sg-detail-btn" data-ticket="'+t.id+'" aria-label="Xem phiếu '+t.id+'">↗</button></td></tr>').join('')+(rows.length?'':'<tr><td colspan="6">Không có phiếu phù hợp trong dữ liệu mẫu.</td></tr>')+'</tbody></table>'}

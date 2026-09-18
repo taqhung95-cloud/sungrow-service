@@ -6,6 +6,7 @@
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   let token = '';
   let live = null;
+  let previousLive = null;
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}';
@@ -34,6 +35,18 @@
       const result = await response.json();
       if (!result.ok) throw new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
       live = result.data;
+      previousLive = null;
+      try {
+        const selected = selectedPeriod().split('-').map(Number);
+        const previousDate = new Date(selected[0], selected[1] - 2, 1);
+        const previousPeriod = previousDate.getFullYear() + '-' + String(previousDate.getMonth() + 1).padStart(2, '0');
+        const previousBody = new URLSearchParams({payload: JSON.stringify({action:'dashboard.read', idToken:token, period:previousPeriod, center:q('#sg-center').value})});
+        const previousResponse = await fetch(cfg.appsScriptUrl, {method:'POST', body:previousBody, redirect:'follow'});
+        const previousResult = await previousResponse.json();
+        if (previousResult.ok) previousLive = previousResult.data;
+      } catch (_) {
+        previousLive = null;
+      }
       renderAll();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       status('Đã đồng bộ', `${live.source.sheetName} · ${updated}`, 'ok');
@@ -44,6 +57,7 @@
 
   function renderAll() {
     renderOverview();
+    renderMonthlyComparison();
     renderTickets();
     renderModels();
     renderParts();
@@ -55,10 +69,20 @@
 
   function renderOverview() {
     const s = live.summary;
-    const values = [s.received, s.processing, s.waitingDelivery, s.returned];
-    const labels = ['Tiếp nhận trong kỳ','Đang xử lý','Chờ giao','Đã trả trong kỳ'];
-    const notes = [`Đến ${formatDate(live.period.asOf)}`,'Gồm phiếu kỳ trước','Trạng thái hiện tại','Theo ngày trả máy'];
-    q('#sg-kpis').innerHTML = values.map((v,i) => `<div class="sg-kpi"><div class="sg-kpi-label">${labels[i]}</div><div class="sg-kpi-value">${v} <small>phiếu</small></div><div class="sg-kpi-note">${notes[i]}</div></div>`).join('');
+    const ps = previousLive?.summary;
+    const values = [s.received, s.returned, s.processing + s.waitingDelivery, s.overdue];
+    const previousValues = ps ? [ps.received, ps.returned, ps.processing + ps.waitingDelivery, ps.overdue] : [null,null,null,null];
+    const labels = ['Tiếp nhận trong kỳ','Hoàn tất trong kỳ','Tồn cuối kỳ','Mở quá 14 ngày'];
+    const lowerIsBetter = [false,false,true,true];
+    q('#sg-kpis').innerHTML = values.map((v,i) => {
+      const p = previousValues[i];
+      const delta = p === null ? null : v - p;
+      const better = delta === 0 ? null : (lowerIsBetter[i] ? delta < 0 : delta > 0);
+      const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
+      const change = delta === null ? 'Chưa có tháng trước' : (delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta));
+      const note = p === null ? change : 'Tháng trước: ' + p + ' <span class="sg-kpi-change ' + tone + '">' + change + '</span>';
+      return '<div class="sg-kpi"><div class="sg-kpi-label">' + labels[i] + '</div><div class="sg-kpi-value">' + v + ' <small>phiếu</small></div><div class="sg-kpi-note">' + note + '</div></div>';
+    }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
     q('#sg-errors').innerHTML = live.errors.slice(0,5).map(x => `<div class="sg-error-line"><span>${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
@@ -68,6 +92,51 @@
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
   function ticketTable(rows) {
     return '<table><thead><tr><th>Thiết bị / Phiếu</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi phiếu</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td>${esc(t.center)}</td><td><span class="sg-status">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>14?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
+  }
+
+  function renderMonthlyComparison() {
+    const grid = q('#sg-month-compare-grid');
+    const table = q('#sg-month-center-table');
+    if (!grid || !table) return;
+    if (!previousLive) {
+      q('#sg-compare-period').textContent = 'Không tải được dữ liệu tháng trước';
+      q('#sg-system-trend').className = 'sg-trend-badge neutral';
+      q('#sg-system-trend').textContent = 'Chưa đánh giá';
+      grid.innerHTML = '<div class="sg-caption">Dashboard vẫn hiển thị tháng hiện tại; cần quyền đọc tab của tháng trước để so sánh.</div>';
+      table.innerHTML = '';
+      return;
+    }
+    q('#sg-compare-period').textContent = live.period.label + ' so với ' + previousLive.period.label;
+    const currentOpen = live.summary.processing + live.summary.waitingDelivery;
+    const priorOpen = previousLive.summary.processing + previousLive.summary.waitingDelivery;
+    const metrics = [
+      ['Tiếp nhận',live.summary.received,previousLive.summary.received,false],
+      ['Hoàn tất',live.summary.returned,previousLive.summary.returned,false],
+      ['Tồn cuối kỳ',currentOpen,priorOpen,true],
+      ['Quá 14 ngày',live.summary.overdue,previousLive.summary.overdue,true]
+    ];
+    grid.innerHTML = metrics.map(function(m) {
+      const delta = m[1] - m[2];
+      const better = delta === 0 ? null : (m[3] ? delta < 0 : delta > 0);
+      const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
+      const change = delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta);
+      return '<div class="sg-month-compare-item"><span>' + m[0] + '</span><strong>' + m[1] + '</strong><small>Trước: ' + m[2] + ' · <span class="sg-kpi-change ' + tone + '">' + change + '</span></small></div>';
+    }).join('');
+    const backlogDelta = currentOpen - priorOpen;
+    const overdueDelta = live.summary.overdue - previousLive.summary.overdue;
+    const systemTone = backlogDelta < 0 && overdueDelta <= 0 ? 'good' : backlogDelta > 0 || overdueDelta > 0 ? 'bad' : 'neutral';
+    q('#sg-system-trend').className = 'sg-trend-badge ' + systemTone;
+    q('#sg-system-trend').textContent = systemTone === 'good' ? 'Đang cải thiện' : systemTone === 'bad' ? 'Cần chú ý' : 'Ổn định';
+    const previousByCenter = Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; }));
+    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Hoàn tất</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Tín hiệu</th></tr></thead><tbody>' + live.centers.map(function(x) {
+      const p = previousByCenter[x.center] || {};
+      const openDelta = x.open - (p.open || 0);
+      const lateDelta = x.overdue - (p.overdue || 0);
+      const tone = openDelta < 0 && lateDelta <= 0 ? 'good' : openDelta > 0 || lateDelta > 0 ? 'bad' : 'neutral';
+      const label = tone === 'good' ? 'Cải thiện' : tone === 'bad' ? 'Cần chú ý' : 'Ổn định';
+      return '<tr><td><strong>' + esc(x.center) + '</strong></td><td>' + x.received + '<span class="sg-small">Trước: ' + (p.received ?? '—') + '</span></td><td>' + x.completed + '<span class="sg-small">Trước: ' + (p.completed ?? '—') + '</span></td><td>' + x.open + '<span class="sg-small">Trước: ' + (p.open ?? '—') + '</span></td><td class="sg-delta ' + (openDelta>0?'up':openDelta<0?'down':'') + '">' + (openDelta>0?'+':'') + openDelta + '</td><td>' + x.overdue + '<span class="sg-small">Trước: ' + (p.overdue ?? '—') + '</span></td><td>' + (x.medianDays===null?'—':x.medianDays+' ngày') + '<span class="sg-small">Trước: ' + (p.medianDays===null||p.medianDays===undefined?'—':p.medianDays+' ngày') + '</span></td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
+    }).join('') + '</tbody></table>';
+    q('#sg-compare-note').textContent = 'Khối lượng tiếp nhận mô tả tải công việc và không dùng để xếp hạng center. Nếu tháng đang chọn chưa kết thúc, biến động chỉ là tín hiệu vận hành tạm thời.';
   }
 
   function renderTickets() {
@@ -92,7 +161,7 @@
     const total = live.parts.reduce((n,x) => n+x.quantity, 0);
     q('#sg-part-metrics').innerHTML = `<div><span class="sg-caption">Theo ngày Check / Repair</span><strong>${total} <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">Mã linh kiện</span><strong>${live.parts.length}</strong></div>`;
     q('#sg-part-table').innerHTML = '<table><thead><tr><th>Part number</th><th>Số lượng</th><th>Cơ sở ngày</th></tr></thead><tbody>' + live.parts.map(x => `<tr><td class="sg-sn">${esc(x.pn)}</td><td>${x.quantity}</td><td>Check / Repair date</td></tr>`).join('') + '</tbody></table>';
-    q('#sg-part-note').textContent = 'Sheet chưa có UsedDate riêng; số liệu tạm dùng Check / Repair date và được gắn nhãn rõ.';
+    q('#sg-part-note').textContent = 'Giai đoạn 1 chỉ tính linh kiện ghi nhận trong phiếu sửa chữa theo Check / Repair date; chưa đọc hoặc đối soát dữ liệu từ sheet CCVT.';
   }
 
   function renderQuality() {
