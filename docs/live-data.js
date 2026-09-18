@@ -70,10 +70,10 @@
   function renderOverview() {
     const s = live.summary;
     const ps = previousLive?.summary;
-    const values = [s.received, s.returned, s.processing + s.waitingDelivery, s.overdue];
-    const previousValues = ps ? [ps.received, ps.returned, ps.processing + ps.waitingDelivery, ps.overdue] : [null,null,null,null];
-    const labels = ['Tiếp nhận trong kỳ','Hoàn tất trong kỳ','Tồn cuối kỳ','Mở quá 14 ngày'];
-    const lowerIsBetter = [false,false,true,true];
+    const values = [s.received, s.waitingDelivery + s.returned, s.waitingDelivery, s.returned];
+    const previousValues = ps ? [ps.received, ps.waitingDelivery + ps.returned, ps.waitingDelivery, ps.returned] : [null,null,null,null];
+    const labels = ['Thiết bị tiếp nhận','Thiết bị đã xử lý','Thiết bị chờ giao','Thiết bị đã giao'];
+    const lowerIsBetter = [false,false,true,false];
     q('#sg-kpis').innerHTML = values.map((v,i) => {
       const p = previousValues[i];
       const delta = p === null ? null : v - p;
@@ -81,17 +81,23 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : (delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta));
       const note = p === null ? change : 'Tháng trước: ' + p + ' <span class="sg-kpi-change ' + tone + '">' + change + '</span>';
-      return '<div class="sg-kpi"><div class="sg-kpi-label">' + labels[i] + '</div><div class="sg-kpi-value">' + v + ' <small>phiếu</small></div><div class="sg-kpi-note">' + note + '</div></div>';
+      return '<div class="sg-kpi"><div class="sg-kpi-label">' + labels[i] + '</div><div class="sg-kpi-value">' + v + ' <small>thiết bị</small></div><div class="sg-kpi-note">' + note + '</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
     q('#sg-errors').innerHTML = live.errors.slice(0,5).map(x => `<div class="sg-error-line"><span>${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
-    q('#sg-overview-table').innerHTML = ticketTable(live.tickets.filter(isOpen).slice(0,5));
+    q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays).slice(0,4));
   }
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
+  function attentionTable(rows) {
+    return '<table><thead><tr><th>Thiết bị</th><th>Center</th><th>Trạng thái</th><th>Ngày</th></tr></thead><tbody>' + rows.map(function(t) {
+      return '<tr><td><span class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</span><span class="sg-small">' + esc(t.serialNumber || t.id) + '</span></td><td>' + esc(t.center) + '</td><td><span class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</span></td><td class="sg-age ' + (t.ageDays>14?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</td></tr>';
+    }).join('') + (rows.length?'':'<tr><td colspan="4">Không có thiết bị cần theo dõi.</td></tr>') + '</tbody></table>';
+  }
+
   function ticketTable(rows) {
-    return '<table><thead><tr><th>Thiết bị / Phiếu</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi phiếu</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td>${esc(t.center)}</td><td><span class="sg-status">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>14?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
+    return '<table><thead><tr><th>Thiết bị / Thiết bị</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td>${esc(t.center)}</td><td><span class="sg-status">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>14?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
   }
 
   function renderMonthlyComparison() {
@@ -111,7 +117,7 @@
     const priorOpen = previousLive.summary.processing + previousLive.summary.waitingDelivery;
     const metrics = [
       ['Tiếp nhận',live.summary.received,previousLive.summary.received,false],
-      ['Hoàn tất',live.summary.returned,previousLive.summary.returned,false],
+      ['Đã giao',live.summary.returned,previousLive.summary.returned,false],
       ['Tồn cuối kỳ',currentOpen,priorOpen,true],
       ['Quá 14 ngày',live.summary.overdue,previousLive.summary.overdue,true]
     ];
@@ -128,7 +134,7 @@
     q('#sg-system-trend').className = 'sg-trend-badge ' + systemTone;
     q('#sg-system-trend').textContent = systemTone === 'good' ? 'Đang cải thiện' : systemTone === 'bad' ? 'Cần chú ý' : 'Ổn định';
     const previousByCenter = Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; }));
-    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Hoàn tất</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Tín hiệu</th></tr></thead><tbody>' + live.centers.map(function(x) {
+    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Đã giao</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Tín hiệu</th></tr></thead><tbody>' + live.centers.map(function(x) {
       const p = previousByCenter[x.center] || {};
       const openDelta = x.open - (p.open || 0);
       const lateDelta = x.overdue - (p.overdue || 0);
@@ -145,23 +151,28 @@
     let rows = live.tickets.filter(t => center === 'all' || t.center === center);
     if (term) rows = rows.filter(t => [t.id,t.sourceNo,t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
     q('#sg-tickets-table').innerHTML = ticketTable(rows);
-    q('#sg-result-count').textContent = `${rows.length} phiếu · dữ liệu từ tab ${live.source.sheetName}`;
+    q('#sg-result-count').textContent = `${rows.length} thiết bị · dữ liệu từ tab ${live.source.sheetName}`;
   }
 
   function renderModels() {
     const rows = live.models;
     const total = rows.reduce((n,x) => n+x.count, 0);
-    q('#sg-model-total').textContent = `${total} lượt · ${rows.length} nhóm model`;
+    q('#sg-model-total').textContent = `${total} thiết bị · ${rows.length} nhóm model`;
     q('#sg-model-bars').innerHTML = rows.map((x,i) => `<button class="sg-model-row ${/chưa/i.test(x.name)?'unknown':''}" aria-pressed="${i===0}"><span class="sg-model-name">${esc(x.name)}</span><span class="sg-model-track"><i style="width:${total?100*x.count/total:0}%"></i></span><span class="sg-model-value"><strong>${x.count}</strong>${total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}%</span></button>`).join('');
-    q('#sg-model-denominator').textContent = `Mẫu số: ${total} lượt tiếp nhận · ${live.period.label}.`;
-    if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} lượt trong kỳ đang chọn.</div>`;
+    q('#sg-model-denominator').textContent = `Mẫu số: ${total} thiết bị tiếp nhận · ${live.period.label}.`;
+    if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} thiết bị trong kỳ đang chọn.</div>`;
   }
 
   function renderParts() {
     const total = live.parts.reduce((n,x) => n+x.quantity, 0);
     q('#sg-part-metrics').innerHTML = `<div><span class="sg-caption">Theo ngày Check / Repair</span><strong>${total} <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">Mã linh kiện</span><strong>${live.parts.length}</strong></div>`;
     q('#sg-part-table').innerHTML = '<table><thead><tr><th>Part number</th><th>Số lượng</th><th>Cơ sở ngày</th></tr></thead><tbody>' + live.parts.map(x => `<tr><td class="sg-sn">${esc(x.pn)}</td><td>${x.quantity}</td><td>Check / Repair date</td></tr>`).join('') + '</tbody></table>';
-    q('#sg-part-note').textContent = 'Giai đoạn 1 chỉ tính linh kiện ghi nhận trong phiếu sửa chữa theo Check / Repair date; chưa đọc hoặc đối soát dữ liệu từ sheet CCVT.';
+    q('#sg-part-note').textContent = 'Giai đoạn 1 chỉ tính linh kiện ghi nhận trong thiết bị sửa chữa theo Check / Repair date; chưa đọc hoặc đối soát dữ liệu từ sheet CCVT.';
+    const overviewMetrics = q('#sg-overview-part-metrics');
+    const overviewTable = q('#sg-overview-part-table');
+    if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>linh kiện đã thay · ' + live.parts.length + ' mã</span>';
+    if (overviewTable) overviewTable.innerHTML = '<table><thead><tr><th>Part number</th><th>SL</th></tr></thead><tbody>' + live.parts.slice(0,4).map(x => '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + '</td></tr>').join('') + '</tbody></table>';
+
   }
 
   function renderQuality() {
@@ -177,10 +188,10 @@
   function renderCenters() {
     const labels = {good:'Ổn định',watch:'Cần theo dõi',action:'Cần hành động'};
     const cs = live.centers;
-    q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'phiếu'],['Hoàn tất trong kỳ',live.summary.returned,'phiếu'],['Phiếu mở quá hạn',live.summary.overdue,'phiếu cần can thiệp']].map(x => `<div class="sg-center-summary-item"><span>${x[0]}</span><strong>${x[1]}</strong><span>${x[2]}</span></div>`).join('');
+    q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'thiết bị'],['Đã giao trong kỳ',live.summary.returned,'thiết bị'],['Thiết bị mở quá hạn',live.summary.overdue,'thiết bị cần can thiệp']].map(x => `<div class="sg-center-summary-item"><span>${x[0]}</span><strong>${x[1]}</strong><span>${x[2]}</span></div>`).join('');
     q('#sg-center-health-grid').innerHTML = cs.map(x => `<button class="sg-center-card" aria-pressed="false"><div class="sg-center-card-head"><h3>${esc(x.center)}</h3><span class="sg-health-label ${x.status}">${labels[x.status]}</span></div><div class="sg-center-card-metrics"><div><span>Tồn cuối kỳ</span><strong>${x.open}</strong></div><div><span>Thay đổi tồn</span><strong class="sg-delta ${x.delta>0?'up':'down'}">${x.delta>0?'+':''}${x.delta}</strong></div><div><span>Quá hạn</span><strong>${x.overdue}</strong></div><div><span>Chờ part</span><strong>${x.waitingParts}</strong></div></div><div class="sg-center-card-reason">${esc(x.reason)}</div></button>`).join('');
     q('#sg-center-month-table').className = 'sg-table-wrap sg-center-month-table';
-    q('#sg-center-month-table').innerHTML = '<table><thead><tr><th>Center</th><th>Nhận</th><th>Hoàn tất</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Dữ liệu đủ</th></tr></thead><tbody>' + cs.map(x => `<tr><td><strong>${esc(x.center)}</strong><span class="sg-small">${labels[x.status]}</span></td><td>${x.received}</td><td>${x.completed}</td><td>${x.open}</td><td>${x.delta>0?'+':''}${x.delta}</td><td>${x.overdue}</td><td>${x.medianDays===null?'—':x.medianDays+' ngày'}</td><td>${x.coverage}%</td></tr>`).join('') + '</tbody></table>';
+    q('#sg-center-month-table').innerHTML = '<table><thead><tr><th>Center</th><th>Nhận</th><th>Đã giao</th><th>Tồn cuối</th><th>Δ tồn</th><th>Quá hạn</th><th>Trung vị</th><th>Dữ liệu đủ</th></tr></thead><tbody>' + cs.map(x => `<tr><td><strong>${esc(x.center)}</strong><span class="sg-small">${labels[x.status]}</span></td><td>${x.received}</td><td>${x.completed}</td><td>${x.open}</td><td>${x.delta>0?'+':''}${x.delta}</td><td>${x.overdue}</td><td>${x.medianDays===null?'—':x.medianDays+' ngày'}</td><td>${x.coverage}%</td></tr>`).join('') + '</tbody></table>';
     const colors = ['#ff7900','#606060','#9a9a9a','#c4c4c4'];
     q('#sg-center-trend-legend').innerHTML = cs.map((x,i) => `<span><i class="sg-dot" style="background:${colors[i%colors.length]}"></i>${esc(x.center)}</span>`).join('');
     const max = Math.max(1, ...live.trends.flatMap(m => cs.map(c => m.values[c.center] || 0)));
