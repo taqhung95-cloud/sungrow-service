@@ -335,7 +335,7 @@
        <div class="sg-table-wrap" id="sg-overview-table"></div>
       </section>
       <section class="sg-panel sg-model-panel sg-command-model" aria-label="Cơ cấu model tiếp nhận">
-       <div class="sg-panel-head"><div><div class="sg-eyebrow">MODEL TIẾP NHẬN</div><h2>Tỷ trọng model</h2></div><div class="sg-model-head-tools"><span class="sg-model-total" id="sg-model-total"></span><label class="sg-control-label sg-command-select"><span>Loại thiết bị</span><select class="sg-control" id="sg-model-type"><option value="all">Tất cả thiết bị</option><option value="Inverter">Inverter</option><option value="Monitoring">Monitoring</option><option value="Fan">Fan</option></select></label></div></div>
+       <div class="sg-panel-head"><div><div class="sg-eyebrow">MODEL TIẾP NHẬN</div><h2>Tỷ trọng model</h2></div><div class="sg-model-head-tools"><span class="sg-model-total" id="sg-model-total"></span><label class="sg-control-label sg-command-select"><select class="sg-control" id="sg-model-type" aria-label="Loại thiết bị" title="Lọc theo loại thiết bị"><option value="all">Tất cả thiết bị</option><option value="Inverter">Inverter</option><option value="Monitoring">Monitoring</option><option value="Fan">Fan</option></select></label></div></div>
        <div id="sg-model-bars" aria-label="Tỷ trọng model"></div>
        <div class="sg-overview-hidden"><div class="sg-tabs sg-model-units"><button data-unit="visits" class="active" aria-pressed="true">Thiết bị tiếp nhận</button><button data-unit="devices" aria-pressed="false">Số thiết bị</button></div><div id="sg-model-denominator"></div><aside id="sg-model-insight"></aside><div id="sg-model-note"></div></div>
       </section>
@@ -404,7 +404,7 @@
   q('#sg-chart').innerHTML=arr.map((v,i)=>'<div class="sg-chart-group">'+v.map((n,j)=>'<div class="sg-bar '+(j?'out':'')+'" style="height:'+Math.round(n*factor/50*100)+'%"><b>'+Math.round(n*factor)+'</b></div>').join('')+'<span class="sg-month">T'+(i+(sep?4:3))+'</span></div>').join('');
   q('#sg-chart-note').textContent=sep?'Tháng 09 đang diễn ra · tính đến 17/09':'Kỳ báo cáo kết thúc ngày 31/08';q('#sg-period-date').textContent=sep?'01–17/09/2026':'01–31/08/2026';
   q('#sg-errors').innerHTML=['Hỏng IGBT','Hỏng AC Relay','Hỏng quạt ngoài','Lỗi giao tiếp','Mất S/N'].map((s,i)=>{let n=Math.round((sep?[9,6,4,3,2]:[14,10,6,5,3])[i]*factor);return '<div class="sg-error-line"><span class="sg-error-name" title="'+s+'">'+s+'</span><div class="sg-track"><i style="width:'+(n/(sep?9:14)*100)+'%"></i></div><b>'+n+'</b></div>'}).join('');
-  const rows=activeRows();q('#sg-overview-table').innerHTML=table(rows.filter(t=>t.status!=='Đã trả').slice(0,4));
+  const rows=activeRows();q('#sg-overview-table').innerHTML=table(rows.filter(t=>t.status!=='Đã trả'));
   const term=q('#sg-search').value.toLowerCase();const filtered=rows.filter(t=>[t.id,t.sn,t.model].join(' ').toLowerCase().includes(term)&&(q('#sg-status').value==='all'||t.status===q('#sg-status').value));q('#sg-tickets-table').innerHTML=table(filtered);q('#sg-result-count').textContent=filtered.length+' thiết bị mẫu · danh sách tra cứu gồm mọi kỳ';
   q('#sg-part-title').textContent='Linh kiện đã thay sửa';q('#sg-part-sub').textContent='Ghi nhận từ thiết bị sửa chữa';
   let parts=[['BP004718','Board công suất',12],['BP004540','Board điều khiển',8],['ES000124','Quạt ngoài',24],['BP004914','Board AC Relay',6]];

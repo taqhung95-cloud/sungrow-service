@@ -85,8 +85,8 @@
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
-    q('#sg-errors').innerHTML = live.errors.slice(0,5).map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
-    q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays).slice(0,4));
+    q('#sg-errors').innerHTML = live.errors.map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
+    q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
   }
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
@@ -179,7 +179,7 @@
     const overviewMetrics = q('#sg-overview-part-metrics');
     const overviewTable = q('#sg-overview-part-table');
     if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>linh kiện đã thay · ' + live.parts.length + ' mã</span>';
-    if (overviewTable) overviewTable.innerHTML = '<table><thead><tr><th>Part number</th><th>SL</th></tr></thead><tbody>' + live.parts.slice(0,4).map(x => '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + '</td></tr>').join('') + '</tbody></table>';
+    if (overviewTable) overviewTable.innerHTML = '<table><thead><tr><th>Part number</th><th>SL</th></tr></thead><tbody>' + live.parts.map(x => '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + '</td></tr>').join('') + '</tbody></table>';
 
   }
 
