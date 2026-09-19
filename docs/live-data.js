@@ -84,7 +84,17 @@
       const y1=y(previous).toFixed(1), y2=y(current).toFixed(1);
       return '<svg class="sg-mini-trend '+tone+'" viewBox="0 0 72 30" aria-label="Tháng trước '+previous+', tháng này '+current+'"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>';
     };
-    q('#sg-kpis').innerHTML = base.map(function(item) {
+    const annualTotals=(Array.isArray(live.yearlyTotals)&&live.yearlyTotals.length?live.yearlyTotals:[live.annual||{}]).filter(x=>x.year).slice().sort((a,b)=>a.year-b.year);
+    const cumulative=live.cumulative?.received??annualTotals.reduce((sum,x)=>sum+(x.received||0),0);
+    const receivedAnnualViz=function(){
+      const values=annualTotals.map(x=>Number(x.received||0)),width=86,height=26,pad=3,max=Math.max(1,...values);
+      const points=values.map((v,i)=>[(values.length===1?width/2:pad+i*(width-2*pad)/(values.length-1)),height-pad-v/max*(height-2*pad)]);
+      const pointText=points.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' '),last=annualTotals[annualTotals.length-1]||{};
+      const line=values.length?'<svg viewBox="0 0 86 26" preserveAspectRatio="none"><path d="M '+points[0][0].toFixed(1)+' 23 L '+pointText.replace(/ /g,' L ')+' L '+points[points.length-1][0].toFixed(1)+' 23 Z"></path><polyline points="'+pointText+'"></polyline></svg>':'';
+      const title=annualTotals.map(x=>x.year+': '+x.received).join(' · ')+' · Tích lũy: '+cumulative;
+      return '<div class="sg-received-annual" title="'+esc(title)+'">'+line+'<div><span>'+esc(last.year||'Năm')+' <b>'+Number(last.received||0).toLocaleString('vi-VN')+'</b></span><span>Tích lũy <b>'+Number(cumulative||0).toLocaleString('vi-VN')+'</b></span></div></div>';
+    };
+    q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
         const value = item.value === null ? '—' : item.value;
         const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' đang mở quá SLA';
@@ -98,31 +108,14 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? 'Không đổi' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change : 'Tháng trước: '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      return '<div class="sg-kpi"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+trendViz(p,item.value,tone)+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
+      return '<div class="sg-kpi '+(index===0?'sg-kpi-received':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
-    renderYearTrend();
     const max = Math.max(1, ...live.errors.map(x => x.count));
     q('#sg-errors').innerHTML = live.errors.map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
     q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
   }
 
-  function renderYearTrend() {
-    const totals = (Array.isArray(live.yearlyTotals) && live.yearlyTotals.length ? live.yearlyTotals : [live.annual || {}]).filter(x=>x.year).slice().sort((a,b)=>a.year-b.year);
-    const cumulative = live.cumulative?.received ?? totals.reduce((sum,x)=>sum+(x.received||0),0);
-    q('#sg-cumulative-received').textContent = cumulative.toLocaleString('vi-VN');
-    q('#sg-year-trend-card').title = totals.map(x=>'Năm '+x.year+': '+x.received+' thiết bị').join(' · ') + ' · Tích lũy: ' + cumulative;
-    q('#sg-year-values').textContent = totals.map((x,i)=>(String(x.year).slice(2)+(i===totals.length-1?' YTD ':' ')+Number(x.received||0).toLocaleString('vi-VN'))).join(' · ');
-    const values = totals.map(x=>Number(x.received||0));
-    const svg = q('#sg-year-sparkline');
-    if (!values.length) { svg.querySelector('.sg-spark-line').setAttribute('points',''); return; }
-    const width=112,height=30,padX=3,padY=4,max=Math.max(1,...values),min=Math.min(0,...values);
-    const points = values.map((v,i)=>{const x=values.length===1?width/2:padX+i*(width-2*padX)/(values.length-1);const y=height-padY-(v-min)/(max-min||1)*(height-2*padY);return [x,y];});
-    const pointText=points.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ');
-    svg.querySelector('.sg-spark-line').setAttribute('points',pointText);
-    svg.querySelector('.sg-spark-area').setAttribute('d','M '+points[0][0].toFixed(1)+' '+(height-padY)+' L '+pointText.replace(/ /g,' L ')+' L '+points[points.length-1][0].toFixed(1)+' '+(height-padY)+' Z');
-    const last=points[points.length-1];svg.querySelector('.sg-spark-dot').setAttribute('cx',last[0]);svg.querySelector('.sg-spark-dot').setAttribute('cy',last[1]);
-  }
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
   function attentionTable(rows) {

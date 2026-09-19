@@ -314,24 +314,13 @@
     </clipPath>
   </defs>
 </svg></div><small>SERVICE CENTER</small></div>
-   <div><div class="sg-nav-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sg-nav" aria-label="Điều hướng"><button data-page="overview" aria-current="page"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Tổng quan</button><button data-page="centers"><i data-lucide="building-2" aria-hidden="true"></i>Service center</button><button data-page="tickets"><i data-lucide="clipboard-list" aria-hidden="true"></i>Thiết bị sửa chữa</button><button data-page="parts"><i data-lucide="package" aria-hidden="true"></i>Linh kiện</button><button data-page="quality"><i data-lucide="list-checks" aria-hidden="true"></i>Kiểm tra dữ liệu</button></nav></div>
+   <div><nav class="sg-nav" aria-label="Điều hướng"><button data-page="overview" aria-current="page"><i data-lucide="layout-dashboard" aria-hidden="true"></i>Tổng quan</button><button data-page="centers"><i data-lucide="building-2" aria-hidden="true"></i>Service center</button><button data-page="tickets"><i data-lucide="clipboard-list" aria-hidden="true"></i>Thiết bị sửa chữa</button><button data-page="parts"><i data-lucide="package" aria-hidden="true"></i>Linh kiện</button><button data-page="quality"><i data-lucide="list-checks" aria-hidden="true"></i>Kiểm tra dữ liệu</button></nav></div>
    <div class="sg-side-foot"><div><span class="sg-avatar">SC</span>Service team</div><div style="margin-top:12px;color:#91a7b9">Vietnam · Service operations</div></div>
   </aside>
   <main class="sg-main">
-   <div class="sg-top"><span>Service Center <span style="margin:0 9px;color:#bdc7ce">/</span> <span id="sg-crumb">Tổng quan</span></span><span class="sg-demo">Bản xem trước · Dữ liệu minh họa</span></div>
+   <div class="sg-top"><span class="sg-breadcrumb">Service Center <span style="margin:0 9px;color:#bdc7ce">/</span> <span id="sg-crumb">Tổng quan</span></span><div class="sg-filter-panel"><div class="sg-controls"><label class="sg-control-label">Kỳ đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label><label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label><label class="sg-control-label">So sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label></div><div class="sg-period">Kỳ báo cáo · <span id="sg-period-date">01–17/09/2026</span></div></div><span class="sg-demo">Dữ liệu Google Sheets</span></div>
    <div class="sg-content">
-    <div class="sg-heading">
-     <div class="sg-heading-copy"><div class="sg-eyebrow">VẬN HÀNH DỊCH VỤ</div><h1 id="sg-title">Tổng quan trung tâm</h1><p class="sg-sub" id="sg-subtitle">Đã xử lý = hoàn tất kỹ thuật, gồm thiết bị chờ giao và đã giao.</p></div>
-     <div class="sg-filter-panel">
-      <div class="sg-controls">
-       <label class="sg-control-label">Kỳ đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label>
-       <label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label>
-       <label class="sg-control-label">So sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label>
-       <div class="sg-year-total" id="sg-year-trend-card" aria-label="Xu hướng thiết bị tiếp nhận theo năm"><div class="sg-year-trend-copy"><span>Tổng tiếp nhận</span><strong id="sg-cumulative-received">—</strong><small>tích lũy</small></div><div class="sg-year-trend-viz"><svg id="sg-year-sparkline" viewBox="0 0 112 30" preserveAspectRatio="none" aria-hidden="true"><path class="sg-spark-area" d="M 3 26 L 3 21 L 56 6 L 109 17 L 109 26 Z"></path><polyline class="sg-spark-line" points="3,21 56,6 109,17"></polyline><circle class="sg-spark-dot" cx="109" cy="17" r="2.5"></circle></svg><div class="sg-year-values" id="sg-year-values">2024 · 2025 · 2026 YTD</div></div></div>
-      </div>
-      <div class="sg-period">Kỳ báo cáo · <span id="sg-period-date">01–17/09/2026</span></div>
-     </div>
-    </div>
+    <div class="sg-heading" aria-hidden="true"><div class="sg-heading-copy"><h1 id="sg-title">Tổng quan</h1><p class="sg-sub" id="sg-subtitle"></p></div></div>
     <section id="sg-overview">
      <div class="sg-kpis" id="sg-kpis"></div>
      <div class="sg-command-grid">
@@ -412,7 +401,8 @@
   const vals=sep?[40,37,11,26,82]:[61,69,14,55,79];const labels=['Thiết bị tiếp nhận','Thiết bị đã xử lý','Thiết bị chờ giao','Thiết bị đã giao','Đạt SLA 7 ngày'];const notes=[sep?'Đến ngày 17/09':'Toàn tháng 08','Hoàn tất kỹ thuật','Đã xử lý, chưa giao','Theo ngày giao trả','18/22 thiết bị trả đúng hạn · 3 đang mở quá SLA'];
   const prior=sep?[61,69,14,55,79]:[54,62,12,50,76];
   const demoTrend=(a,b)=>{const max=Math.max(1,a,b),y=v=>25-v/max*18,y1=y(a).toFixed(1),y2=y(b).toFixed(1);return '<svg class="sg-mini-trend '+(b>=a?'good':'bad')+'" viewBox="0 0 72 30"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>'};
-  q('#sg-kpis').innerHTML=vals.map((v,i)=>{const value=i===4?v:Math.round(v*factor),viz=i===4?'<span class="sg-mini-ring '+(v>=90?'good':'bad')+'" style="--p:'+v+'"><i>7d</i></span>':demoTrend(Math.round(prior[i]*factor),value);return '<div class="sg-kpi '+(i===4?'sg-kpi-sla':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+labels[i]+'</div>'+viz+'</div><div class="sg-kpi-value">'+value+' <small>'+(i===4?'%':'thiết bị')+'</small></div><div class="sg-kpi-note">'+notes[i]+'</div></div>'}).join('');
+  const demoAnnual='<div class="sg-received-annual" title="2024: 637 · 2025: 683 · 2026 YTD: 182 · Tích lũy: 1.502"><svg viewBox="0 0 86 26" preserveAspectRatio="none"><path d="M3 23 L3 6 L43 4 L83 18 L83 23 Z"></path><polyline points="3,6 43,4 83,18"></polyline></svg><div><span>2026 <b>182</b></span><span>Tích lũy <b>1.502</b></span></div></div>';
+  q('#sg-kpis').innerHTML=vals.map((v,i)=>{const value=i===4?v:Math.round(v*factor),viz=i===0?demoAnnual:i===4?'<span class="sg-mini-ring '+(v>=90?'good':'bad')+'" style="--p:'+v+'"><i>7d</i></span>':demoTrend(Math.round(prior[i]*factor),value);return '<div class="sg-kpi '+(i===0?'sg-kpi-received ':'')+(i===4?'sg-kpi-sla':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+labels[i]+'</div>'+viz+'</div><div class="sg-kpi-value">'+value+' <small>'+(i===4?'%':'thiết bị')+'</small></div><div class="sg-kpi-note">'+notes[i]+'</div></div>'}).join('');
   let arr=sep?[[28,24],[35,30],[31,28],[42,36],[38,32],[24,15]]:[[23,20],[28,24],[35,30],[31,28],[42,36],[38,32]];
   q('#sg-chart').innerHTML=arr.map((v,i)=>'<div class="sg-chart-group">'+v.map((n,j)=>'<div class="sg-bar '+(j?'out':'')+'" style="height:'+Math.round(n*factor/50*100)+'%"><b>'+Math.round(n*factor)+'</b></div>').join('')+'<span class="sg-month">T'+(i+(sep?4:3))+'</span></div>').join('');
   q('#sg-chart-note').textContent=sep?'Tháng 09 đang diễn ra · tính đến 17/09':'Kỳ báo cáo kết thúc ngày 31/08';q('#sg-period-date').textContent=sep?'01–17/09/2026':'01–31/08/2026';
@@ -499,4 +489,4 @@
 })();
 
 </script>
-<link rel="stylesheet" href="visual-polish.css?v=3"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js"></script></body></html>
+<link rel="stylesheet" href="visual-polish.css?v=4"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=4"></script></body></html>

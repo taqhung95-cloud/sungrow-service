@@ -483,3 +483,61 @@
  #sg-preview .sg-mini-trend{width:54px;flex-basis:54px}
  #sg-preview .sg-kpi-head .sg-kpi-label{font-size:12px!important}
 }
+/* September 2026: top-bar filters, consolidated received card, and universal in-card scrolling. */
+@media(min-width:1101px){
+ #sg-preview .sg-top{display:grid;grid-template-columns:auto minmax(420px,1fr) auto auto;align-items:center;gap:14px;min-height:62px!important;flex-basis:62px!important;padding:6px 20px!important}
+ #sg-preview .sg-top .sg-filter-panel{width:auto;min-width:0;display:flex;justify-content:center;align-items:center}
+ #sg-preview .sg-top .sg-filter-panel .sg-controls{justify-content:center;flex-wrap:nowrap}
+ #sg-preview .sg-top .sg-filter-panel .sg-period{display:none}
+ #sg-preview .sg-top .sg-demo{display:none}
+ #sg-preview .sg-heading{display:none!important}
+ #sg-preview .sg-content{padding-top:10px!important}
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(250px,1.28fr) repeat(4,minmax(165px,1fr))}
+ #sg-preview .sg-received-annual{width:142px;min-width:142px;display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;gap:6px;padding:3px 5px;border:1px solid #f0dfd1;border-radius:7px;background:#fffaf5}
+ #sg-preview .sg-received-annual svg{width:70px;height:26px;overflow:visible}
+ #sg-preview .sg-received-annual svg path{fill:rgba(255,121,0,.10)}
+ #sg-preview .sg-received-annual svg polyline{fill:none;stroke:#ff7900;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+ #sg-preview .sg-received-annual>div{display:grid;gap:2px;min-width:0}
+ #sg-preview .sg-received-annual span{display:flex;justify-content:space-between;gap:4px;font-size:8.5px;line-height:1.1;color:#687780;white-space:nowrap}
+ #sg-preview .sg-received-annual b{font-size:10px;font-weight:600;color:#9f4a00;font-variant-numeric:tabular-nums}
+ #sg-preview #sg-overview .sg-overview-part-metrics{display:none!important}
+ #sg-preview #sg-overview .sg-command-parts .sg-panel-head{margin-bottom:8px}
+
+ /* Every long collection scrolls inside its own card; page shell stays fixed. */
+ #sg-preview .sg-table-wrap,#sg-preview .sg-center-health-grid,#sg-preview .sg-errors,#sg-preview #sg-model-bars,#sg-preview .sg-quality{scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b7bdc2 #f0f2f3;overscroll-behavior:contain}
+ #sg-preview .sg-table-wrap::-webkit-scrollbar,#sg-preview .sg-center-health-grid::-webkit-scrollbar,#sg-preview .sg-errors::-webkit-scrollbar,#sg-preview #sg-model-bars::-webkit-scrollbar,#sg-preview .sg-quality::-webkit-scrollbar{width:7px;height:7px}
+ #sg-preview .sg-table-wrap::-webkit-scrollbar-thumb,#sg-preview .sg-center-health-grid::-webkit-scrollbar-thumb,#sg-preview .sg-errors::-webkit-scrollbar-thumb,#sg-preview #sg-model-bars::-webkit-scrollbar-thumb,#sg-preview .sg-quality::-webkit-scrollbar-thumb{background:#b7bdc2;border-radius:8px}
+ #sg-preview .sg-table-wrap::-webkit-scrollbar-track,#sg-preview .sg-center-health-grid::-webkit-scrollbar-track,#sg-preview .sg-errors::-webkit-scrollbar-track,#sg-preview #sg-model-bars::-webkit-scrollbar-track,#sg-preview .sg-quality::-webkit-scrollbar-track{background:#f0f2f3}
+ #sg-preview .sg-table-wrap thead{position:sticky;top:0;z-index:3}
+
+ /* Service center: data first, with internal scrolling in both panes. */
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-columns:minmax(330px,.72fr) minmax(0,1.58fr);grid-template-rows:70px minmax(0,1fr) 112px;grid-template-areas:"summary summary" "health compare" "trend compare";gap:12px}
+ #sg-preview #sg-centers .sg-center-summary{grid-area:summary}
+ #sg-preview #sg-centers .sg-center-summary-item{padding:7px 11px}
+ #sg-preview #sg-centers .sg-center-summary-item strong{font-size:22px}
+ #sg-preview #sg-centers .sg-center-health-panel{grid-area:health;min-height:0;overflow:hidden}
+ #sg-preview #sg-centers .sg-center-health-grid{grid-template-columns:1fr;overflow:auto!important;min-height:0}
+ #sg-preview #sg-centers .sg-center-card{min-height:102px;padding:10px}
+ #sg-preview #sg-centers .sg-center-card-reason{min-height:0;padding-top:7px;margin-top:7px}
+ #sg-preview #sg-centers .sg-center-layout{grid-area:compare;display:block!important;min-height:0;overflow:hidden}
+ #sg-preview #sg-centers .sg-center-layout>.sg-panel:first-child{height:100%;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+ #sg-preview #sg-centers .sg-center-month-table{flex:1 1 auto;min-height:0;overflow:auto!important}
+ #sg-preview #sg-centers .sg-center-detail{display:none!important}
+ #sg-preview #sg-centers .sg-monthly-trend{grid-area:trend;min-height:0;overflow:hidden}
+ #sg-preview #sg-centers .sg-center-method{display:none!important}
+
+ #sg-preview #sg-tickets .sg-table-wrap,#sg-preview #sg-parts .sg-table-wrap{overflow:auto!important}
+ #sg-preview #sg-quality .sg-quality{overflow:auto!important}
+}
+@media(min-width:1600px){
+ #sg-preview #sg-centers .sg-center-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview .sg-top{grid-template-columns:minmax(420px,1fr) auto;gap:10px}
+ #sg-preview .sg-top .sg-breadcrumb,#sg-preview .sg-live-text #sg-live-detail{display:none}
+ #sg-preview .sg-top .sg-filter-panel{justify-content:flex-start}
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(225px,1.25fr) repeat(4,minmax(145px,1fr))}
+ #sg-preview .sg-received-annual{width:116px;min-width:116px;grid-template-columns:52px minmax(0,1fr);gap:4px}
+ #sg-preview .sg-received-annual svg{width:52px}
+ #sg-preview .sg-received-annual span{font-size:8px}
+}
