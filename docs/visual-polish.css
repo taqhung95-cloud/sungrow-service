@@ -632,3 +632,34 @@
  #sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis{font-size:9px}
 }
 @media(min-width:1101px){#sg-preview #sg-centers .sg-center-trend{display:block!important}#sg-preview #sg-centers .sg-center-trend>.sg-curve-chart{width:100%!important;height:100%!important}}
+/* September 2026 v9: center-first layout and interactive compact charts. */
+@media(min-width:1101px) and (min-height:650px){
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-columns:minmax(0,1.18fr) minmax(410px,1fr)!important;grid-template-rows:82px 285px 300px!important;grid-template-areas:"summary summary" "health health" "compare trend"!important;align-content:start!important}
+ #sg-preview #sg-centers .sg-center-health-grid{display:grid!important;grid-auto-flow:column!important;grid-auto-columns:minmax(310px,1fr)!important;align-items:stretch!important;overflow-x:auto!important;overflow-y:hidden!important}
+ #sg-preview #sg-centers .sg-center-card{width:auto!important;min-width:310px!important;height:190px!important;min-height:190px!important;padding:14px 15px!important}
+ #sg-preview #sg-centers .sg-center-card-metrics{margin-top:12px!important}
+ #sg-preview #sg-centers .sg-center-card-reason{margin-top:12px!important;padding-top:9px!important;-webkit-line-clamp:3!important;font-size:11px!important}
+ #sg-preview #sg-centers .sg-center-layout>.sg-panel:first-child,#sg-preview #sg-centers .sg-monthly-trend{padding:11px 14px!important}
+ #sg-preview #sg-centers .sg-center-layout .sg-panel-head,#sg-preview #sg-centers .sg-monthly-trend .sg-panel-head{margin-bottom:4px!important}
+ #sg-preview #sg-centers .sg-center-layout .sg-panel-head h2,#sg-preview #sg-centers .sg-monthly-trend .sg-panel-head h2{font-size:15px!important}
+ #sg-preview #sg-centers .sg-center-layout .sg-caption,#sg-preview #sg-centers .sg-monthly-trend .sg-caption{font-size:10px!important}
+ #sg-preview .sg-curve-chart svg{min-height:150px!important}
+ #sg-preview .sg-curve-line{stroke-width:2!important}
+ #sg-preview .sg-curve-point{cursor:crosshair}
+ #sg-preview .sg-curve-dot{stroke:#fff;stroke-width:1.5;transition:r .12s ease}
+ #sg-preview .sg-curve-hit{fill:transparent!important;stroke:none!important;pointer-events:all}
+ #sg-preview .sg-curve-point:hover .sg-curve-dot{r:5px}
+ #sg-preview .sg-curve-legend{font-size:10px!important;padding-top:1px!important;gap:5px 12px!important}
+ #sg-preview .sg-chart-definition{font-size:9px!important;margin-top:1px!important}
+}
+.sg-chart-tooltip{position:fixed;z-index:99999;display:none;min-width:150px;max-width:220px;padding:9px 11px;border:1px solid #d9dde0;border-radius:8px;background:rgba(255,255,255,.98);box-shadow:0 8px 24px rgba(20,35,50,.18);pointer-events:none;color:#243746;font-family:Inter,Arial,sans-serif;font-size:11px;line-height:1.35}
+.sg-chart-tooltip.show{display:grid;gap:2px}
+.sg-chart-tooltip strong{font-size:12px;font-weight:600;color:#172b3a}
+.sg-chart-tooltip span{color:#687780}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:76px 245px 285px!important}
+ #sg-preview #sg-centers .sg-center-health-grid{grid-auto-columns:minmax(285px,1fr)!important}
+ #sg-preview #sg-centers .sg-center-card{min-width:285px!important;height:166px!important;min-height:166px!important;padding:11px 12px!important}
+ #sg-preview #sg-centers .sg-center-card-reason{-webkit-line-clamp:2!important;margin-top:8px!important;padding-top:7px!important}
+}
+@media(min-width:1101px){#sg-preview .sg-curve-grid line{stroke:#edf0f2!important}#sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis{font-family:Inter,Arial,sans-serif!important;font-size:10px!important}#sg-preview .sg-curve-line{stroke-width:1.8!important}}
