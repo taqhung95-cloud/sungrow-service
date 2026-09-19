@@ -541,3 +541,58 @@
  #sg-preview .sg-received-annual svg{width:52px}
  #sg-preview .sg-received-annual span{font-size:8px}
 }
+/* September 2026 v6: fixed-height tab shells, readable center cards, annual labels, and donut model mix. */
+@media(min-width:1101px) and (min-height:650px){
+ #sg-preview .sg-top{min-height:50px!important;flex-basis:50px!important;padding-top:5px!important;padding-bottom:5px!important}
+ #sg-preview .sg-top .sg-control-label{font-size:0!important;line-height:0!important;gap:0!important}
+ #sg-preview .sg-top .sg-control-label .sg-control{font-size:12px!important;line-height:1.3!important}
+ #sg-preview .sg-content{display:flex!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}
+ #sg-preview .sg-content>.sg-footer{flex:0 0 18px;margin-top:8px!important}
+ #sg-preview #sg-centers:not(.sg-hidden),#sg-preview #sg-tickets:not(.sg-hidden),#sg-preview #sg-parts:not(.sg-hidden),#sg-preview #sg-quality:not(.sg-hidden){height:0!important;flex:1 1 0!important;min-height:0!important;overflow:hidden!important}
+ #sg-preview #sg-tickets>.sg-panel,#sg-preview #sg-parts>.sg-panel,#sg-preview #sg-quality>.sg-panel{height:100%!important;max-height:100%!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+ #sg-preview #sg-tickets .sg-toolbar,#sg-preview #sg-tickets #sg-result-count,#sg-preview #sg-parts .sg-panel-head,#sg-preview #sg-parts .sg-part-metrics,#sg-preview #sg-parts .sg-notice,#sg-preview #sg-quality .sg-panel-head{flex:0 0 auto!important}
+ #sg-preview #sg-tickets .sg-table-wrap,#sg-preview #sg-parts .sg-table-wrap,#sg-preview #sg-quality .sg-quality{height:0!important;max-height:100%!important;flex:1 1 0!important;min-height:0!important;overflow:auto!important;scrollbar-gutter:stable!important}
+ #sg-preview #sg-tickets table,#sg-preview #sg-parts table{min-width:920px}
+ #sg-preview #sg-tickets thead,#sg-preview #sg-parts thead{position:sticky!important;top:0!important;z-index:5!important}
+
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-columns:minmax(480px,.92fr) minmax(0,1.45fr)!important;grid-template-rows:82px minmax(0,1fr) 150px!important;grid-template-areas:"summary summary" "health compare" "trend compare"!important}
+ #sg-preview #sg-centers .sg-center-health-grid{grid-template-columns:1fr!important;overflow:auto!important;scrollbar-gutter:stable!important}
+ #sg-preview #sg-centers .sg-center-card{min-height:104px!important;padding:11px 13px!important}
+ #sg-preview #sg-centers .sg-center-card h3{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+ #sg-preview #sg-centers .sg-center-card-metrics{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+ #sg-preview #sg-centers .sg-center-card-reason{white-space:normal!important}
+ #sg-preview #sg-centers .sg-center-layout>.sg-panel:first-child{height:100%!important;max-height:100%!important}
+ #sg-preview #sg-centers .sg-center-month-table{height:0!important;max-height:100%!important;flex:1 1 0!important;overflow:auto!important;scrollbar-gutter:stable!important}
+ #sg-preview #sg-centers .sg-center-month-table table{min-width:980px}
+ #sg-preview #sg-centers .sg-center-layout .sg-panel-head>.sg-caption{display:none!important}
+
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(330px,1.5fr) repeat(4,minmax(160px,1fr))!important}
+ #sg-preview .sg-received-annual{width:218px!important;min-width:218px!important;grid-template-columns:66px minmax(0,1fr)!important}
+ #sg-preview .sg-annual-values{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 7px!important}
+ #sg-preview .sg-annual-values span{display:flex!important;justify-content:space-between!important;gap:3px!important;font-size:8.5px!important;line-height:1.1!important}
+ #sg-preview .sg-annual-values i{font-style:normal;color:#687780}
+ #sg-preview .sg-annual-values b{font-size:10px!important}
+ #sg-preview .sg-annual-total{border-top:1px solid #eaded3;padding-top:2px;grid-column:2}
+
+ #sg-preview #sg-model-bars{overflow:hidden!important;padding-right:0!important}
+ #sg-preview .sg-model-donut-layout{height:100%;min-height:0;display:grid;grid-template-columns:120px minmax(0,1fr);gap:15px;align-items:center}
+ #sg-preview .sg-model-donut{width:112px;height:112px;border-radius:50%;background:var(--donut,#eceff1);display:grid;place-items:center;position:relative;margin:auto}
+ #sg-preview .sg-model-donut:after{content:"";position:absolute;inset:22px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(20,35,50,.05)}
+ #sg-preview .sg-model-donut>div{position:relative;z-index:1;display:grid;text-align:center;line-height:1.1}
+ #sg-preview .sg-model-donut strong{font-size:20px;font-weight:600;color:#172b3a}
+ #sg-preview .sg-model-donut span{font-size:9px;color:#687780}
+ #sg-preview .sg-model-donut-legend{height:100%;min-height:0;overflow:auto;scrollbar-gutter:stable;padding-right:4px}
+ #sg-preview .sg-donut-item{width:100%;display:grid;grid-template-columns:8px minmax(0,1fr) 26px 44px;align-items:center;gap:7px;border:0;border-bottom:1px solid #eef0f1;background:transparent;padding:5px 2px;text-align:left;color:#333;font-size:10px;min-height:28px}
+ #sg-preview .sg-donut-item:hover,#sg-preview .sg-donut-item[aria-pressed=true]{background:#fff6ed}
+ #sg-preview .sg-donut-item i{width:8px;height:8px;border-radius:50%}
+ #sg-preview .sg-donut-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #sg-preview .sg-donut-item strong{text-align:right;font-size:10px;font-weight:600}
+ #sg-preview .sg-donut-item em{text-align:right;font-style:normal;color:#687780}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-columns:minmax(390px,.95fr) minmax(0,1.35fr)!important}
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(280px,1.45fr) repeat(4,minmax(142px,1fr))!important}
+ #sg-preview .sg-received-annual{width:176px!important;min-width:176px!important;grid-template-columns:48px minmax(0,1fr)!important}
+ #sg-preview .sg-received-annual svg{width:48px!important}
+}
+@media(min-width:1101px){#sg-preview .sg-donut-item{font-size:11px}}

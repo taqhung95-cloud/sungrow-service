@@ -92,7 +92,8 @@
       const pointText=points.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' '),last=annualTotals[annualTotals.length-1]||{};
       const line=values.length?'<svg viewBox="0 0 86 26" preserveAspectRatio="none"><path d="M '+points[0][0].toFixed(1)+' 23 L '+pointText.replace(/ /g,' L ')+' L '+points[points.length-1][0].toFixed(1)+' 23 Z"></path><polyline points="'+pointText+'"></polyline></svg>':'';
       const title=annualTotals.map(x=>x.year+': '+x.received).join(' · ')+' · Tích lũy: '+cumulative;
-      return '<div class="sg-received-annual" title="'+esc(title)+'">'+line+'<div><span>'+esc(last.year||'Năm')+' <b>'+Number(last.received||0).toLocaleString('vi-VN')+'</b></span><span>Tích lũy <b>'+Number(cumulative||0).toLocaleString('vi-VN')+'</b></span></div></div>';
+      const years=annualTotals.map(x=>'<span><i>'+esc(x.year)+'</i><b>'+Number(x.received||0).toLocaleString('vi-VN')+'</b></span>').join('');
+      return '<div class="sg-received-annual" title="'+esc(title)+'">'+line+'<div class="sg-annual-values">'+years+'<span class="sg-annual-total"><i>Tích lũy</i><b>'+Number(cumulative||0).toLocaleString('vi-VN')+'</b></span></div></div>';
     };
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
@@ -193,7 +194,11 @@
     const rows = live.models;
     const total = rows.reduce((n,x) => n+x.count, 0);
     q('#sg-model-total').textContent = `${total} thiết bị · ${rows.length} nhóm model`;
-    q('#sg-model-bars').innerHTML = rows.map((x,i) => `<button class="sg-model-row ${/chưa/i.test(x.name)?'unknown':''}" aria-pressed="${i===0}"><span class="sg-model-name" title="${esc(x.name)}">${esc(x.name)}</span><span class="sg-model-track"><i style="width:${total?100*x.count/total:0}%"></i></span><span class="sg-model-value"><strong>${x.count}</strong>${total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}%</span></button>`).join('');
+    const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
+    let cursor=0;
+    const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',');
+    const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="'+(i===0)+'"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('');
+    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend">'+legend+'</div></div>';
     q('#sg-model-denominator').textContent = `Mẫu số: ${total} thiết bị tiếp nhận · ${live.period.label}.`;
     if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} thiết bị trong kỳ đang chọn.</div>`;
   }
@@ -211,9 +216,12 @@
     const topShare = top ? Math.round(top.share * 100) : 0;
     const concentration = topShare >= 40 ? 'Mức tập trung cao' : topShare >= 25 ? 'Mức tập trung trung bình' : 'Nhu cầu phân tán';
     const recommendation = top ? concentration + ': ưu tiên rà soát tồn kho và lead time của ' + top.pn + '.' + (annualTop ? ' PN dùng nhiều nhất năm là ' + annualTop.pn + ' (' + annualTop.quantity + ' chiếc).' : '') : 'Chưa có linh kiện thay trong kỳ.';
-    q('#sg-part-metrics').innerHTML = '<div><span class="sg-caption">Đã dùng trong tháng</span><strong>' + total + ' <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">PN dùng nhiều nhất</span><strong>' + (top ? esc(top.pn) : '—') + ' <span class="sg-caption">' + topShare + '%</span></strong></div><div><span class="sg-caption">Tổng dùng năm ' + (annual.year || '') + '</span><strong>' + (annual.partsQuantity === undefined ? '—' : annual.partsQuantity) + ' <span class="sg-caption">chiếc</span></strong></div>';
-    q('#sg-part-table').innerHTML = '<table><thead><tr><th>Part number</th><th>Tháng</th><th>Tỷ trọng tháng</th><th>Tổng năm</th><th>Cơ sở ngày</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + '</td><td><div class="sg-part-share"><span><i style="width:' + Math.round(x.share * 100) + '%"></i></span><b>' + Math.round(x.share * 100) + '%</b></div></td><td>' + (annualByPn[x.pn] === undefined ? '—' : annualByPn[x.pn]) + '</td><td>Check / Repair date</td></tr>'; }).join('') + '</tbody></table>';
-    q('#sg-part-note').textContent = recommendation + ' Số lượng order cần đối chiếu thêm tồn kho, lead time và kế hoạch bảo trì.';
+    const periodLabel = live.period && live.period.label ? live.period.label : 'kỳ đã chọn';
+    const yearLabel = annual.year || new Date().getFullYear();
+    q('#sg-part-sub').textContent = 'Linh kiện đã xác nhận thay cho thiết bị sửa chữa · kỳ ghi nhận theo ngày sửa chữa';
+    q('#sg-part-metrics').innerHTML = '<div><span class="sg-caption">Số lượng dùng · ' + esc(periodLabel) + '</span><strong>' + total + ' <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">PN chiếm tỷ trọng cao nhất trong kỳ</span><strong>' + (top ? esc(top.pn) : '—') + ' <span class="sg-caption">' + topShare + '%</span></strong></div><div><span class="sg-caption">Lũy kế từ 01/01/' + yearLabel + '</span><strong>' + (annual.partsQuantity === undefined ? '—' : annual.partsQuantity) + ' <span class="sg-caption">chiếc</span></strong></div>';
+    q('#sg-part-table').innerHTML = '<table><thead><tr><th>Mã linh kiện</th><th>SL dùng · ' + esc(periodLabel) + '</th><th>Tỷ trọng trong kỳ</th><th>SL lũy kế năm ' + yearLabel + '</th><th>Cách xác định kỳ</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + ' chiếc</td><td><div class="sg-part-share"><span><i style="width:' + Math.round(x.share * 100) + '%"></i></span><b>' + Math.round(x.share * 100) + '%</b></div></td><td>' + (annualByPn[x.pn] === undefined ? '—' : annualByPn[x.pn] + ' chiếc') + '</td><td>Theo ngày sửa chữa thiết bị</td></tr>'; }).join('') + '</tbody></table>';
+    q('#sg-part-note').textContent = 'Định nghĩa: số lượng linh kiện được tính theo thiết bị có ngày sửa chữa thuộc kỳ đã chọn. ' + recommendation + ' Kế hoạch order cần đối chiếu thêm tồn kho, lead time và kế hoạch bảo trì.';
     const overviewMetrics = q('#sg-overview-part-metrics');
     const overviewTable = q('#sg-overview-part-table');
     if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>' + rows.length + ' mã · PN cao nhất ' + topShare + '%</span>';
