@@ -78,12 +78,19 @@
     ];
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
     base.push({label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
+    const trendViz = function(previous,current,tone) {
+      if (previous === null || previous === undefined) return '<span class="sg-mini-empty">T-1 → T</span>';
+      const max=Math.max(1,previous,current), min=Math.min(0,previous,current), y=function(v){return 25-(v-min)/(max-min||1)*18;};
+      const y1=y(previous).toFixed(1), y2=y(current).toFixed(1);
+      return '<svg class="sg-mini-trend '+tone+'" viewBox="0 0 72 30" aria-label="Tháng trước '+previous+', tháng này '+current+'"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>';
+    };
     q('#sg-kpis').innerHTML = base.map(function(item) {
       if (item.sla) {
         const value = item.value === null ? '—' : item.value;
-        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' thiết bị trả trong 7 ngày · ' + s.slaBreachedOpen + ' đang mở quá SLA';
+        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' đang mở quá SLA';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
-        return '<div class="sg-kpi sg-kpi-sla ' + tone + '"><div class="sg-kpi-label">' + item.label + '</div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
+        const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
+        return '<div class="sg-kpi sg-kpi-sla ' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
       }
       const p = item.previous === undefined ? null : item.previous;
       const delta = p === null ? null : item.value-p;
@@ -91,26 +98,30 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? 'Không đổi' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change : 'Tháng trước: '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      return '<div class="sg-kpi"><div class="sg-kpi-label">'+item.label+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
+      return '<div class="sg-kpi"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+trendViz(p,item.value,tone)+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
-    renderYearTotal();
+    renderYearTrend();
     const max = Math.max(1, ...live.errors.map(x => x.count));
     q('#sg-errors').innerHTML = live.errors.map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
     q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
   }
 
-  function renderYearTotal() {
-    const select = q('#sg-total-year');
-    if (!select || !live) return;
-    const totals = Array.isArray(live.yearlyTotals) && live.yearlyTotals.length ? live.yearlyTotals : [live.annual || {}];
-    const preferred = select.dataset.ready ? select.value : String(live.annual?.year || live.period.key.slice(0,4));
-    select.innerHTML = totals.slice().sort((a,b)=>b.year-a.year).map(x=>'<option value="'+x.year+'">Năm '+x.year+'</option>').join('') + '<option value="cumulative">Tích lũy '+(live.cumulative?.fromYear || totals[totals.length-1]?.year)+'–'+(live.cumulative?.toYear || totals[0]?.year)+'</option>';
-    select.value = Array.from(select.options).some(o=>o.value===preferred) ? preferred : String(live.annual?.year || totals[0]?.year);
-    select.dataset.ready = '1';
-    const selected = select.value;
-    const value = selected === 'cumulative' ? live.cumulative?.received : totals.find(x=>String(x.year)===selected)?.received;
-    q('#sg-year-received').textContent = value === undefined ? '—' : value;
+  function renderYearTrend() {
+    const totals = (Array.isArray(live.yearlyTotals) && live.yearlyTotals.length ? live.yearlyTotals : [live.annual || {}]).filter(x=>x.year).slice().sort((a,b)=>a.year-b.year);
+    const cumulative = live.cumulative?.received ?? totals.reduce((sum,x)=>sum+(x.received||0),0);
+    q('#sg-cumulative-received').textContent = cumulative.toLocaleString('vi-VN');
+    q('#sg-year-trend-card').title = totals.map(x=>'Năm '+x.year+': '+x.received+' thiết bị').join(' · ') + ' · Tích lũy: ' + cumulative;
+    q('#sg-year-values').textContent = totals.map((x,i)=>(String(x.year).slice(2)+(i===totals.length-1?' YTD ':' ')+Number(x.received||0).toLocaleString('vi-VN'))).join(' · ');
+    const values = totals.map(x=>Number(x.received||0));
+    const svg = q('#sg-year-sparkline');
+    if (!values.length) { svg.querySelector('.sg-spark-line').setAttribute('points',''); return; }
+    const width=112,height=30,padX=3,padY=4,max=Math.max(1,...values),min=Math.min(0,...values);
+    const points = values.map((v,i)=>{const x=values.length===1?width/2:padX+i*(width-2*padX)/(values.length-1);const y=height-padY-(v-min)/(max-min||1)*(height-2*padY);return [x,y];});
+    const pointText=points.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ');
+    svg.querySelector('.sg-spark-line').setAttribute('points',pointText);
+    svg.querySelector('.sg-spark-area').setAttribute('d','M '+points[0][0].toFixed(1)+' '+(height-padY)+' L '+pointText.replace(/ /g,' L ')+' L '+points[points.length-1][0].toFixed(1)+' '+(height-padY)+' Z');
+    const last=points[points.length-1];svg.querySelector('.sg-spark-dot').setAttribute('cx',last[0]);svg.querySelector('.sg-spark-dot').setAttribute('cy',last[1]);
   }
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
@@ -281,7 +292,6 @@
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';
   setPeriodLabels();
   ['#sg-center','#sg-period'].forEach(s => q(s).addEventListener('change',() => setTimeout(loadLive,0)));
-  q('#sg-total-year').addEventListener('change',renderYearTotal);
   q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
   initGoogle();

@@ -327,7 +327,7 @@
        <label class="sg-control-label">Kỳ đánh giá<select class="sg-control" id="sg-period" aria-label="Kỳ báo cáo"><option value="sep">Tháng 09/2026</option><option value="aug">Tháng 08/2026</option></select></label>
        <label class="sg-control-label">Trung tâm<select class="sg-control" id="sg-center" aria-label="Trung tâm"><option value="all">Tất cả trung tâm</option><option>Sungrow Service Center</option><option>DAT Center</option><option>XBSolar Center</option><option>BKE Center</option></select></label>
        <label class="sg-control-label">So sánh<select class="sg-control" id="sg-compare-mode"><option>Tháng trước</option></select></label>
-       <label class="sg-year-total" title="Chọn tổng theo từng năm hoặc toàn bộ giai đoạn"><span>Tổng tiếp nhận</span><select id="sg-total-year" aria-label="Chọn năm cho tổng thiết bị"><option value="2026">Năm 2026</option><option value="cumulative">Tích lũy</option></select><strong id="sg-year-received">—</strong><small>thiết bị</small></label>
+       <div class="sg-year-total" id="sg-year-trend-card" aria-label="Xu hướng thiết bị tiếp nhận theo năm"><div class="sg-year-trend-copy"><span>Tổng tiếp nhận</span><strong id="sg-cumulative-received">—</strong><small>tích lũy</small></div><div class="sg-year-trend-viz"><svg id="sg-year-sparkline" viewBox="0 0 112 30" preserveAspectRatio="none" aria-hidden="true"><path class="sg-spark-area" d="M 3 26 L 3 21 L 56 6 L 109 17 L 109 26 Z"></path><polyline class="sg-spark-line" points="3,21 56,6 109,17"></polyline><circle class="sg-spark-dot" cx="109" cy="17" r="2.5"></circle></svg><div class="sg-year-values" id="sg-year-values">2024 · 2025 · 2026 YTD</div></div></div>
       </div>
       <div class="sg-period">Kỳ báo cáo · <span id="sg-period-date">01–17/09/2026</span></div>
      </div>
@@ -410,7 +410,9 @@
  function render(){
   const center=q('#sg-center').value,sep=q('#sg-period').value==='sep';let factor=({all:1,'Sungrow Service Center':.425,'DAT Center':.275,'XBSolar Center':.175,'BKE Center':.125})[center]||1;
   const vals=sep?[40,37,11,26,82]:[61,69,14,55,79];const labels=['Thiết bị tiếp nhận','Thiết bị đã xử lý','Thiết bị chờ giao','Thiết bị đã giao','Đạt SLA 7 ngày'];const notes=[sep?'Đến ngày 17/09':'Toàn tháng 08','Hoàn tất kỹ thuật','Đã xử lý, chưa giao','Theo ngày giao trả','18/22 thiết bị trả đúng hạn · 3 đang mở quá SLA'];
-  q('#sg-kpis').innerHTML=vals.map((v,i)=>'<div class="sg-kpi"><div class="sg-kpi-label">'+labels[i]+'</div><div class="sg-kpi-value">'+(i===4?v:Math.round(v*factor))+' <small>'+(i===4?'%':'thiết bị')+'</small></div><div class="sg-kpi-note">'+notes[i]+'</div></div>').join('');
+  const prior=sep?[61,69,14,55,79]:[54,62,12,50,76];
+  const demoTrend=(a,b)=>{const max=Math.max(1,a,b),y=v=>25-v/max*18,y1=y(a).toFixed(1),y2=y(b).toFixed(1);return '<svg class="sg-mini-trend '+(b>=a?'good':'bad')+'" viewBox="0 0 72 30"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>'};
+  q('#sg-kpis').innerHTML=vals.map((v,i)=>{const value=i===4?v:Math.round(v*factor),viz=i===4?'<span class="sg-mini-ring '+(v>=90?'good':'bad')+'" style="--p:'+v+'"><i>7d</i></span>':demoTrend(Math.round(prior[i]*factor),value);return '<div class="sg-kpi '+(i===4?'sg-kpi-sla':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+labels[i]+'</div>'+viz+'</div><div class="sg-kpi-value">'+value+' <small>'+(i===4?'%':'thiết bị')+'</small></div><div class="sg-kpi-note">'+notes[i]+'</div></div>'}).join('');
   let arr=sep?[[28,24],[35,30],[31,28],[42,36],[38,32],[24,15]]:[[23,20],[28,24],[35,30],[31,28],[42,36],[38,32]];
   q('#sg-chart').innerHTML=arr.map((v,i)=>'<div class="sg-chart-group">'+v.map((n,j)=>'<div class="sg-bar '+(j?'out':'')+'" style="height:'+Math.round(n*factor/50*100)+'%"><b>'+Math.round(n*factor)+'</b></div>').join('')+'<span class="sg-month">T'+(i+(sep?4:3))+'</span></div>').join('');
   q('#sg-chart-note').textContent=sep?'Tháng 09 đang diễn ra · tính đến 17/09':'Kỳ báo cáo kết thúc ngày 31/08';q('#sg-period-date').textContent=sep?'01–17/09/2026':'01–31/08/2026';
@@ -497,4 +499,4 @@
 })();
 
 </script>
-<link rel="stylesheet" href="visual-polish.css?v=2"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js"></script></body></html>
+<link rel="stylesheet" href="visual-polish.css?v=3"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js"></script></body></html>
