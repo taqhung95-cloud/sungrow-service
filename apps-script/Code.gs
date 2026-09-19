@@ -1,4 +1,6 @@
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
+const SLA_DAYS = 7;
+const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
 const DEFAULT_CENTERS = [
   { id: 'sungrow', name: 'Sungrow Service Center', aliases: ['WSHCM', 'Sungrow Service Center'] },
@@ -90,22 +92,65 @@ function getDashboard_(request, actor) {
   if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
   const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
 
-  const cacheKey = ['dash', APP_VERSION, actor.role, scope.sort().join(','), period.key].join(':');
+  const annualMode = request.includeAnnual === false ? 'compact' : 'full';
+  const cacheKey = ['dash', APP_VERSION, annualMode, actor.role, scope.sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const source = readSheetValues_(spreadsheetId, String(period.year));
+  const source = readSheetValuesAny_(spreadsheetId, period.year);
   const values = source.values;
   if (!values.length) throw apiError_('SOURCE_EMPTY', 'Tab dữ liệu không có nội dung.');
-  validateSchema_(values[0]);
+  const schema = schemaForHeaders_(values[0]);
 
-  const records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers); })
+  const records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers, schema); })
     .filter(function (r) { return r.hasData && scope.includes(r.center); });
-  const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor);
+  const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotals_(spreadsheetId, period.year, source, scope, centers, actor.role === 'service_manager' && requestedCenter === 'all');
+  const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor, yearlyTotals);
   safeCachePut_(cache, cacheKey, output, 300);
   return output;
+}
+
+function readSheetValuesAny_(spreadsheetId, year) {
+  const candidates = [String(year), 'Warranty_Tracking_' + year, 'Warranty_Tracking_' + year + ' '];
+  let lastError = null;
+  for (let i = 0; i < candidates.length; i++) {
+    try { return readSheetValues_(spreadsheetId, candidates[i]); }
+    catch (error) {
+      lastError = error;
+      if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
+    }
+  }
+  throw lastError || apiError_('SOURCE_TAB_NOT_FOUND', 'Không tìm thấy tab dữ liệu năm ' + year + '.');
+}
+
+function buildYearlyTotals_(spreadsheetId, selectedYear, selectedSource, scope, centers, includeUnassigned) {
+  const lastYear = Math.max(new Date().getFullYear(), selectedYear);
+  const totals = [];
+  for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
+    try {
+      const source = year === selectedYear ? selectedSource : readSheetValuesAny_(spreadsheetId, year);
+      const schema = schemaForHeaders_(source.values[0] || []);
+      let received = 0, returned = 0, slaEligible = 0, slaMet = 0;
+      source.values.slice(1).forEach(function (row) {
+        const center = resolveCenter_(row[schema.center], centers);
+        if (!scope.includes(center) && !(includeUnassigned && center === 'Chưa xác định')) return;
+        const receivedDate = date_(row[schema.receivedDate]);
+        const returnDate = date_(row[schema.returnDate]);
+        if (inYear_(receivedDate, year)) received++;
+        if (inYear_(returnDate, year)) returned++;
+        if (receivedDate && returnDate && returnDate >= receivedDate && inYear_(returnDate, year)) {
+          slaEligible++;
+          if (ageDays_(receivedDate, returnDate) <= SLA_DAYS) slaMet++;
+        }
+      });
+      totals.push({ year: year, received: received, returned: returned, slaEligible: slaEligible, slaMet: slaMet, slaRate: slaEligible ? slaMet / slaEligible : null });
+    } catch (error) {
+      if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
+    }
+  }
+  return totals;
 }
 
 function readSheetValues_(spreadsheetId, sheetName) {
@@ -139,7 +184,7 @@ function readSheetValues_(spreadsheetId, sheetName) {
   return { values: values, sheetName: sheetName, lastRow: values.length };
 }
 
-function buildDashboard_(records, period, scope, sheetName, sourceLastRow, spreadsheetId, actor) {
+function buildDashboard_(records, period, scope, sheetName, sourceLastRow, spreadsheetId, actor, yearlyTotals) {
   const periodRows = records.filter(function (r) { return inPeriod_(r.receivedDate, period); });
   const yearRows = records.filter(function (r) { return inYear_(r.receivedDate, period.year); });
   const yearReturned = records.filter(function (r) { return inYear_(r.returnDate, period.year); });
@@ -155,6 +200,8 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     const overdue = open.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > 14; });
     const waitingParts = open.filter(function (r) { return r.waitingParts; });
     const durations = completed.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
+    const slaMet = durations.filter(function (n) { return n <= SLA_DAYS; }).length;
+    const slaBreachedOpen = open.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }).length;
     const coverage = dataCoverage_(currentReceived);
     const delta = open.length - priorOpen.length;
     const volumeShare = periodRows.length ? currentReceived.length / periodRows.length : 0;
@@ -162,11 +209,12 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     const outflowInflowRatio = currentReceived.length ? completed.length / currentReceived.length : null;
     const lowVolume = currentReceived.length < 5;
     let status = 'good';
-    if (coverage < 85 || (open.length >= 3 && overdueRate >= 0.3)) status = 'action';
-    else if (lowVolume || overdue.length || delta > 0 || coverage < 95) status = 'watch';
+    if (coverage < 85 || slaBreachedOpen > 0 || (open.length >= 3 && overdueRate >= 0.3)) status = 'action';
+    else if (lowVolume || slaMet < durations.length || overdue.length || delta > 0 || coverage < 95) status = 'watch';
     let reason = 'Dòng công việc cân bằng; chưa thấy tín hiệu tồn hoặc quá hạn tăng';
-    if (!currentReceived.length) reason = 'Không có thiết bị tiếp nhận; chưa đủ cơ sở đánh giá hiệu quả';
-    else if (coverage < 85) reason = 'Dữ liệu chưa đủ để đánh giá đáng tin cậy';
+    if (coverage < 85) reason = 'Dữ liệu chưa đủ để đánh giá đáng tin cậy';
+    else if (slaBreachedOpen > 0) reason = slaBreachedOpen + ' thiết bị đang mở quá cam kết SLA ' + SLA_DAYS + ' ngày';
+    else if (!currentReceived.length) reason = 'Không có thiết bị tiếp nhận; chưa đủ cơ sở đánh giá hiệu quả';
     else if (status === 'action') reason = 'Quá hạn chiếm ' + Math.round(overdueRate * 100) + '% trên ' + open.length + ' thiết bị đang mở' + (lowVolume ? '; mẫu tiếp nhận còn nhỏ' : '');
     else if (lowVolume) reason = currentReceived.length + ' thiết bị trong kỳ; mẫu nhỏ, chỉ theo dõi và chưa xếp hạng';
     else if (delta > 0) reason = 'Tồn tăng ' + delta + ' thiết bị; cần kiểm tra năng lực xử lý và chờ linh kiện';
@@ -183,6 +231,11 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       overdueRate: overdueRate,
       waitingParts: waitingParts.length,
       medianDays: median_(durations),
+      slaTargetDays: SLA_DAYS,
+      slaEligible: durations.length,
+      slaMet: slaMet,
+      slaRate: durations.length ? slaMet / durations.length : null,
+      slaBreachedOpen: slaBreachedOpen,
       repeatRate: null,
       coverage: coverage,
       lowVolume: lowVolume,
@@ -194,6 +247,9 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const openAll = records.filter(function (r) { return isOpenAt_(r, period.end); });
   const waitingDelivery = openAll.filter(function (r) { return /chờ\s*giao/i.test(r.deliveryStatus); });
   const returned = records.filter(function (r) { return inPeriod_(r.returnDate, period); });
+  const slaDurations = returned.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
+  const slaMet = slaDurations.filter(function (n) { return n <= SLA_DAYS; }).length;
+  const slaBreachedOpen = openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }).length;
   const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
   const errors = groupCountMulti_(periodRows, function (r) { return r.issues; });
   const parts = groupParts_(records.filter(function (r) { return inPeriod_(r.checkDate, period); }));
@@ -201,7 +257,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.1',
+    schemaVersion: '1.2',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf) },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -218,7 +274,12 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       processing: openAll.filter(function (r) { return !/chờ\s*giao/i.test(r.deliveryStatus); }).length,
       waitingDelivery: waitingDelivery.length,
       returned: returned.length,
-      overdue: openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > 14; }).length
+      overdue: openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > 14; }).length,
+      slaTargetDays: SLA_DAYS,
+      slaEligible: slaDurations.length,
+      slaMet: slaMet,
+      slaRate: slaDurations.length ? slaMet / slaDurations.length : null,
+      slaBreachedOpen: slaBreachedOpen
     },
     annual: {
       year: period.year,
@@ -227,6 +288,12 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       partsQuantity: yearPartQuantity,
       partTypes: yearParts.length,
       parts: yearParts
+    },
+    yearlyTotals: yearlyTotals,
+    cumulative: {
+      fromYear: yearlyTotals.length ? yearlyTotals[0].year : FIRST_REPORT_YEAR,
+      toYear: yearlyTotals.length ? yearlyTotals[yearlyTotals.length - 1].year : period.year,
+      received: yearlyTotals.reduce(function (sum, item) { return sum + item.received; }, 0)
     },
     evaluation: {
       minimumSampleSize: 5,
@@ -244,37 +311,37 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   };
 }
 
-function normalizeRow_(row, rowNumber, year, centers) {
-  const center = resolveCenter_(row[14], centers);
-  const issues = [row[8], row[9], row[10], row[11]].map(clean_).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; });
-  const parts = [[row[19], row[20]], [row[21], row[22]], [row[23], row[24]], [row[25], row[26]]]
-    .filter(function (p) { return clean_(p[0]); }).map(function (p) { return { pn: clean_(p[0]), qty: number_(p[1]) }; });
-  const note = clean_(row[28]);
+function normalizeRow_(row, rowNumber, year, centers, schema) {
+  const center = resolveCenter_(row[schema.center], centers);
+  const issues = schema.issues.map(function (index) { return row[index]; }).map(clean_).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; });
+  const parts = schema.parts.map(function (pair) { return [row[pair[0]], row[pair[1]]]; })
+    .filter(function (part) { return clean_(part[0]); }).map(function (part) { return { pn: clean_(part[0]), qty: number_(part[1]) }; });
+  const note = clean_(row[schema.note]);
   return {
-    hasData: row.some(function (v) { return v !== '' && v !== null; }),
+    hasData: row.some(function (value) { return value !== '' && value !== null; }),
     rowNumber: rowNumber,
     id: year + '-' + rowNumber,
-    sourceNo: clean_(row[0]),
-    deviceType: clean_(row[1]),
-    serialNumber: clean_(row[2]),
-    model: clean_(row[3]),
-    receivedDate: date_(row[4]),
-    distributor: clean_(row[5]),
-    workshop: clean_(row[6]),
-    errorCode: clean_(row[7]),
+    sourceNo: clean_(row[schema.sourceNo]),
+    deviceType: clean_(row[schema.deviceType]),
+    serialNumber: clean_(row[schema.serialNumber]),
+    model: clean_(row[schema.model]),
+    receivedDate: date_(row[schema.receivedDate]),
+    distributor: clean_(row[schema.distributor]),
+    workshop: clean_(row[schema.workshop]),
+    errorCode: clean_(row[schema.errorCode]),
     issues: issues,
-    warrantyConfirmation: clean_(row[12]),
-    warrantyStatus: clean_(row[13]),
+    warrantyConfirmation: clean_(row[schema.warrantyConfirmation]),
+    warrantyStatus: clean_(row[schema.warrantyStatus]),
     center: center,
-    checkDate: date_(row[15]),
-    deliveryStatus: clean_(row[16]),
-    status: clean_(row[17]),
-    sparePartDate: date_(row[18]),
+    checkDate: date_(row[schema.checkDate]),
+    deliveryStatus: clean_(row[schema.deliveryStatus]),
+    status: clean_(row[schema.status]),
+    sparePartDate: date_(row[schema.sparePartDate]),
     parts: parts,
-    returnDate: date_(row[27]),
-    waitingParts: /chờ|thiếu.+(?:board|part)|đề xuất.+board/i.test(note + ' ' + clean_(row[13])),
-    unnamedAD: clean_(row[29]),
-    unnamedAE: clean_(row[30])
+    returnDate: date_(row[schema.returnDate]),
+    waitingParts: /chờ|thiếu.+(?:board|part)|đề xuất.+board/i.test(note + ' ' + clean_(row[schema.warrantyStatus])),
+    unnamedAD: clean_(row[schema.unnamedAD]),
+    unnamedAE: clean_(row[schema.unnamedAE])
   };
 }
 
@@ -286,6 +353,7 @@ function publicTicket_(r) {
     model: r.model,
     deviceType: r.deviceType,
     receivedDate: iso_(r.receivedDate),
+    returnDate: iso_(r.returnDate),
     center: r.center,
     error: r.issues.join(', ') || r.errorCode || 'Chưa ghi nhận',
     warranty: r.warrantyConfirmation,
@@ -354,11 +422,29 @@ function resolveCenter_(value, centers) {
   return found ? found.name : (clean_(value) || 'Chưa xác định');
 }
 
-function validateSchema_(headers) {
-  const required = { 0: 'No.', 1: 'Device Type', 2: 'S/N', 3: 'Model', 4: 'Received date', 14: 'Service Center', 27: 'Return date' };
-  Object.keys(required).forEach(function (index) {
-    if (clean_(headers[Number(index)]) !== required[index]) throw apiError_('SCHEMA_MISMATCH', 'Cấu trúc cột tab nguồn đã thay đổi tại cột ' + (Number(index) + 1) + '.');
-  });
+function schemaForHeaders_(headers) {
+  const byName = {};
+  headers.forEach(function (value, index) { byName[clean_(value).replace(/\s+/g, ' ').toLowerCase()] = index; });
+  function get(name, required) {
+    const index = byName[String(name).toLowerCase()];
+    if (required && index === undefined) throw apiError_('SCHEMA_MISMATCH', 'Thiếu cột bắt buộc: ' + name + '.');
+    return index;
+  }
+  const schema = {
+    sourceNo: get('No.', true), deviceType: get('Device Type', true), serialNumber: get('S/N', false), model: get('Model', false),
+    receivedDate: get('Received date', true), distributor: get('Distributor', false), workshop: get('Where sent to Workshop', false),
+    errorCode: get('Error Code', false), warrantyConfirmation: get('Warranty confirmation', false), warrantyStatus: get('Warranty Status', false),
+    center: get('Service Center', true), checkDate: get('Check / Repair date', false), deliveryStatus: get('Delivery Status', false),
+    status: get('Status', false), sparePartDate: get('Receive spare part date', false), returnDate: get('Return date', true), note: get('Note', false),
+    unnamedAD: 29, unnamedAE: 30,
+    issues: ['Issue 1','Issue 2','Issue 3','Issue 4'].map(function (name) { return get(name, false); }).filter(function (index) { return index !== undefined; }),
+    parts: []
+  };
+  for (let number = 1; number <= 4; number++) {
+    const pn = get('Replace PN Board ' + number, false);
+    if (pn !== undefined) schema.parts.push([pn, pn + 1]);
+  }
+  return schema;
 }
 
 function normalizePeriod_(value) {
