@@ -37,9 +37,10 @@
       live = result.data;
       previousLive = null;
       try {
-        const selected = selectedPeriod().split('-').map(Number);
-        const previousDate = new Date(selected[0], selected[1] - 2, 1);
-        const previousPeriod = previousDate.getFullYear() + '-' + String(previousDate.getMonth() + 1).padStart(2, '0');
+        const selectedKey = selectedPeriod();
+        const previousPeriod = /^\d{4}$/.test(selectedKey)
+          ? String(Number(selectedKey) - 1)
+          : (function(){ const selected=selectedKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
         const previousBody = new URLSearchParams({payload: JSON.stringify({action:'dashboard.read', idToken:token, period:previousPeriod, center:q('#sg-center').value, includeAnnual:false})});
         const previousResponse = await fetch(cfg.appsScriptUrl, {method:'POST', body:previousBody, redirect:'follow'});
         const previousResult = await previousResponse.json();
@@ -217,7 +218,6 @@
   function renderModels() {
     const rows = live.models;
     const total = rows.reduce((n,x) => n+x.count, 0);
-    q('#sg-model-total').textContent = `${total} · ${rows.length} model`;
     const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',');
@@ -242,6 +242,9 @@
     const recommendation = top ? concentration + ': ưu tiên rà soát tồn kho và lead time của ' + top.pn + '.' + (annualTop ? ' PN dùng nhiều nhất năm là ' + annualTop.pn + ' (' + annualTop.quantity + ' chiếc).' : '') : 'Chưa có linh kiện thay trong kỳ.';
     const periodLabel = live.period && live.period.label ? live.period.label : 'kỳ đã chọn';
     const yearLabel = annual.year || new Date().getFullYear();
+    const isYear = !!(live.period && live.period.isYear);
+    const overviewTitle = q('#sg-overview-parts-title');
+    if (overviewTitle) overviewTitle.textContent = isYear ? 'Sử dụng trong năm' : 'Sử dụng trong tháng';
     q('#sg-part-sub').textContent = 'Linh kiện đã xác nhận thay cho thiết bị sửa chữa · kỳ ghi nhận theo ngày sửa chữa';
     q('#sg-part-metrics').innerHTML = '<div><span class="sg-caption">Số lượng dùng · ' + esc(periodLabel) + '</span><strong>' + total + ' <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">PN chiếm tỷ trọng cao nhất trong kỳ</span><strong>' + (top ? esc(top.pn) : '—') + ' <span class="sg-caption">' + topShare + '%</span></strong></div><div><span class="sg-caption">Lũy kế từ 01/01/' + yearLabel + '</span><strong>' + (annual.partsQuantity === undefined ? '—' : annual.partsQuantity) + ' <span class="sg-caption">chiếc</span></strong></div>';
     q('#sg-part-table').innerHTML = '<table><thead><tr><th>Mã linh kiện</th><th>SL dùng · ' + esc(periodLabel) + '</th><th>Tỷ trọng trong kỳ</th><th>SL lũy kế năm ' + yearLabel + '</th><th>Cách xác định kỳ</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + ' chiếc</td><td><div class="sg-part-share"><span><i style="width:' + Math.round(x.share * 100) + '%"></i></span><b>' + Math.round(x.share * 100) + '%</b></div></td><td>' + (annualByPn[x.pn] === undefined ? '—' : annualByPn[x.pn] + ' chiếc') + '</td><td>Theo ngày sửa chữa thiết bị</td></tr>'; }).join('') + '</tbody></table>';
@@ -296,6 +299,12 @@
     for (let year = maxYear; year >= 2024; year -= 1) {
       const group = document.createElement('optgroup');
       group.label = String(year);
+      const yearOption = document.createElement('option');
+      yearOption.value = String(year);
+      yearOption.dataset.livePeriod = String(year);
+      yearOption.textContent = 'Cả năm ' + year;
+      yearOption.selected = String(year) === current;
+      group.appendChild(yearOption);
       const lastMonth = year === maxYear ? maxMonth : 12;
       for (let month = lastMonth; month >= 1; month -= 1) {
         const key = String(year) + '-' + String(month).padStart(2,'0');
@@ -323,7 +332,13 @@
 
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';
   setPeriodLabels();
-  ['#sg-center','#sg-period'].forEach(s => q(s).addEventListener('change',() => setTimeout(loadLive,0)));
+  ['#sg-center','#sg-period'].forEach(s => q(s).addEventListener('change',() => {
+    if (s === '#sg-period') {
+      const compare = q('#sg-compare-mode option');
+      if (compare) compare.textContent = /^\d{4}$/.test(selectedPeriod()) ? 'Năm trước' : 'Tháng trước';
+    }
+    setTimeout(loadLive,0);
+  }));
   q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
   initGoogle();

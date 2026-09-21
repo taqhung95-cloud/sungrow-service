@@ -1,4 +1,4 @@
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -214,7 +214,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     const rows = records.filter(function (r) { return r.center === center; });
     const currentReceived = rows.filter(function (r) { return inPeriod_(r.receivedDate, period); });
     const completed = rows.filter(function (r) { return inPeriod_(r.returnDate, period); });
-    const open = rows.filter(function (r) { return isOpenAt_(r, period.end); });
+    const open = rows.filter(function (r) { return isOpenAt_(r, period.asOf); });
     const priorOpen = rows.filter(function (r) { return isOpenAt_(r, prior.end); });
     const overdue = open.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > 14; });
     const waitingParts = open.filter(function (r) { return r.waitingParts; });
@@ -263,7 +263,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     };
   });
 
-  const openAll = records.filter(function (r) { return isOpenAt_(r, period.end); });
+  const openAll = records.filter(function (r) { return isOpenAt_(r, period.asOf); });
   const waitingDelivery = openAll.filter(function (r) { return /chờ\s*giao/i.test(r.deliveryStatus); });
   const returned = records.filter(function (r) { return inPeriod_(r.returnDate, period); });
   const slaDurations = returned.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
@@ -276,9 +276,9 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.3',
+    schemaVersion: '1.4',
     generatedAt: new Date().toISOString(),
-    period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf) },
+    period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
     source: {
       spreadsheetId: undefined,
@@ -400,8 +400,11 @@ function qualitySummary_(records, periodRows, sourceLastRow) {
 
 function backlogTrend_(records, period, scope) {
   const out = [];
-  for (let offset = 5; offset >= 0; offset--) {
-    const d = new Date(period.year, period.month - offset + 1, 0, 23, 59, 59, 999);
+  const points = period.isYear ? Math.min(12, period.asOf.getMonth() + 1) : 6;
+  for (let index = 0; index < points; index++) {
+    const d = period.isYear
+      ? new Date(period.year, index + 1, 0, 23, 59, 59, 999)
+      : new Date(period.year, period.month - (points - 1 - index) + 1, 0, 23, 59, 59, 999);
     const key = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM');
     const values = {};
     scope.forEach(function (center) {
@@ -468,16 +471,24 @@ function schemaForHeaders_(headers) {
 
 function normalizePeriod_(value) {
   const now = new Date();
+  const yearMatch = /^(\d{4})$/.exec(String(value || ''));
+  if (yearMatch) {
+    const year = Number(yearMatch[1]);
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+    const asOf = now < end ? now : end;
+    return { year: year, month: null, isYear: true, start: start, end: end, asOf: asOf, key: String(year), label: 'Năm ' + year };
+  }
   const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value || ''));
   const year = match ? Number(match[1]) : now.getFullYear();
   const month = match ? Number(match[2]) - 1 : now.getMonth();
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
   const asOf = now < end ? now : end;
-  return { year: year, month: month, start: start, end: end, asOf: asOf, key: Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM'), label: 'Tháng ' + String(month + 1).padStart(2, '0') + '/' + year };
+  return { year: year, month: month, isYear: false, start: start, end: end, asOf: asOf, key: Utilities.formatDate(start, Session.getScriptTimeZone(), 'yyyy-MM'), label: 'Tháng ' + String(month + 1).padStart(2, '0') + '/' + year };
 }
 
-function previousPeriod_(period) { return normalizePeriod_(Utilities.formatDate(new Date(period.year, period.month - 1, 1), Session.getScriptTimeZone(), 'yyyy-MM')); }
+function previousPeriod_(period) { return period.isYear ? normalizePeriod_(String(period.year - 1)) : normalizePeriod_(Utilities.formatDate(new Date(period.year, period.month - 1, 1), Session.getScriptTimeZone(), 'yyyy-MM')); }
 function inPeriod_(date, period) { return date && date >= period.start && date <= period.end; }
 function inYear_(date, year) { return !!date && date.getFullYear() === year; }
 function isOpenAt_(r, date) { return !!r.receivedDate && r.receivedDate <= date && !(r.returnDate && r.returnDate <= date) && !(/đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate && periodIsCurrent_(date)); }

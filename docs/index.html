@@ -335,16 +335,16 @@
        <div class="sg-table-wrap" id="sg-overview-table"></div>
       </section>
       <section class="sg-panel sg-model-panel sg-command-model" aria-label="Cơ cấu model tiếp nhận">
-       <div class="sg-panel-head"><div><div class="sg-eyebrow">MODEL TIẾP NHẬN</div><h2>Tỷ trọng model</h2></div><div class="sg-model-head-tools"><span class="sg-model-total" id="sg-model-total"></span><label class="sg-control-label sg-command-select"><select class="sg-control" id="sg-model-type" aria-label="Loại thiết bị" title="Lọc theo loại thiết bị"><option value="all">Tất cả thiết bị</option><option value="Inverter">Inverter</option><option value="Monitoring">Monitoring</option><option value="Fan">Fan</option></select></label></div></div>
+       <div class="sg-panel-head"><div><div class="sg-eyebrow">MODEL TIẾP NHẬN</div><h2>Tỷ trọng model</h2></div><div class="sg-model-head-tools"><label class="sg-control-label sg-command-select"><select class="sg-control" id="sg-model-type" aria-label="Loại thiết bị" title="Lọc theo loại thiết bị"><option value="all">Tất cả thiết bị</option><option value="Inverter">Inverter</option><option value="Monitoring">Monitoring</option><option value="Fan">Fan</option></select></label></div></div>
        <div id="sg-model-bars" aria-label="Tỷ trọng model"></div>
        <div class="sg-overview-hidden"><div class="sg-tabs sg-model-units"><button data-unit="visits" class="active" aria-pressed="true">Thiết bị tiếp nhận</button><button data-unit="devices" aria-pressed="false">Số thiết bị</button></div><div id="sg-model-denominator"></div><aside id="sg-model-insight"></aside><div id="sg-model-note"></div></div>
       </section>
       <section class="sg-panel sg-command-errors">
-       <div class="sg-panel-head"><div><div class="sg-eyebrow">CHẤT LƯỢNG SỬA CHỮA</div><h2>Lỗi phổ biến</h2></div><span class="sg-caption">Thiết bị</span></div>
+       <div class="sg-panel-head"><div><div class="sg-eyebrow">CHẤT LƯỢNG SỬA CHỮA</div><h2>Lỗi phổ biến</h2></div></div>
        <div class="sg-errors" id="sg-errors"></div>
       </section>
       <section class="sg-panel sg-command-parts">
-       <div class="sg-panel-head"><div><div class="sg-eyebrow">LINH KIỆN THAY SỬA</div><h2>Sử dụng trong tháng</h2></div><button class="sg-link" data-go="parts">Chi tiết →</button></div>
+       <div class="sg-panel-head"><div><div class="sg-eyebrow">LINH KIỆN THAY SỬA</div><h2 id="sg-overview-parts-title">Sử dụng trong tháng</h2></div><button class="sg-link" data-go="parts">Chi tiết →</button></div>
        <div class="sg-overview-part-metrics" id="sg-overview-part-metrics"><strong>—</strong><span>Đang chờ đồng bộ</span></div>
        <div class="sg-table-wrap" id="sg-overview-part-table"></div>
       </section>
@@ -449,7 +449,6 @@
   const rows=names.map((name,i)=>({name,i,n:centers.reduce((n,c)=>n+source[c][i],0)})).filter(r=>type==='all'||types[r.i]===type).sort((a,b)=>b.n-a.n);
   const total=rows.reduce((n,r)=>n+r.n,0);if(!rows.some(r=>r.name===selected))selected=rows[0]?.name;
   const noun=unit==='visits'?'lượt':'thiết bị';
-  q('#sg-model-total').textContent=total+' · '+rows.filter(r=>r.n>0).length+' model';
    const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];let cursor=0;
    const segments=rows.map((r,i)=>{const start=cursor,end=cursor+(total?100*r.n/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%'}).join(',');
    const legend=rows.map((r,i)=>'<button class="sg-donut-item '+(r.i===5?'unknown':'')+'" data-model="'+r.name+'" aria-pressed="'+(selected===r.name)+'" aria-label="'+r.name+': '+r.n+' '+noun+', '+pct(r.n,total)+'"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+r.name+'">'+r.name+'</span><strong>'+r.n+'</strong><em>'+pct(r.n,total)+'</em></button>').join('');
@@ -504,4 +503,4 @@
 })();
 
 </script>
-<link rel="stylesheet" href="visual-polish.css?v=15"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=15"></script></body></html>
+<link rel="stylesheet" href="visual-polish.css?v=16"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=16"></script></body></html>

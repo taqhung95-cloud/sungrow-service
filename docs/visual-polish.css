@@ -816,3 +816,37 @@
  #sg-preview .sg-error-list-head,#sg-preview #sg-overview .sg-command-errors .sg-error-line{grid-template-columns:minmax(88px,105px) minmax(50px,1fr) 26px 48px!important;gap:5px!important}
  #sg-preview #sg-overview .sg-command-errors .sg-track{max-width:135px}
 }
+
+/* September 2026 v16: annual period option and exact bottom-card consistency. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head,
+ #sg-preview #sg-overview .sg-command-errors>.sg-panel-head,
+ #sg-preview #sg-overview .sg-command-parts>.sg-panel-head{padding:0!important}
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head>div:first-child,
+ #sg-preview #sg-overview .sg-command-errors>.sg-panel-head>div:first-child,
+ #sg-preview #sg-overview .sg-command-parts>.sg-panel-head>div:first-child{margin:0!important;padding:0!important}
+ #sg-preview #sg-overview #sg-model-bars{overflow:hidden!important;padding-right:0!important}
+ #sg-preview #sg-overview .sg-model-donut-legend,
+ #sg-preview #sg-overview .sg-command-errors .sg-errors,
+ #sg-preview #sg-overview #sg-overview-part-table{overflow-y:auto!important;overflow-x:hidden!important;padding-right:6px!important;scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important}
+ #sg-preview #sg-overview .sg-model-donut-legend::-webkit-scrollbar,
+ #sg-preview #sg-overview .sg-command-errors .sg-errors::-webkit-scrollbar,
+ #sg-preview #sg-overview #sg-overview-part-table::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-model-donut-legend::-webkit-scrollbar-thumb,
+ #sg-preview #sg-overview .sg-command-errors .sg-errors::-webkit-scrollbar-thumb,
+ #sg-preview #sg-overview #sg-overview-part-table::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-model-donut-legend::-webkit-scrollbar-track,
+ #sg-preview #sg-overview .sg-command-errors .sg-errors::-webkit-scrollbar-track,
+ #sg-preview #sg-overview #sg-overview-part-table::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-donut-item:hover,
+ #sg-preview #sg-overview .sg-donut-item[aria-pressed=true]{background:transparent!important;color:inherit!important}
+ #sg-preview .sg-model-list-head span:nth-child(2),#sg-preview .sg-model-list-head span:nth-child(3),
+ #sg-preview #sg-overview .sg-donut-item strong,#sg-preview #sg-overview .sg-donut-item em,
+ #sg-preview .sg-error-list-head span:nth-child(3),#sg-preview .sg-error-list-head span:nth-child(4),
+ #sg-preview .sg-error-count,#sg-preview .sg-error-share,
+ #sg-preview #sg-overview .sg-command-parts th:nth-child(2),#sg-preview #sg-overview .sg-command-parts td:nth-child(2),
+ #sg-preview #sg-overview .sg-command-parts th:nth-child(3),#sg-preview #sg-overview .sg-command-parts td:nth-child(3){text-align:center!important}
+ #sg-preview .sg-model-list-head span:first-of-type,#sg-preview #sg-overview .sg-donut-item span,
+ #sg-preview .sg-error-list-head span:first-child,#sg-preview .sg-error-name,
+ #sg-preview #sg-overview .sg-command-parts th:first-child,#sg-preview #sg-overview .sg-command-parts td:first-child{text-align:left!important}
+}
