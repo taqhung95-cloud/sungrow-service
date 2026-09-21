@@ -663,3 +663,33 @@
  #sg-preview #sg-centers .sg-center-card-reason{-webkit-line-clamp:2!important;margin-top:8px!important;padding-top:7px!important}
 }
 @media(min-width:1101px){#sg-preview .sg-curve-grid line{stroke:#edf0f2!important}#sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis{font-family:Inter,Arial,sans-serif!important;font-size:10px!important}#sg-preview .sg-curve-line{stroke-width:1.8!important}}
+
+/* September 2026 v10: cumulative monthly received chart with automatic year legends. */
+@media(min-width:1101px){
+ #sg-preview .sg-kpi-received .sg-kpi-head{align-items:flex-start!important;gap:8px!important}
+ #sg-preview .sg-received-annual{width:252px!important;min-width:252px!important;height:58px!important;display:grid!important;grid-template-columns:minmax(135px,1fr) 92px!important;align-items:center!important;gap:7px!important;padding:3px 6px!important;border:1px solid #f0dfd1!important;border-radius:8px!important;background:#fffaf5!important;overflow:hidden!important}
+ #sg-preview .sg-received-annual svg{width:100%!important;height:52px!important;overflow:visible!important}
+ #sg-preview .sg-annual-baseline{stroke:#dfe3e6;stroke-width:1;vector-effect:non-scaling-stroke}
+ #sg-preview .sg-annual-series polyline{fill:none!important;stroke:var(--series)!important;stroke-width:1.25!important;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+ #sg-preview .sg-annual-series:first-of-type polyline{stroke-width:2.1!important}
+ #sg-preview .sg-annual-series circle{fill:var(--series)!important;stroke:#fff;stroke-width:.7;vector-effect:non-scaling-stroke}
+ #sg-preview .sg-received-legend{height:50px;min-width:0;display:grid!important;align-content:start;gap:1px!important;overflow-y:auto!important;overflow-x:hidden;scrollbar-width:thin;padding-right:2px}
+ #sg-preview .sg-received-legend span{display:grid!important;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:3px!important;min-height:11px;font-size:8px!important;line-height:1.05!important;color:#687780;white-space:nowrap}
+ #sg-preview .sg-received-legend i{width:6px;height:6px;border-radius:50%}
+ #sg-preview .sg-received-legend em{min-width:0;overflow:hidden;text-overflow:ellipsis;font-style:normal}
+ #sg-preview .sg-received-legend b{font-size:8.5px!important;font-weight:600;color:#344955;font-variant-numeric:tabular-nums}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview .sg-received-annual{width:196px!important;min-width:196px!important;height:54px!important;grid-template-columns:minmax(100px,1fr) 78px!important;gap:5px!important;padding-left:4px!important;padding-right:4px!important}
+ #sg-preview .sg-received-annual svg{height:47px!important}
+ #sg-preview .sg-received-legend{height:46px}
+ #sg-preview .sg-received-legend span{font-size:7.5px!important}
+ #sg-preview .sg-received-legend b{font-size:8px!important}
+}@media(min-width:1501px){
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(430px,1.7fr) repeat(4,minmax(170px,1fr))!important}
+ #sg-preview .sg-received-annual{width:292px!important;min-width:292px!important;grid-template-columns:minmax(170px,1fr) 98px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(380px,1.85fr) repeat(4,minmax(138px,1fr))!important}
+ #sg-preview .sg-received-annual{width:242px!important;min-width:242px!important;grid-template-columns:minmax(132px,1fr) 92px!important}
+}

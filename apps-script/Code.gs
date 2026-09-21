@@ -1,4 +1,4 @@
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -133,19 +133,38 @@ function buildYearlyTotals_(spreadsheetId, selectedYear, selectedSource, scope, 
       const source = year === selectedYear ? selectedSource : readSheetValuesAny_(spreadsheetId, year);
       const schema = schemaForHeaders_(source.values[0] || []);
       let received = 0, returned = 0, slaEligible = 0, slaMet = 0;
+      const monthlyReceived = Array(12).fill(0);
       source.values.slice(1).forEach(function (row) {
         const center = resolveCenter_(row[schema.center], centers);
         if (!scope.includes(center) && !(includeUnassigned && center === 'Chưa xác định')) return;
         const receivedDate = date_(row[schema.receivedDate]);
         const returnDate = date_(row[schema.returnDate]);
-        if (inYear_(receivedDate, year)) received++;
+        if (inYear_(receivedDate, year)) {
+          received++;
+          monthlyReceived[receivedDate.getMonth()]++;
+        }
         if (inYear_(returnDate, year)) returned++;
         if (receivedDate && returnDate && returnDate >= receivedDate && inYear_(returnDate, year)) {
           slaEligible++;
           if (ageDays_(receivedDate, returnDate) <= SLA_DAYS) slaMet++;
         }
       });
-      totals.push({ year: year, received: received, returned: returned, slaEligible: slaEligible, slaMet: slaMet, slaRate: slaEligible ? slaMet / slaEligible : null });
+      const monthlyCumulative = [];
+      monthlyReceived.reduce(function (sum, value, index) {
+        monthlyCumulative[index] = sum + value;
+        return monthlyCumulative[index];
+      }, 0);
+      totals.push({
+        year: year,
+        received: received,
+        returned: returned,
+        monthlyReceived: monthlyReceived,
+        monthlyCumulative: monthlyCumulative,
+        throughMonth: year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12,
+        slaEligible: slaEligible,
+        slaMet: slaMet,
+        slaRate: slaEligible ? slaMet / slaEligible : null
+      });
     } catch (error) {
       if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
     }
@@ -257,7 +276,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.2',
+    schemaVersion: '1.3',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf) },
     actor: { email: actor.email, role: actor.role, centers: scope },

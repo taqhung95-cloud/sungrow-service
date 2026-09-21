@@ -87,13 +87,37 @@
     const annualTotals=(Array.isArray(live.yearlyTotals)&&live.yearlyTotals.length?live.yearlyTotals:[live.annual||{}]).filter(x=>x.year).slice().sort((a,b)=>a.year-b.year);
     const cumulative=live.cumulative?.received??annualTotals.reduce((sum,x)=>sum+(x.received||0),0);
     const receivedAnnualViz=function(){
-      const values=annualTotals.map(x=>Number(x.received||0)),width=86,height=26,pad=3,max=Math.max(1,...values);
-      const points=values.map((v,i)=>[(values.length===1?width/2:pad+i*(width-2*pad)/(values.length-1)),height-pad-v/max*(height-2*pad)]);
-      const pointText=points.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' '),last=annualTotals[annualTotals.length-1]||{};
-      const line=values.length?'<svg viewBox="0 0 86 26" preserveAspectRatio="none"><path d="M '+points[0][0].toFixed(1)+' 23 L '+pointText.replace(/ /g,' L ')+' L '+points[points.length-1][0].toFixed(1)+' 23 Z"></path><polyline points="'+pointText+'"></polyline></svg>':'';
-      const title=annualTotals.map(x=>x.year+': '+x.received).join(' · ')+' · Tích lũy: '+cumulative;
-      const years=annualTotals.map(x=>'<span><i>'+esc(x.year)+'</i><b>'+Number(x.received||0).toLocaleString('vi-VN')+'</b></span>').join('');
-      return '<div class="sg-received-annual" title="'+esc(title)+'">'+line+'<div class="sg-annual-values">'+years+'<span class="sg-annual-total"><i>Tích lũy</i><b>'+Number(cumulative||0).toLocaleString('vi-VN')+'</b></span></div></div>';
+      const width=184,height=56,left=5,right=5,top=4,bottom=8,plotW=width-left-right,plotH=height-top-bottom;
+      const palette=['#ff7900','#365f78','#7d8b95','#d6a066','#6b7f3e','#8d68a6','#3b8c88','#b34b43'];
+      const yearSeries=annualTotals.map(function(item,index){
+        const through=Math.max(1,Math.min(12,Number(item.throughMonth||12)));
+        let values=[];
+        if(Array.isArray(item.monthlyCumulative)&&item.monthlyCumulative.length){
+          values=item.monthlyCumulative.slice(0,through).map(Number);
+        }else if(Array.isArray(item.monthlyReceived)&&item.monthlyReceived.length){
+          let sum=0; values=item.monthlyReceived.slice(0,through).map(function(value){sum+=Number(value||0);return sum;});
+        }else{
+          values=Array(Math.max(0,through-1)).fill(null).concat([Number(item.received||0)]);
+        }
+        return {name:String(item.year),color:palette[index%palette.length],values:[0].concat(values),total:Number(item.received||0),through:through};
+      });
+      const cumulativeValues=[0];
+      for(let month=1;month<=12;month++) cumulativeValues.push(yearSeries.reduce(function(sum,series){
+        const index=Math.min(month,series.values.length-1),value=series.values[index];
+        return sum+(value===null||value===undefined?0:Number(value));
+      },0));
+      const allSeries=[{name:'Tích lũy',color:'#172b3a',values:cumulativeValues,total:Number(cumulative||0),through:12}].concat(yearSeries);
+      const max=Math.max(1,...allSeries.flatMap(function(series){return series.values.filter(function(value){return value!==null&&value!==undefined;});}));
+      const x=function(index){return left+index/12*plotW;},y=function(value){return top+plotH-Number(value||0)/max*plotH;};
+      const lines=allSeries.map(function(series){
+        const points=series.values.map(function(value,index){return value===null||value===undefined?null:[x(index),y(value),index,value];}).filter(Boolean);
+        if(points.length<2)return '';
+        const pointText=points.map(function(point){return point[0].toFixed(1)+','+point[1].toFixed(1);}).join(' ');
+        const dots=points.map(function(point){return '<circle cx="'+point[0].toFixed(1)+'" cy="'+point[1].toFixed(1)+'" r="1.8"><title>'+esc(series.name)+' · T'+point[2]+': '+Number(point[3]).toLocaleString('vi-VN')+' thiết bị</title></circle>';}).join('');
+        return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+dots+'</g>';
+      }).join('');
+      const legend=allSeries.map(function(series){return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';}).join('');
+      return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
     };
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
