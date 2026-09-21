@@ -11,11 +11,11 @@
   let activeController = null;
 
   const style = document.createElement('style');
-  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}';
+  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
   document.head.appendChild(style);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
-  host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><span class="sg-login-slot" id="sg-login-slot"></span>';
+  host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" disabled>↻ Đồng bộ</button><span class="sg-login-slot" id="sg-login-slot"></span>';
   q('.sg-top').appendChild(host);
 
   function status(title, detail, type = '') {
@@ -49,19 +49,23 @@
     throw lastError || new Error('Không nhận được phản hồi từ Apps Script');
   }
 
-  async function loadLive() {
+  async function loadLive(options = {}) {
     if (!token) return;
+    const forceRefresh = options.force === true;
     const sequence = ++loadSequence;
     if (activeController) activeController.abort();
     const controller = new AbortController();
     activeController = controller;
+    const refreshButton = q('#sg-refresh');
+    if (refreshButton) refreshButton.disabled = true;
     const periodKey = selectedPeriod();
     const center = q('#sg-center').value;
     status('Đang đồng bộ', 'Đọc Google Sheet…');
     try {
-      const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center}, controller.signal);
+      const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center, refresh:forceRefresh}, controller.signal);
       if (sequence !== loadSequence) return;
       live = currentData;
+      root.dataset.liveData = 'true';
       previousLive = null;
       const previousPeriod = /^\d{4}$/.test(periodKey)
         ? String(Number(periodKey) - 1)
@@ -85,6 +89,7 @@
       }
     } finally {
       if (activeController === controller) activeController = null;
+      if (refreshButton) refreshButton.disabled = false;
     }
   }
 
@@ -179,9 +184,10 @@
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
   function attentionTable(rows) {
-    return '<table><thead><tr><th>Thiết bị</th><th>Trạng thái</th><th>Ngày</th></tr></thead><tbody>' + rows.map(function(t) {
-      return '<tr><td><span class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</span><span class="sg-small">' + esc(t.serialNumber || t.id) + '</span></td><td><span class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</span></td><td class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</td></tr>';
-    }).join('') + (rows.length?'':'<tr><td colspan="3">Không có thiết bị cần theo dõi.</td></tr>') + '</tbody></table>';
+    const body = rows.map(function(t) {
+      return '<div class="sg-attention-list-row"><span><b class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</b><small>' + esc(t.serialNumber || t.id) + '</small></span><span class="sg-attention-center" title="' + esc(t.center) + '">' + esc(t.center) + '</span><span><i class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</i></span><span class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</span></div>';
+    }).join('') || '<div class="sg-caption sg-attention-empty">Không có thiết bị cần theo dõi.</div>';
+    return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span>Ngày</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
   }
 
   function ticketTable(rows) {
@@ -252,16 +258,59 @@
     q('#sg-result-count').textContent = `${rows.length} thiết bị · dữ liệu từ tab ${live.source.sheetName}`;
   }
 
+  function fallbackModelTypes() {
+    const start = live.period?.start || '';
+    const end = live.period?.end || '';
+    const groups = {};
+    (live.tickets || []).filter(function(t) { return t.receivedDate && t.receivedDate >= start && t.receivedDate <= end; }).forEach(function(t) {
+      const type = t.deviceType || 'Chưa xác định';
+      const model = t.model || (t.deviceType ? t.deviceType + ' · chưa có model' : 'Chưa xác định');
+      if (!groups[type]) groups[type] = {name:type,count:0,models:{}};
+      groups[type].count++;
+      groups[type].models[model] = (groups[type].models[model] || 0) + 1;
+    });
+    return Object.values(groups).map(function(group) {
+      return {name:group.name,count:group.count,models:Object.keys(group.models).map(function(name){return {name:name,count:group.models[name]};}).sort(function(a,b){return b.count-a.count;})};
+    }).sort(function(a,b){return b.count-a.count || a.name.localeCompare(b.name);});
+  }
+
+  function availableModelTypes() {
+    return Array.isArray(live.modelTypes) && live.modelTypes.length ? live.modelTypes : fallbackModelTypes();
+  }
+
+  function syncModelTypeOptions() {
+    const select = q('#sg-model-type');
+    const current = select.value || 'all';
+    const groups = availableModelTypes();
+    select.replaceChildren();
+    const all = document.createElement('option');
+    all.value = 'all';
+    all.textContent = 'Tất cả thiết bị';
+    select.appendChild(all);
+    groups.forEach(function(group) {
+      const option = document.createElement('option');
+      option.value = group.name;
+      option.textContent = group.name + ' (' + group.count + ')';
+      select.appendChild(option);
+    });
+    select.value = groups.some(function(group){ return group.name === current; }) ? current : 'all';
+    return groups;
+  }
+
   function renderModels() {
-    const rows = live.models;
+    const groups = syncModelTypeOptions();
+    const selectedType = q('#sg-model-type').value;
+    const selectedGroup = groups.find(function(group){ return group.name === selectedType; });
+    const rows = selectedType === 'all' ? live.models : (selectedGroup ? selectedGroup.models : []);
     const total = rows.reduce((n,x) => n+x.count, 0);
     const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
     let cursor=0;
-    const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',');
-    const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="'+(i===0)+'"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('');
+    const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',') || '#e8ecef 0 100%';
+    const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="false"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('') || '<div class="sg-caption sg-model-empty">Không có dữ liệu model cho loại thiết bị đã chọn.</div>';
     q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
-    q('#sg-model-denominator').textContent = `Mẫu số: ${total} thiết bị tiếp nhận · ${live.period.label}.`;
-    if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} thiết bị trong kỳ đang chọn.</div>`;
+    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' thiết bị tiếp nhận · ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' · ' + live.period.label + '.';
+    if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' thiết bị trong kỳ đang chọn.</div>';
+    else q('#sg-model-insight').innerHTML = '<div class="sg-caption">Chưa có model trong nhóm đã chọn.</div>';
   }
 
   function renderParts() {
@@ -376,7 +425,10 @@
     }
     setTimeout(loadLive,0);
   }));
+  q('#sg-model-type').addEventListener('change',() => {if(live)setTimeout(renderModels,0);});
   q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
+  q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
+  setInterval(() => {if(token && !document.hidden)loadLive();},300000);
   initGoogle();
 })();

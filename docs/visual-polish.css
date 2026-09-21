@@ -958,3 +958,58 @@
  #sg-preview #sg-overview .sg-command-attention th:nth-child(3),#sg-preview #sg-overview .sg-command-attention td:nth-child(3){display:table-cell!important;width:18%!important;text-align:center!important}
  #sg-preview #sg-overview .sg-command-attention th:nth-child(n+4),#sg-preview #sg-overview .sg-command-attention td:nth-child(n+4){display:none!important}
 }
+
+/* September 2026 v20: aligned command cards, left-aligned assessment, fixed attention header and live model controls. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-centers>.sg-panel-head,
+ #sg-preview #sg-overview .sg-command-attention>.sg-panel-head{
+  flex:0 0 44px!important;height:44px!important;min-height:44px!important;width:100%!important;
+  margin:0 0 6px!important;padding:0!important;align-items:flex-start!important;box-sizing:border-box!important
+ }
+ #sg-preview #sg-overview .sg-command-centers>.sg-panel-head>div,
+ #sg-preview #sg-overview .sg-command-attention>.sg-panel-head>div{margin:0!important;padding:0!important}
+ #sg-preview #sg-overview .sg-command-centers>.sg-panel-head h2,
+ #sg-preview #sg-overview .sg-command-attention>.sg-panel-head h2{margin:0!important;line-height:20px!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-centers>.sg-panel-head .sg-caption{line-height:16px!important;margin:0!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(7),
+ #sg-preview #sg-overview .sg-command-centers td:nth-child(7){text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention #sg-overview-table{
+  flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;
+  display:flex!important;flex-direction:column!important;overflow:hidden!important;
+  margin:0!important;padding:0!important;scrollbar-gutter:auto!important
+ }
+ #sg-preview #sg-overview .sg-attention-list-head,
+ #sg-preview #sg-overview .sg-attention-list-row{
+  display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(88px,.95fr) minmax(92px,1fr) 66px!important;
+  gap:8px!important;align-items:center!important;box-sizing:border-box!important
+ }
+ #sg-preview #sg-overview .sg-attention-list-head{
+  flex:0 0 36px!important;height:36px!important;min-height:36px!important;padding:0 20px 0 10px!important
+ }
+ #sg-preview #sg-overview .sg-attention-list-body{
+  flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;
+  overflow-y:auto!important;overflow-x:hidden!important;margin:0!important;padding:0!important;
+  scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important
+ }
+ #sg-preview #sg-overview .sg-attention-list-body::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-attention-list-body::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-attention-list-body::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-attention-list-row{
+  min-height:54px!important;padding:0 10px!important;border-bottom:1px solid #e7eaec!important;font-size:12px!important
+ }
+ #sg-preview #sg-overview .sg-attention-list-head>span:nth-child(-n+3),
+ #sg-preview #sg-overview .sg-attention-list-row>span:nth-child(-n+3){text-align:left!important;min-width:0!important}
+ #sg-preview #sg-overview .sg-attention-list-head>span:last-child,
+ #sg-preview #sg-overview .sg-attention-list-row>span:last-child{text-align:center!important}
+ #sg-preview #sg-overview .sg-attention-list-row>span:first-child b,
+ #sg-preview #sg-overview .sg-attention-list-row>span:first-child small{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ #sg-preview #sg-overview .sg-attention-list-row>span:first-child small{margin-top:2px!important;color:#6d757b!important}
+ #sg-preview #sg-overview .sg-attention-center{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ #sg-preview #sg-overview .sg-attention-list-row .sg-status{display:inline-block!important;max-width:100%!important;white-space:normal!important;line-height:16px!important}
+ #sg-preview #sg-overview .sg-model-head-tools .sg-control{width:170px!important;max-width:210px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-overview .sg-attention-list-head,
+ #sg-preview #sg-overview .sg-attention-list-row{grid-template-columns:minmax(0,1.12fr) minmax(72px,.9fr) minmax(82px,1fr) 56px!important;gap:6px!important}
+ #sg-preview #sg-overview .sg-model-head-tools .sg-control{width:150px!important}
+}

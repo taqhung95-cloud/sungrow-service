@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -96,7 +96,7 @@ function getDashboard_(request, actor) {
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
   const cacheKey = ['dash', APP_VERSION, annualMode, ticketMode, actor.role, scope.sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
-  const cached = cache.get(cacheKey);
+  const cached = request.refresh === true ? null : cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
@@ -272,13 +272,14 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const slaMet = slaDurations.filter(function (n) { return n <= SLA_DAYS; }).length;
   const slaBreachedOpen = openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }).length;
   const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
+  const modelTypes = groupModelTypes_(periodRows);
   const errors = groupCountMulti_(periodRows, function (r) { return r.issues; });
   const parts = groupParts_(records.filter(function (r) { return inPeriod_(r.checkDate, period); }));
   const quality = qualitySummary_(records, periodRows, sourceLastRow);
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.4',
+    schemaVersion: '1.5',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -325,6 +326,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     centers: centerMetrics,
     trends: backlogTrend_(records, period, scope),
     models: models,
+    modelTypes: modelTypes,
     errors: errors,
     parts: parts,
     tickets: tickets,
@@ -421,6 +423,26 @@ function groupCount_(rows, keyFn) {
   const counts = {};
   rows.forEach(function (r) { const k = keyFn(r); counts[k] = (counts[k] || 0) + 1; });
   return Object.keys(counts).map(function (name) { return { name: name, count: counts[name] }; }).sort(function (a, b) { return b.count - a.count; });
+}
+
+function groupModelTypes_(rows) {
+  const groups = {};
+  rows.forEach(function (r) {
+    const type = r.deviceType || 'Chưa xác định';
+    const model = r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định');
+    if (!groups[type]) groups[type] = { count: 0, models: {} };
+    groups[type].count++;
+    groups[type].models[model] = (groups[type].models[model] || 0) + 1;
+  });
+  return Object.keys(groups).map(function (name) {
+    const group = groups[name];
+    return {
+      name: name,
+      count: group.count,
+      models: Object.keys(group.models).map(function (model) { return { name: model, count: group.models[model] }; })
+        .sort(function (a, b) { return b.count - a.count; })
+    };
+  }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
 }
 
 function groupCountMulti_(rows, keysFn) {
