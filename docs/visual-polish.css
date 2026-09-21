@@ -1228,3 +1228,57 @@
  #sg-preview #sg-centers .sg-center-summary-item>strong{font-size:31px!important;line-height:36px!important}
  #sg-preview #sg-centers .sg-center-summary-item>span:last-child{font-size:9.5px!important}
 }
+
+/* September 2026 v25: compact data-quality checks and model fail-rate calculator. */
+#sg-preview #sg-quality>.sg-panel{gap:12px!important}
+#sg-preview #sg-quality .sg-quality{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;
+ flex:0 0 auto!important;height:auto!important;max-height:none!important;overflow:visible!important;scrollbar-gutter:auto!important
+}
+#sg-preview #sg-quality .sg-quality-item{
+ min-height:68px!important;padding:10px 12px!important;border-radius:8px!important;
+ display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;
+ font-size:12px!important;line-height:1.3!important;background:linear-gradient(135deg,#fafbfc,#f6f7f8)!important
+}
+#sg-preview #sg-quality .sg-quality-item strong{font-size:24px!important;line-height:1!important;align-self:center!important}
+#sg-preview #sg-quality .sg-quality-item .sg-small{font-size:9.5px!important;line-height:1.3!important;margin-top:3px!important}
+#sg-preview .sg-fail-rate{
+ flex:1 1 auto;min-height:0;border:1px solid #e1e5e8;border-radius:9px;background:#fff;
+ padding:14px 16px;display:flex;flex-direction:column;overflow:hidden
+}
+#sg-preview .sg-fail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:1px solid #eaedef}
+#sg-preview .sg-fail-head h3{font-size:15px;font-weight:600;line-height:1.3;margin:0 0 3px;display:flex;align-items:center;gap:8px}
+#sg-preview .sg-fail-head h3:before{content:"";width:4px;height:17px;border-radius:3px;background:var(--sg-orange);flex:0 0 auto}
+#sg-preview .sg-fail-head p{font-size:10.5px;color:#66747d;margin:0 0 0 12px}
+#sg-preview #sg-fail-period{font-size:10.5px;color:#66747d;background:#f4f5f6;border-radius:5px;padding:5px 8px;white-space:nowrap}
+#sg-preview .sg-fail-layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:16px;align-items:center;padding:12px 0 8px}
+#sg-preview .sg-fail-controls{display:grid;grid-template-columns:minmax(180px,1.25fr) minmax(150px,.75fr) auto;gap:10px;align-items:end}
+#sg-preview .sg-fail-controls label{display:grid;gap:5px;font-size:10.5px;color:#596872;font-weight:500}
+#sg-preview .sg-fail-controls .sg-control{width:100%;min-height:38px;font-size:12px}
+#sg-preview .sg-fail-calculate{height:38px;padding:0 18px;background:var(--sg-orange);border-color:var(--sg-orange);color:#fff;font-size:12px;font-weight:600;white-space:nowrap}
+#sg-preview .sg-fail-calculate:hover{background:#d96700;border-color:#d96700;color:#fff}
+#sg-preview .sg-fail-result{min-height:88px;border:1px solid #e5e8ea;border-radius:8px;background:#f8f9fa;padding:11px 13px;display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;align-content:center}
+#sg-preview .sg-fail-result>div{display:grid;gap:2px}
+#sg-preview .sg-fail-result span{font-size:9.5px;color:#687780}
+#sg-preview .sg-fail-result strong{font-size:22px;line-height:1.1;color:#172b3a}
+#sg-preview .sg-fail-result p{grid-column:1/-1;margin:1px 0 0;font-size:10.5px;line-height:1.4;color:#52616a}
+#sg-preview .sg-fail-result.has-result{border-left:4px solid #2f7a52;background:#f5faf7}
+#sg-preview .sg-fail-result.is-warning{border-left-color:#b63d35;background:#fff7f6}
+#sg-preview .sg-fail-result.is-error{display:block;border-color:#efc7c3;background:#fff7f6;color:#9b342e}
+#sg-preview .sg-fail-result.is-error p{font-size:11px;margin:0}
+#sg-preview .sg-fail-note{font-size:9.5px;line-height:1.4;color:#71808a;padding-top:8px;border-top:1px solid #eaedef}
+@media(max-width:1100px){
+ #sg-preview #sg-quality .sg-quality{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #sg-preview .sg-fail-rate{overflow:visible}
+ #sg-preview .sg-fail-layout{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+ #sg-preview #sg-quality .sg-quality{grid-template-columns:1fr!important}
+ #sg-preview .sg-fail-head{display:grid}
+ #sg-preview .sg-fail-controls{grid-template-columns:1fr}
+ #sg-preview .sg-fail-calculate{width:100%}
+}
+
+/* v25 review round 2: keep the calculator content-sized instead of stretching into empty space. */
+#sg-preview .sg-fail-rate{flex:0 0 auto!important;min-height:0!important}
+#sg-preview .sg-fail-layout{flex:0 0 auto!important;min-height:0!important;align-items:center!important}

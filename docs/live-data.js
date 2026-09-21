@@ -348,14 +348,68 @@
     if (overviewTable) overviewTable.innerHTML = '<div class="sg-mini-table-head sg-part-list-head"><span>Part number</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-part-list-body">' + rows.map(function(x) { return '<div class="sg-part-list-row"><span class="sg-sn">' + esc(x.pn) + '</span><span>' + x.quantity + '</span><span>' + Math.round(x.share * 100) + '%</span></div>'; }).join('') + '</div>';
   }
 
+  function failureModels() {
+    const catalog = Array.isArray(live.modelCatalog) ? live.modelCatalog.filter(Boolean) : [];
+    const periodModels = (live.models || []).map(function (x) { return x.name; }).filter(function (name) { return name && !/chưa (có model|xác định)/i.test(name); });
+    const ticketModels = (live.tickets || []).map(function (x) { return x.model; }).filter(function (name) { return name && !/chưa (có model|xác định)/i.test(name); });
+    return Array.from(new Set(catalog.concat(periodModels,ticketModels))).sort(function (a,b) { return a.localeCompare(b,'vi',{sensitivity:'base',numeric:true}); });
+  }
+
+  function syncFailureModelOptions() {
+    const select = q('#sg-fail-model');
+    if (!select) return;
+    const current = select.value;
+    const models = failureModels();
+    select.replaceChildren();
+    models.forEach(function (name) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+    if (models.includes(current)) select.value = current;
+    if (!models.length) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Chưa có model trong database';
+      select.appendChild(option);
+    }
+  }
+
+  function receivedForFailureModel(model) {
+    const row = (live.models || []).find(function (x) { return x.name === model; });
+    return row ? Number(row.count) || 0 : 0;
+  }
+
+  function calculateFailureRate() {
+    const result = q('#sg-fail-result');
+    const model = q('#sg-fail-model').value;
+    const sold = Number(q('#sg-sold-quantity').value);
+    if (!model || !Number.isFinite(sold) || sold <= 0 || Math.floor(sold) !== sold) {
+      result.className = 'sg-fail-result is-error';
+      result.innerHTML = '<p>Nhập số lượng đã bán là số nguyên lớn hơn 0.</p>';
+      return;
+    }
+    const received = receivedForFailureModel(model);
+    const rate = received / sold * 100;
+    const perThousand = received / sold * 1000;
+    const mismatch = received > sold;
+    result.className = 'sg-fail-result has-result' + (mismatch ? ' is-warning' : '');
+    result.innerHTML = '<div><span>Thiết bị gửi về</span><strong>' + received.toLocaleString('vi-VN') + '</strong></div><div><span>Fail rate ghi nhận</span><strong>' + rate.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%</strong></div><p><b>' + esc(model) + '</b> ghi nhận tương đương ' + perThousand.toLocaleString('vi-VN',{maximumFractionDigits:1}) + ' lượt gửi về trên 1.000 thiết bị bán trong ' + esc(live.period.label.toLowerCase()) + '.' + (mismatch ? ' Số lượt gửi về lớn hơn số bán đã nhập; cần kiểm tra kỳ, model hoặc lượt sửa lặp.' : ' Cần đối chiếu ngưỡng chất lượng của model để kết luận cao hay thấp.') + '</p>';
+  }
+
   function renderQuality() {
     const x = live.dataQuality;
     q('.sg-quality').innerHTML = [
-      ['Đã giao nhưng thiếu ngày trả',x.deliveredMissingReturnDate,'Không xác định chính xác kỳ hoàn tất'],
+      ['Đã giao thiếu ngày trả',x.deliveredMissingReturnDate,'Chưa xác định chính xác kỳ hoàn tất'],
       ['Số No. bị trùng',x.duplicateSourceNo,'Cần TicketID ổn định'],
-      ['Cột AD chưa có tiêu đề',x.unnamedColumnADRows,'API chưa sử dụng trường này'],
-      ['Cột AE chưa có tiêu đề',x.unnamedColumnAERows,'Cần đặt tên trước khi tích hợp']
+      ['Cột AD chưa có tên',x.unnamedColumnADRows,'API chưa sử dụng trường này'],
+      ['Cột AE chưa có tên',x.unnamedColumnAERows,'Cần đặt tên trước khi tích hợp']
     ].map(i => `<div class="sg-quality-item"><div>${i[0]}<span class="sg-small">${i[2]}</span></div><strong>${i[1]}</strong></div>`).join('');
+    syncFailureModelOptions();
+    q('#sg-fail-period').textContent = live.period.label + ' · theo ngày tiếp nhận';
+    if (q('#sg-sold-quantity').value) calculateFailureRate();
+    else q('#sg-fail-result').innerHTML = '<div><span>Thiết bị gửi về</span><strong>—</strong></div><div><span>Fail rate ghi nhận</span><strong>—</strong></div><p>Chọn model, nhập số lượng đã bán rồi bấm Tính toán.</p>';
   }
 
   const chartColors=['#ff7900','#365f78','#7d8b95','#d6a066','#a9b2b8','#c35a42'];
@@ -445,6 +499,9 @@
   q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
   q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
+  q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
+  q('#sg-fail-model').addEventListener('change',() => {if(live && q('#sg-sold-quantity').value)calculateFailureRate();});
+  q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
   setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
   window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});

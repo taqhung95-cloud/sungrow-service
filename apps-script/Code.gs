@@ -1,4 +1,4 @@
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -272,6 +272,11 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const slaMet = slaDurations.filter(function (n) { return n <= SLA_DAYS; }).length;
   const slaBreachedOpen = openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }).length;
   const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
+  const modelCatalog = Object.keys(records.reduce(function (catalog, r) {
+    const model = clean_(r.model);
+    if (model) catalog[model] = true;
+    return catalog;
+  }, {})).sort(function (a, b) { return a.localeCompare(b, 'vi', { sensitivity: 'base', numeric: true }); });
   const modelTypes = groupModelTypes_(periodRows);
   const errors = groupCountMulti_(periodRows, function (r) { return r.issues; });
   const parts = groupParts_(records.filter(function (r) { return inPeriod_(r.checkDate, period); }));
@@ -279,7 +284,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.5',
+    schemaVersion: '1.6',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -326,6 +331,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     centers: centerMetrics,
     trends: backlogTrend_(records, period, scope),
     models: models,
+    modelCatalog: modelCatalog,
     modelTypes: modelTypes,
     errors: errors,
     parts: parts,
