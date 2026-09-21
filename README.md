@@ -1,6 +1,6 @@
 # Sungrow Service Center Dashboard
 
-Dashboard theo dõi hiệu quả vận hành theo tháng cho Sungrow Service Center, DAT Center, XBSolar Center và BKE Center.
+Dashboard theo dõi hiệu quả vận hành theo tháng và năm cho Sungrow Service Center, DAT Center, XBSolar Center và BKE Center.
 
 ## Chạy thử giao diện
 

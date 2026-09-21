@@ -7,6 +7,8 @@
   let token = '';
   let live = null;
   let previousLive = null;
+  let loadSequence = 0;
+  let activeController = null;
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}';
@@ -26,33 +28,63 @@
     return q('#sg-period').selectedOptions[0]?.dataset.livePeriod || cfg.defaultPeriod || new Date().toISOString().slice(0, 7);
   }
 
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  async function fetchDashboard(payload, signal, attempts = 3) {
+    let lastError = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        const body = new URLSearchParams({payload: JSON.stringify(payload)});
+        const response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow', signal, cache:'no-store'});
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const result = await response.json();
+        if (!result.ok) throw new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
+        return result.data;
+      } catch (error) {
+        if (signal.aborted) throw error;
+        lastError = error;
+        if (attempt < attempts - 1) await delay([350,900][attempt] || 900);
+      }
+    }
+    throw lastError || new Error('Không nhận được phản hồi từ Apps Script');
+  }
+
   async function loadLive() {
     if (!token) return;
+    const sequence = ++loadSequence;
+    if (activeController) activeController.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    const periodKey = selectedPeriod();
+    const center = q('#sg-center').value;
     status('Đang đồng bộ', 'Đọc Google Sheet…');
     try {
-      const body = new URLSearchParams({payload: JSON.stringify({action:'dashboard.read', idToken:token, period:selectedPeriod(), center:q('#sg-center').value})});
-      const response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow'});
-      const result = await response.json();
-      if (!result.ok) throw new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
-      live = result.data;
+      const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center}, controller.signal);
+      if (sequence !== loadSequence) return;
+      live = currentData;
       previousLive = null;
+      const previousPeriod = /^\d{4}$/.test(periodKey)
+        ? String(Number(periodKey) - 1)
+        : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
       try {
-        const selectedKey = selectedPeriod();
-        const previousPeriod = /^\d{4}$/.test(selectedKey)
-          ? String(Number(selectedKey) - 1)
-          : (function(){ const selected=selectedKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
-        const previousBody = new URLSearchParams({payload: JSON.stringify({action:'dashboard.read', idToken:token, period:previousPeriod, center:q('#sg-center').value, includeAnnual:false})});
-        const previousResponse = await fetch(cfg.appsScriptUrl, {method:'POST', body:previousBody, redirect:'follow'});
-        const previousResult = await previousResponse.json();
-        if (previousResult.ok) previousLive = previousResult.data;
-      } catch (_) {
+        previousLive = await fetchDashboard({action:'dashboard.read', idToken:token, period:previousPeriod, center:center, includeAnnual:false, includeTickets:false}, controller.signal, 3);
+      } catch (comparisonError) {
+        if (controller.signal.aborted) return;
         previousLive = null;
       }
+      if (sequence !== loadSequence) return;
       renderAll();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      status('Đã đồng bộ', `${live.source.sheetName} · ${updated}`, 'ok');
+      status('Đã đồng bộ', `${live.source.sheetName} · ${updated}${previousLive ? '' : ' · chưa tải kỳ so sánh'}`, previousLive ? 'ok' : '');
     } catch (error) {
-      status('Lỗi đồng bộ', error.message || 'Không đọc được dữ liệu', 'error');
+      if (controller.signal.aborted || sequence !== loadSequence) return;
+      if (live) {
+        status('Kết nối gián đoạn', 'Đang giữ dữ liệu lần đồng bộ gần nhất', '');
+      } else {
+        status('Lỗi đồng bộ', 'Không kết nối được Apps Script sau 3 lần thử', 'error');
+      }
+    } finally {
+      if (activeController === controller) activeController = null;
     }
   }
 
@@ -71,6 +103,7 @@
   function renderOverview() {
     const s = live.summary;
     const ps = previousLive?.summary;
+    const comparisonNoun = live.period?.isYear ? 'Năm trước' : 'Tháng trước';
     const base = [
       {label:'Thiết bị tiếp nhận',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
       {label:'Thiết bị đã xử lý',value:s.waitingDelivery+s.returned,previous:ps ? ps.waitingDelivery+ps.returned : null,lower:false,unit:'thiết bị'},
@@ -80,10 +113,10 @@
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
     base.push({label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
     const trendViz = function(previous,current,tone) {
-      if (previous === null || previous === undefined) return '<span class="sg-mini-empty">T-1 → T</span>';
+      if (previous === null || previous === undefined) return '<span class="sg-mini-empty">Kỳ trước → Kỳ này</span>';
       const max=Math.max(1,previous,current), min=Math.min(0,previous,current), y=function(v){return 25-(v-min)/(max-min||1)*18;};
       const y1=y(previous).toFixed(1), y2=y(current).toFixed(1);
-      return '<svg class="sg-mini-trend '+tone+'" viewBox="0 0 72 30" aria-label="Tháng trước '+previous+', tháng này '+current+'"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>';
+      return '<svg class="sg-mini-trend '+tone+'" viewBox="0 0 72 30" aria-label="Kỳ trước '+previous+', kỳ này '+current+'"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>';
     };
     const annualTotals=(Array.isArray(live.yearlyTotals)&&live.yearlyTotals.length?live.yearlyTotals:[live.annual||{}]).filter(x=>x.year).slice().sort((a,b)=>a.year-b.year);
     const cumulative=live.cumulative?.received??annualTotals.reduce((sum,x)=>sum+(x.received||0),0);
@@ -132,13 +165,14 @@
       const better = delta === 0 ? null : (item.lower ? delta<0 : delta>0);
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? 'Không đổi' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
-      const note = p === null ? change : 'Tháng trước: '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
+      const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
       return '<div class="sg-kpi '+(index===0?'sg-kpi-received':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
     const errorTotal = live.errors.reduce((sum,x) => sum + Number(x.count||0),0);
-    q('#sg-errors').innerHTML = '<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div>' + live.errors.map(x => { const share=errorTotal ? 100*x.count/errorTotal : 0; return `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b class="sg-error-count">${x.count}</b><small class="sg-error-share">${share.toLocaleString('vi-VN',{maximumFractionDigits:1})}%</small></div>`; }).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
+    const errorRows = live.errors.map(x => { const share=errorTotal ? 100*x.count/errorTotal : 0; return `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b class="sg-error-count">${x.count}</b><small class="sg-error-share">${share.toLocaleString('vi-VN',{maximumFractionDigits:1})}%</small></div>`; }).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
+    q('#sg-errors').innerHTML = '<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-error-list-body">' + errorRows + '</div>';
     q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
   }
 
@@ -158,6 +192,9 @@
     const grid = q('#sg-month-compare-grid');
     const table = q('#sg-month-center-table');
     if (!grid || !table) return;
+    const annualComparison = !!live.period?.isYear;
+    const compareTitle = q('#sg-compare-title');
+    if (compareTitle) compareTitle.textContent = annualComparison ? 'Biến động vận hành so với năm trước' : 'Biến động vận hành so với tháng trước';
     const pct = function(value) { return value === null || value === undefined ? '—' : Math.round(value * 100) + '%'; };
     const deltaHtml = function(current, previous, lowerIsBetter, suffix) {
       if (previous === null || previous === undefined || current === null || current === undefined) return '<span class="sg-cell-delta neutral">Chưa có kỳ trước</span>';
@@ -168,10 +205,10 @@
     };
     const previousByCenter = previousLive ? Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; })) : {};
     if (!previousLive) {
-      q('#sg-compare-period').textContent = 'Đánh giá kỳ hiện tại · chưa tải được tháng trước';
+      q('#sg-compare-period').textContent = 'Đánh giá kỳ hiện tại · chưa tải được ' + (annualComparison ? 'năm trước' : 'tháng trước');
       q('#sg-system-trend').className = 'sg-trend-badge neutral';
       q('#sg-system-trend').textContent = 'Chưa có nền';
-      grid.innerHTML = '<div class="sg-caption">Vẫn đánh giá tải và rủi ro hiện tại; cần dữ liệu tháng trước để kết luận xu hướng.</div>';
+      grid.innerHTML = '<div class="sg-caption">Vẫn đánh giá tải và rủi ro hiện tại; cần dữ liệu ' + (annualComparison ? 'năm trước' : 'tháng trước') + ' để kết luận xu hướng.</div>';
     } else {
       q('#sg-compare-period').textContent = live.period.label + ' so với ' + previousLive.period.label;
       const currentOpen = live.summary.processing + live.summary.waitingDelivery;
@@ -222,7 +259,7 @@
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',');
     const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="'+(i===0)+'"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('');
-    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div>'+legend+'</div></div>';
+    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
     q('#sg-model-denominator').textContent = `Mẫu số: ${total} thiết bị tiếp nhận · ${live.period.label}.`;
     if (rows[0]) q('#sg-model-insight').innerHTML = `<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>${esc(rows[0].name)}</h3><div class="sg-model-selected-number">${total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0}% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">${rows[0].count} thiết bị trong kỳ đang chọn.</div>`;
   }
@@ -252,7 +289,7 @@
     const overviewMetrics = q('#sg-overview-part-metrics');
     const overviewTable = q('#sg-overview-part-table');
     if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>' + rows.length + ' mã · PN cao nhất ' + topShare + '%</span>';
-    if (overviewTable) overviewTable.innerHTML = '<table><thead><tr><th>Part number</th><th>SL</th><th>Tỷ trọng</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + '</td><td>' + Math.round(x.share * 100) + '%</td></tr>'; }).join('') + '</tbody></table>';
+    if (overviewTable) overviewTable.innerHTML = '<div class="sg-mini-table-head sg-part-list-head"><span>Part number</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-part-list-body">' + rows.map(function(x) { return '<div class="sg-part-list-row"><span class="sg-sn">' + esc(x.pn) + '</span><span>' + x.quantity + '</span><span>' + Math.round(x.share * 100) + '%</span></div>'; }).join('') + '</div>';
   }
 
   function renderQuality() {

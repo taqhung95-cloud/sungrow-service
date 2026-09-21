@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -93,7 +93,8 @@ function getDashboard_(request, actor) {
   const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
 
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
-  const cacheKey = ['dash', APP_VERSION, annualMode, actor.role, scope.sort().join(','), period.key].join(':');
+  const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
+  const cacheKey = ['dash', APP_VERSION, annualMode, ticketMode, actor.role, scope.sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
@@ -108,6 +109,7 @@ function getDashboard_(request, actor) {
     .filter(function (r) { return r.hasData && scope.includes(r.center); });
   const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotals_(spreadsheetId, period.year, source, scope, centers, actor.role === 'service_manager' && requestedCenter === 'all');
   const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor, yearlyTotals);
+  if (request.includeTickets === false) output.tickets = [];
   safeCachePut_(cache, cacheKey, output, 300);
   return output;
 }

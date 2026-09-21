@@ -850,3 +850,42 @@
  #sg-preview .sg-error-list-head span:first-child,#sg-preview .sg-error-name,
  #sg-preview #sg-overview .sg-command-parts th:first-child,#sg-preview #sg-overview .sg-command-parts td:first-child{text-align:left!important}
 }
+
+
+/* September 2026 v17: shared bottom-card table geometry and stable scroll ownership. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+ #sg-preview #sg-overview .sg-command-centers{grid-column:1 / span 2!important}
+ #sg-preview #sg-overview .sg-command-attention{grid-column:3!important}
+ #sg-preview #sg-overview .sg-command-model,#sg-preview #sg-overview .sg-command-errors,#sg-preview #sg-overview .sg-command-parts{padding:12px 14px!important}
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head,#sg-preview #sg-overview .sg-command-errors>.sg-panel-head,#sg-preview #sg-overview .sg-command-parts>.sg-panel-head{flex:0 0 44px!important;width:100%!important;height:44px!important;min-height:44px!important;margin:0!important;padding:0!important;align-items:flex-start!important}
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head h2,#sg-preview #sg-overview .sg-command-errors>.sg-panel-head h2,#sg-preview #sg-overview .sg-command-parts>.sg-panel-head h2{margin-top:0!important;line-height:20px!important}
+ #sg-preview #sg-overview #sg-model-bars,#sg-preview #sg-overview .sg-errors,#sg-preview #sg-overview #sg-overview-part-table{flex:1 1 0!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+ #sg-preview #sg-overview .sg-model-donut-layout{width:100%!important;height:100%!important;min-height:0!important;align-items:stretch!important}
+ #sg-preview #sg-overview .sg-model-donut{align-self:center!important}
+ #sg-preview #sg-overview .sg-model-donut-legend,#sg-preview #sg-overview .sg-errors,#sg-preview #sg-overview #sg-overview-part-table{display:flex!important;flex-direction:column!important;min-width:0!important;min-height:0!important;overflow:hidden!important;padding:0!important}
+ #sg-preview #sg-overview .sg-mini-table-head{position:relative!important;top:auto!important;z-index:2!important;flex:0 0 36px!important;width:100%!important;height:36px!important;min-height:36px!important;margin:0!important;padding:0 10px!important;background:#f4f5f6!important;box-shadow:inset 0 -1px #dde1e4}
+ #sg-preview #sg-overview .sg-card-list-body{flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;overflow-y:auto!important;overflow-x:hidden!important;margin:0!important;padding:0!important;scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important;overscroll-behavior:contain}
+ #sg-preview #sg-overview .sg-card-list-body::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-card-list-body::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-card-list-body::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-model-list-head,#sg-preview #sg-overview .sg-model-list-body .sg-donut-item{grid-template-columns:8px minmax(0,1fr) 34px 54px!important;gap:7px!important}
+ #sg-preview #sg-overview .sg-model-list-head:before{display:none!important;content:none!important}
+ #sg-preview #sg-overview .sg-model-list-head span:first-child{grid-column:1 / span 2!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-model-list-head span:nth-child(2),#sg-preview #sg-overview .sg-model-list-head span:nth-child(3){text-align:center!important}
+ #sg-preview #sg-overview .sg-model-list-body .sg-donut-item{width:100%!important;height:38px!important;min-height:38px!important;padding:0 10px!important}
+ #sg-preview #sg-overview .sg-error-list-head,#sg-preview #sg-overview .sg-error-list-body .sg-error-line{grid-template-columns:minmax(116px,145px) minmax(70px,1fr) 34px 54px!important;gap:8px!important}
+ #sg-preview #sg-overview .sg-error-list-body .sg-error-line{height:38px!important;min-height:38px!important;padding:0 10px!important}
+ #sg-preview #sg-overview .sg-command-errors .sg-track{width:100%!important;max-width:none!important}
+ #sg-preview #sg-overview .sg-part-list-head,#sg-preview #sg-overview .sg-part-list-row{display:grid!important;grid-template-columns:minmax(0,1fr) 72px 86px!important;align-items:center!important;gap:8px!important}
+ #sg-preview #sg-overview .sg-part-list-row{height:38px!important;min-height:38px!important;padding:0 10px!important;border-bottom:1px solid #e7eaec;font-size:12px}
+ #sg-preview #sg-overview .sg-part-list-head span:first-child,#sg-preview #sg-overview .sg-part-list-row span:first-child{text-align:left!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #sg-preview #sg-overview .sg-part-list-head span:nth-child(n+2),#sg-preview #sg-overview .sg-part-list-row span:nth-child(n+2){text-align:center!important;font-variant-numeric:tabular-nums}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-overview .sg-model-list-head,#sg-preview #sg-overview .sg-model-list-body .sg-donut-item{grid-template-columns:8px minmax(0,1fr) 30px 46px!important;gap:6px!important}
+ #sg-preview #sg-overview .sg-error-list-head,#sg-preview #sg-overview .sg-error-list-body .sg-error-line{grid-template-columns:minmax(92px,108px) minmax(50px,1fr) 30px 46px!important;gap:6px!important}
+ #sg-preview #sg-overview .sg-part-list-head,#sg-preview #sg-overview .sg-part-list-row{grid-template-columns:minmax(0,1fr) 52px 66px!important;gap:6px!important}
+}
+
+@media(min-width:1101px){#sg-preview #sg-overview .sg-card-list-body{height:auto!important}}
