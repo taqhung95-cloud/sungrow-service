@@ -4,11 +4,15 @@
   if (!root) return;
   const q = s => root.querySelector(s);
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const shortCenter = value => String(value || 'Chưa xác định').replace(/\s+Service\s+Center$/i,'').replace(/\s+Center$/i,'').trim();
+  const statusTone = value => { const s=String(value||'').toLowerCase(); return /đã\s*(sửa|giao|trả)|chờ\s*giao/.test(s)?'done':/chờ\s*(linh kiện|part)|không\s*sửa/.test(s)?'wait':/(kiểm tra|test|đổi)/.test(s)?'test':'neutral'; };
   let token = '';
   let live = null;
   let previousLive = null;
   let loadSequence = 0;
   let activeController = null;
+  let lastSuccessfulSync = 0;
+  const AUTO_SYNC_MS = 120000;
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
@@ -66,18 +70,20 @@
       if (sequence !== loadSequence) return;
       live = currentData;
       root.dataset.liveData = 'true';
-      previousLive = null;
+      const refreshComparison = options.comparison !== false || !previousLive;
+      if (refreshComparison) previousLive = null;
       const previousPeriod = /^\d{4}$/.test(periodKey)
         ? String(Number(periodKey) - 1)
         : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
       try {
-        previousLive = await fetchDashboard({action:'dashboard.read', idToken:token, period:previousPeriod, center:center, includeAnnual:false, includeTickets:false}, controller.signal, 3);
+        if (refreshComparison) previousLive = await fetchDashboard({action:'dashboard.read', idToken:token, period:previousPeriod, center:center, includeAnnual:false, includeTickets:false}, controller.signal, 3);
       } catch (comparisonError) {
         if (controller.signal.aborted) return;
         previousLive = null;
       }
       if (sequence !== loadSequence) return;
       renderAll();
+      lastSuccessfulSync = Date.now();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       status('Đã đồng bộ', `${live.source.sheetName} · ${updated}${previousLive ? '' : ' · chưa tải kỳ so sánh'}`, previousLive ? 'ok' : '');
     } catch (error) {
@@ -110,13 +116,13 @@
     const ps = previousLive?.summary;
     const comparisonNoun = live.period?.isYear ? 'Năm trước' : 'Tháng trước';
     const base = [
-      {label:'Thiết bị tiếp nhận',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
-      {label:'Thiết bị đã xử lý',value:s.waitingDelivery+s.returned,previous:ps ? ps.waitingDelivery+ps.returned : null,lower:false,unit:'thiết bị'},
-      {label:'Thiết bị chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
-      {label:'Thiết bị đã giao',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
+      {key:'received',label:'Thiết bị tiếp nhận',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
+      {key:'processed',label:'Thiết bị đã xử lý',value:s.waitingDelivery+s.returned,previous:ps ? ps.waitingDelivery+ps.returned : null,lower:false,unit:'thiết bị'},
+      {key:'waiting',label:'Thiết bị chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
+      {key:'returned',label:'Thiết bị đã giao',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
     ];
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
-    base.push({label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
+    base.push({key:'sla',label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
     const trendViz = function(previous,current,tone) {
       if (previous === null || previous === undefined) return '<span class="sg-mini-empty">Kỳ trước → Kỳ này</span>';
       const max=Math.max(1,previous,current), min=Math.min(0,previous,current), y=function(v){return 25-(v-min)/(max-min||1)*18;};
@@ -163,7 +169,7 @@
         const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' đang mở quá SLA';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
         const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
-        return '<div class="sg-kpi sg-kpi-sla ' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
+        return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
       }
       const p = item.previous === undefined ? null : item.previous;
       const delta = p === null ? null : item.value-p;
@@ -171,7 +177,7 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? 'Không đổi' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      return '<div class="sg-kpi '+(index===0?'sg-kpi-received':'')+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
+      return '<div class="sg-kpi sg-kpi-' + item.key + '"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
@@ -185,13 +191,13 @@
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
   function attentionTable(rows) {
     const body = rows.map(function(t) {
-      return '<div class="sg-attention-list-row"><span><b class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</b><small>' + esc(t.serialNumber || t.id) + '</small></span><span class="sg-attention-center" title="' + esc(t.center) + '">' + esc(t.center) + '</span><span><i class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</i></span><span class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</span></div>';
+      const status=t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật'; return '<div class="sg-attention-list-row"><span><b class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</b><small>' + esc(t.serialNumber || t.id) + '</small></span><span class="sg-attention-center" title="' + esc(t.center) + '">' + esc(shortCenter(t.center)) + '</span><span><span class="sg-status ' + statusTone(status) + '">' + esc(status) + '</span></span><span class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</span></div>';
     }).join('') || '<div class="sg-caption sg-attention-empty">Không có thiết bị cần theo dõi.</div>';
     return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span>Ngày</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
   }
 
   function ticketTable(rows) {
-    return '<table><thead><tr><th>Thiết bị / Thiết bị</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td>${esc(t.center)}</td><td><span class="sg-status">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>7?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
+    return '<table><thead><tr><th>Thiết bị / Thiết bị</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>7?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
   }
 
   function renderMonthlyComparison() {
@@ -244,7 +250,7 @@
       const label = x.lowVolume && x.status !== 'action' ? 'Mẫu nhỏ' : x.status === 'action' ? 'Cần hành động' : x.status === 'good' ? 'Ổn định' : 'Cần theo dõi';
       const tat = x.medianDays === null ? '—' : x.medianDays + ' ngày';
       const flow = x.outflowInflowRatio === null || x.outflowInflowRatio === undefined ? '—' : pct(x.outflowInflowRatio);
-      return '<tr title="' + esc(x.reason || '') + '"><td><strong>' + esc(x.center) + '</strong><span class="sg-small">' + esc(x.reason || '') + '</span></td><td><strong>' + x.received + '</strong><span class="sg-small">' + pct(x.volumeShare) + ' tổng tiếp nhận</span></td><td><strong>' + x.completed + '</strong><span class="sg-small">Ra/vào ' + flow + '</span></td><td><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</td><td><strong>' + x.overdue + '</strong><span class="sg-small">' + pct(x.overdueRate) + ' thiết bị mở</span></td><td><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
+      return '<tr title="' + esc(x.reason || '') + '"><td><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><span class="sg-small">' + esc(x.reason || '') + '</span></td><td><strong>' + x.received + '</strong><span class="sg-small">' + pct(x.volumeShare) + ' tổng tiếp nhận</span></td><td><strong>' + x.completed + '</strong><span class="sg-small">Ra/vào ' + flow + '</span></td><td><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</td><td><strong>' + x.overdue + '</strong><span class="sg-small">' + pct(x.overdueRate) + ' thiết bị mở</span></td><td><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
     }).join('') + '</tbody></table>';
     q('#sg-compare-note').textContent = 'Khối lượng cho biết tải service. Ra/vào, tồn, quá hạn và TAT dùng để đánh giá vận hành. Tỷ trọng tiếp nhận chưa phải tỷ lệ hỏng vì chưa có số máy đang vận hành.';
   }
@@ -364,7 +370,7 @@
     q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'thiết bị'],['Đã giao trong kỳ',live.summary.returned,'thiết bị'],['Đạt SLA 7 ngày',live.summary.slaRate===null||live.summary.slaRate===undefined?'—':Math.round(live.summary.slaRate*100)+'%','thiết bị đã trả'],['Đang mở quá SLA',live.summary.slaBreachedOpen||0,'thiết bị cần can thiệp']].map(function(x) { return '<div class="sg-center-summary-item"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><span>' + x[2] + '</span></div>'; }).join('');
     q('#sg-center-health-grid').innerHTML = cs.map(function(x) {
       const label = x.lowVolume && x.status !== 'action' ? 'Mẫu nhỏ' : labels[x.status];
-      return '<article class="sg-center-card"><div class="sg-center-card-head"><h3>' + esc(x.center) + '</h3><span class="sg-health-label ' + x.status + '">' + label + '</span></div><div class="sg-center-card-metrics"><div><span>Tiếp nhận</span><strong>' + x.received + '</strong></div><div><span>Ra/vào</span><strong>' + pct(x.outflowInflowRatio) + '</strong></div><div><span>Tồn cuối</span><strong>' + x.open + '</strong></div><div><span>SLA 7 ngày</span><strong>' + pct(x.slaRate) + '</strong></div></div><div class="sg-center-card-reason">' + esc(x.reason) + '</div></article>';
+      return '<article class="sg-center-card"><div class="sg-center-card-head"><h3 title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</h3><span class="sg-health-label ' + x.status + '">' + label + '</span></div><div class="sg-center-card-metrics"><div><span>Tiếp nhận</span><strong>' + x.received + '</strong></div><div><span>Ra/vào</span><strong>' + pct(x.outflowInflowRatio) + '</strong></div><div><span>Tồn cuối</span><strong>' + x.open + '</strong></div><div><span>SLA 7 ngày</span><strong>' + pct(x.slaRate) + '</strong></div></div><div class="sg-center-card-reason">' + esc(x.reason) + '</div></article>';
     }).join('');
     q('#sg-center-month-table').className = 'sg-center-curve';
     const comparable=cs.filter(function(x){return x.received>=5;}),profiles=comparable.map(function(x){const flow=Math.min(100,(x.outflowInflowRatio||0)*100),control=Math.max(0,100-(x.overdueRate||0)*100),sla=x.slaRate===null||x.slaRate===undefined?(x.medianDays===null?0:Math.max(0,100-Math.max(0,x.medianDays-7)*12.5)):x.slaRate*100;return {name:x.center,values:[flow,control,sla,x.coverage||0]};}),excluded=cs.length-comparable.length;
@@ -429,6 +435,8 @@
   q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
   q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
-  setInterval(() => {if(token && !document.hidden)loadLive();},300000);
+  setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
+  document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
+  window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});
   initGoogle();
 })();
