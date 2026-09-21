@@ -166,7 +166,7 @@
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
         const value = item.value === null ? '—' : item.value;
-        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' quá SLA';
+        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đã trả đúng hạn · ' + s.slaBreachedOpen + ' đang mở > 7 ngày';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
         const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
         return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
@@ -377,7 +377,7 @@
     const labels = {good:'Ổn định',watch:'Cần theo dõi',action:'Cần hành động'};
     const cs = live.centers;
     const pct = function(value) { return value === null || value === undefined ? '—' : Math.round(value * 100) + '%'; };
-    q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'thiết bị'],['Đã giao trong kỳ',live.summary.returned,'thiết bị'],['Đạt SLA 7 ngày',live.summary.slaRate===null||live.summary.slaRate===undefined?'—':Math.round(live.summary.slaRate*100)+'%','thiết bị đã trả'],['Đang mở quá SLA',live.summary.slaBreachedOpen||0,'thiết bị cần can thiệp']].map(function(x) { return '<div class="sg-center-summary-item"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><span>' + x[2] + '</span></div>'; }).join('');
+    q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'thiết bị'],['Đã giao trong kỳ',live.summary.returned,'thiết bị'],['Đạt SLA 7 ngày',live.summary.slaRate===null||live.summary.slaRate===undefined?'—':Math.round(live.summary.slaRate*100)+'%','thiết bị đã trả'],['Đang mở > 7 ngày',live.summary.slaBreachedOpen||0,'thiết bị cần can thiệp']].map(function(x) { return '<div class="sg-center-summary-item"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><span>' + x[2] + '</span></div>'; }).join('');
     q('#sg-center-health-grid').innerHTML = cs.map(function(x) {
       const label = x.lowVolume && x.status !== 'action' ? 'Mẫu nhỏ' : labels[x.status];
       return '<article class="sg-center-card"><div class="sg-center-card-head"><h3 title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</h3><span class="sg-health-label ' + x.status + '">' + label + '</span></div><div class="sg-center-card-metrics"><div><span>Tiếp nhận</span><strong>' + x.received + '</strong></div><div><span>Ra/vào</span><strong>' + pct(x.outflowInflowRatio) + '</strong></div><div><span>Tồn cuối</span><strong>' + x.open + '</strong></div><div><span>SLA 7 ngày</span><strong>' + pct(x.slaRate) + '</strong></div></div><div class="sg-center-card-reason">' + esc(x.reason) + '</div></article>';
