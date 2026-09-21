@@ -113,11 +113,10 @@
         const points=series.values.map(function(value,index){return value===null||value===undefined?null:[x(index),y(value),index,value];}).filter(Boolean);
         if(points.length<2)return '';
         const pointText=points.map(function(point){return point[0].toFixed(1)+','+point[1].toFixed(1);}).join(' ');
-        const dots=points.map(function(point){return '<circle cx="'+point[0].toFixed(1)+'" cy="'+point[1].toFixed(1)+'" r="1.8"><title>'+esc(series.name)+' · T'+point[2]+': '+Number(point[3]).toLocaleString('vi-VN')+' thiết bị</title></circle>';}).join('');
         return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+dots+'</g>';
       }).join('');
       const legend=allSeries.map(function(series){return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';}).join('');
-      return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
+      return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="none" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
     };
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {

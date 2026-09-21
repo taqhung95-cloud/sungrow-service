@@ -693,3 +693,19 @@
  #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(380px,1.85fr) repeat(4,minmax(138px,1fr))!important}
  #sg-preview .sg-received-annual{width:242px!important;min-width:242px!important;grid-template-columns:minmax(132px,1fr) 92px!important}
 }
+/* September 2026 v11: received chart fills the KPI card height. */
+@media(min-width:1101px){
+ #sg-preview .sg-kpi-received{position:relative!important;padding-right:10px!important}
+ #sg-preview .sg-kpi-received .sg-kpi-head{display:block!important}
+ #sg-preview .sg-kpi-received .sg-kpi-label,#sg-preview .sg-kpi-received .sg-kpi-value,#sg-preview .sg-kpi-received .sg-kpi-note{max-width:128px}
+ #sg-preview .sg-kpi-received .sg-received-annual{position:absolute!important;top:9px!important;right:9px!important;bottom:9px!important;width:calc(100% - 158px)!important;min-width:0!important;height:auto!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) 20px!important;gap:2px!important;padding:5px 7px 3px!important}
+ #sg-preview .sg-kpi-received .sg-received-annual svg{width:100%!important;height:100%!important;min-height:0!important}
+ #sg-preview .sg-kpi-received .sg-received-legend{width:100%;height:18px!important;display:flex!important;align-items:center!important;justify-content:flex-start;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:0 1px 1px!important;scrollbar-width:thin}
+ #sg-preview .sg-kpi-received .sg-received-legend span{display:inline-grid!important;grid-template-columns:6px auto auto!important;gap:3px!important;flex:0 0 auto;min-height:12px;font-size:8px!important}
+ #sg-preview .sg-kpi-received .sg-received-legend b{font-size:8px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview .sg-kpi-received .sg-kpi-label,#sg-preview .sg-kpi-received .sg-kpi-value,#sg-preview .sg-kpi-received .sg-kpi-note{max-width:112px}
+ #sg-preview .sg-kpi-received .sg-received-annual{width:calc(100% - 132px)!important;top:8px!important;right:8px!important;bottom:8px!important;padding-left:5px!important;padding-right:5px!important}
+ #sg-preview .sg-kpi-received .sg-received-legend{gap:6px!important}
+}
