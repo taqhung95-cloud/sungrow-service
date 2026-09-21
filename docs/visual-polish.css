@@ -917,3 +917,44 @@
 }
 #sg-preview #sg-overview #sg-model-bars{scrollbar-gutter:auto!important}
 @media(min-width:1101px){#sg-preview #sg-overview .sg-mini-table-head{padding:0 20px 0 10px!important}}
+
+/* September 2026 v19: balanced upper cards, fixed assessment column, shared scroll treatment. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-centers,
+ #sg-preview #sg-overview .sg-command-attention{padding-left:14px!important;padding-right:14px!important}
+ #sg-preview #sg-overview .sg-command-centers .sg-table-wrap{width:100%!important;padding-right:0!important;scrollbar-gutter:auto!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important}
+ #sg-preview #sg-overview .sg-command-centers .sg-table-wrap::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-command-centers .sg-table-wrap::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-command-centers .sg-table-wrap::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-command-centers table{width:100%!important;table-layout:fixed!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(1),#sg-preview #sg-overview .sg-command-centers td:nth-child(1){width:35%;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(2),#sg-preview #sg-overview .sg-command-centers td:nth-child(2){width:13%}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(3),#sg-preview #sg-overview .sg-command-centers td:nth-child(3){width:9%}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(4),#sg-preview #sg-overview .sg-command-centers td:nth-child(4){width:8%}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(5),#sg-preview #sg-overview .sg-command-centers td:nth-child(5){width:10%}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(6),#sg-preview #sg-overview .sg-command-centers td:nth-child(6){width:12%}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(7),#sg-preview #sg-overview .sg-command-centers td:nth-child(7){width:13%;text-align:center!important}
+ #sg-preview #sg-overview .sg-command-centers td:nth-child(n+2):nth-child(-n+6),#sg-preview #sg-overview .sg-command-centers th:nth-child(n+2):nth-child(-n+6){text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention .sg-table-wrap{width:100%!important;padding-right:0!important;scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important}
+ #sg-preview #sg-overview .sg-command-attention .sg-table-wrap::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-command-attention .sg-table-wrap::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-command-attention .sg-table-wrap::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-command-attention table{width:100%!important;table-layout:fixed!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(1),#sg-preview #sg-overview .sg-command-attention td:nth-child(1){width:44%;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(3),#sg-preview #sg-overview .sg-command-attention td:nth-child(3){width:38%;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(4),#sg-preview #sg-overview .sg-command-attention td:nth-child(4){width:18%;text-align:center!important}
+}
+
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(1),#sg-preview #sg-overview .sg-command-centers td:nth-child(1){width:34%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(2),#sg-preview #sg-overview .sg-command-centers td:nth-child(2){width:12%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(3),#sg-preview #sg-overview .sg-command-centers td:nth-child(3){width:9%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(4),#sg-preview #sg-overview .sg-command-centers td:nth-child(4){width:8%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(5),#sg-preview #sg-overview .sg-command-centers td:nth-child(5){width:10%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(6),#sg-preview #sg-overview .sg-command-centers td:nth-child(6){width:12%!important}
+ #sg-preview #sg-overview .sg-command-centers th:nth-child(7),#sg-preview #sg-overview .sg-command-centers td:nth-child(7){width:15%!important;text-align:center!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(1),#sg-preview #sg-overview .sg-command-attention td:nth-child(1){display:table-cell!important;width:44%!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(2),#sg-preview #sg-overview .sg-command-attention td:nth-child(2){display:table-cell!important;width:38%!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(3),#sg-preview #sg-overview .sg-command-attention td:nth-child(3){display:table-cell!important;width:18%!important;text-align:center!important}
+ #sg-preview #sg-overview .sg-command-attention th:nth-child(n+4),#sg-preview #sg-overview .sg-command-attention td:nth-child(n+4){display:none!important}
+}

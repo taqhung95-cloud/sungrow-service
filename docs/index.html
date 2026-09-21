@@ -413,7 +413,7 @@
   q('#sg-chart-note').textContent=sep?'Tháng 09 đang diễn ra · tính đến 17/09':'Kỳ báo cáo kết thúc ngày 31/08';q('#sg-period-date').textContent=sep?'01–17/09/2026':'01–31/08/2026';
   const errorNames=['Hỏng IGBT','Hỏng AC Relay','Hỏng quạt ngoài','Lỗi giao tiếp','Mất S/N'],errorCounts=(sep?[9,6,4,3,2]:[14,10,6,5,3]).map(n=>Math.round(n*factor)),errorTotal=errorCounts.reduce((sum,n)=>sum+n,0),errorMax=Math.max(1,...errorCounts);
   q('#sg-errors').innerHTML='<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-error-list-body">'+errorNames.map((s,i)=>{const n=errorCounts[i],share=errorTotal?100*n/errorTotal:0;return '<div class="sg-error-line"><span class="sg-error-name" title="'+s+'">'+s+'</span><div class="sg-track"><i style="width:'+(n/errorMax*100)+'%"></i></div><b class="sg-error-count">'+n+'</b><small class="sg-error-share">'+share.toLocaleString('vi-VN',{maximumFractionDigits:1})+'%</small></div>'}).join('')+'</div>';
-  const rows=activeRows();q('#sg-overview-table').innerHTML=table(rows.filter(t=>t.status!=='Đã trả'));
+const rows=activeRows();q('#sg-overview-table').innerHTML='<table><thead><tr><th>Thiết bị</th><th>Trạng thái</th><th>Ngày</th></tr></thead><tbody>'+rows.filter(t=>t.status!=='Đã trả').map(t=>'<tr><td><span class="sg-sn">'+t.model+'</span><span class="sg-small">'+t.id+'</span></td><td><span class="sg-status '+badge(t.status)+'">'+t.status+'</span></td><td class="sg-age '+(t.age>7?'old':'')+'">'+t.age+' ngày</td></tr>').join('')+'</tbody></table>';
   const term=q('#sg-search').value.toLowerCase();const filtered=rows.filter(t=>[t.id,t.sn,t.model].join(' ').toLowerCase().includes(term)&&(q('#sg-status').value==='all'||t.status===q('#sg-status').value));q('#sg-tickets-table').innerHTML=table(filtered);q('#sg-result-count').textContent=filtered.length+' thiết bị mẫu · danh sách tra cứu gồm mọi kỳ';
   q('#sg-part-title').textContent='Linh kiện đã thay sửa';q('#sg-part-sub').textContent='Ghi nhận từ thiết bị sửa chữa';
   let parts=[['BP004718','Board công suất',12],['BP004540','Board điều khiển',8],['ES000124','Quạt ngoài',24],['BP004914','Board AC Relay',6]];
@@ -503,4 +503,4 @@
 })();
 
 </script>
-<link rel="stylesheet" href="visual-polish.css?v=18"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=18"></script></body></html>
+<link rel="stylesheet" href="visual-polish.css?v=19"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=19"></script></body></html>

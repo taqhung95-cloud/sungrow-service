@@ -179,9 +179,9 @@
 
   function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
   function attentionTable(rows) {
-    return '<table><thead><tr><th>Thiết bị</th><th>Center</th><th>Trạng thái</th><th>Ngày</th></tr></thead><tbody>' + rows.map(function(t) {
-      return '<tr><td><span class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</span><span class="sg-small">' + esc(t.serialNumber || t.id) + '</span></td><td>' + esc(t.center) + '</td><td><span class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</span></td><td class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</td></tr>';
-    }).join('') + (rows.length?'':'<tr><td colspan="4">Không có thiết bị cần theo dõi.</td></tr>') + '</tbody></table>';
+    return '<table><thead><tr><th>Thiết bị</th><th>Trạng thái</th><th>Ngày</th></tr></thead><tbody>' + rows.map(function(t) {
+      return '<tr><td><span class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</span><span class="sg-small">' + esc(t.serialNumber || t.id) + '</span></td><td><span class="sg-status">' + esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật') + '</span></td><td class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</td></tr>';
+    }).join('') + (rows.length?'':'<tr><td colspan="3">Không có thiết bị cần theo dõi.</td></tr>') + '</tbody></table>';
   }
 
   function ticketTable(rows) {
