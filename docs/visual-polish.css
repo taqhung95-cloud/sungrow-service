@@ -889,3 +889,31 @@
 }
 
 @media(min-width:1101px){#sg-preview #sg-overview .sg-card-list-body{height:auto!important}}
+
+/* September 2026 v18: remove inherited scrollbar gutters and enforce one card table rhythm. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head,
+ #sg-preview #sg-overview .sg-command-errors>.sg-panel-head,
+ #sg-preview #sg-overview .sg-command-parts>.sg-panel-head{align-items:flex-start!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head h2,
+ #sg-preview #sg-overview .sg-command-errors>.sg-panel-head h2,
+ #sg-preview #sg-overview .sg-command-parts>.sg-panel-head h2{margin:0!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-model-donut-legend,
+ #sg-preview #sg-overview .sg-command-errors .sg-errors,
+ #sg-preview #sg-overview #sg-overview-part-table{display:flex!important;flex-direction:column!important;overflow:hidden!important;scrollbar-gutter:auto!important;padding:0!important}
+ #sg-preview #sg-overview .sg-card-list-body{flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-gutter:stable!important;padding:0!important}
+ #sg-preview #sg-overview .sg-mini-table-head{width:100%!important;box-sizing:border-box!important}
+ #sg-preview #sg-overview .sg-model-list-head span:first-child,
+ #sg-preview #sg-overview .sg-error-list-head span:first-child,
+ #sg-preview #sg-overview .sg-part-list-head span:first-child{text-align:left!important}
+ #sg-preview #sg-overview .sg-model-list-head span:nth-child(n+2),
+ #sg-preview #sg-overview .sg-error-list-head span:nth-child(n+3),
+ #sg-preview #sg-overview .sg-part-list-head span:nth-child(n+2),
+ #sg-preview #sg-overview .sg-model-list-body .sg-donut-item strong,
+ #sg-preview #sg-overview .sg-model-list-body .sg-donut-item em,
+ #sg-preview #sg-overview .sg-error-count,
+ #sg-preview #sg-overview .sg-error-share,
+ #sg-preview #sg-overview .sg-part-list-row span:nth-child(n+2){text-align:center!important}
+}
+#sg-preview #sg-overview #sg-model-bars{scrollbar-gutter:auto!important}
+@media(min-width:1101px){#sg-preview #sg-overview .sg-mini-table-head{padding:0 20px 0 10px!important}}
