@@ -1075,3 +1075,89 @@
 }
 
 @media(min-width:1101px) and (max-width:1500px){#sg-preview #sg-overview .sg-kpi-received .sg-received-legend span,#sg-preview #sg-overview .sg-kpi-received .sg-received-legend b{font-size:9px!important}}
+
+/* September 2026 v22: fixed table headers, shared card language and cleaner center charts. */
+@media(min-width:1101px){
+ /* KPI typography stays uniform; only the annual legend is emphasized. */
+ #sg-preview #sg-overview .sg-kpi-received .sg-kpi-label{font-size:13px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-kpi-value{font-size:34px!important;line-height:38px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-kpi-note{font-size:10.5px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-annual{right:5px!important;width:calc(100% - 159px)!important;grid-template-columns:minmax(0,1fr) 100px!important;gap:9px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-legend span,
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-legend b{font-size:10px!important;line-height:12px!important}
+ #sg-preview #sg-overview .sg-kpi-sla .sg-kpi-note{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important}
+
+ /* Comparison card owns one fixed header and one independent scroll body. */
+ #sg-preview #sg-overview #sg-month-center-table{
+  flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;
+  display:flex!important;flex-direction:column!important;overflow:hidden!important;margin:0!important;padding:0!important;scrollbar-gutter:auto!important
+ }
+ #sg-preview #sg-overview .sg-compare-list-head,
+ #sg-preview #sg-overview .sg-compare-list-row{
+  display:grid!important;grid-template-columns:minmax(0,34fr) minmax(0,12fr) minmax(0,9fr) minmax(0,8fr) minmax(0,10fr) minmax(0,12fr) minmax(0,15fr)!important;
+  gap:8px!important;align-items:center!important;box-sizing:border-box!important
+ }
+ #sg-preview #sg-overview .sg-compare-list-head{
+  flex:0 0 36px!important;height:36px!important;min-height:36px!important;padding:0 20px 0 10px!important;
+  border-radius:8px 8px 0 0!important;overflow:hidden!important
+ }
+ #sg-preview #sg-overview .sg-compare-list-body{
+  flex:1 1 0!important;height:0!important;min-height:0!important;width:100%!important;overflow-y:auto!important;overflow-x:hidden!important;
+  margin:0!important;padding:0!important;scrollbar-gutter:stable!important;scrollbar-width:thin!important;scrollbar-color:#b7bdc2 transparent!important
+ }
+ #sg-preview #sg-overview .sg-compare-list-body::-webkit-scrollbar{width:6px!important;height:6px!important}
+ #sg-preview #sg-overview .sg-compare-list-body::-webkit-scrollbar-thumb{background:#b7bdc2!important;border-radius:8px!important}
+ #sg-preview #sg-overview .sg-compare-list-body::-webkit-scrollbar-track{background:transparent!important}
+ #sg-preview #sg-overview .sg-compare-list-row{min-height:68px!important;padding:7px 10px!important;border-bottom:1px solid #e7eaec!important;font-size:12px!important}
+ #sg-preview #sg-overview .sg-compare-list-row>span{min-width:0!important;text-align:left!important}
+ #sg-preview #sg-overview .sg-compare-list-row strong{display:block!important;font-weight:500!important;line-height:17px!important}
+ #sg-preview #sg-overview .sg-compare-list-row small,
+ #sg-preview #sg-overview .sg-compare-list-row .sg-cell-delta{display:block!important;margin-top:2px!important;color:#687780!important;font-size:10.5px!important;line-height:14px!important;white-space:normal!important}
+ #sg-preview #sg-overview .sg-compare-list-row .sg-cell-delta.good{color:#2f704d!important}
+ #sg-preview #sg-overview .sg-compare-list-row .sg-cell-delta.bad{color:#a33b34!important}
+
+ /* Every data header uses the same rounded top edge. */
+ #sg-preview .sg-mini-table-head{border-radius:8px 8px 0 0!important;overflow:hidden!important}
+ #sg-preview table thead th:first-child{border-radius:8px 0 0 0!important}
+ #sg-preview table thead th:last-child{border-radius:0 8px 0 0!important}
+ #sg-preview table thead{background:#f4f5f6!important}
+ #sg-preview #sg-overview .sg-part-list-head span:nth-child(2),
+ #sg-preview #sg-overview .sg-part-list-row span:nth-child(2){text-align:center!important;justify-self:stretch!important}
+
+ /* Carry the overview card/header rhythm to the remaining tabs. */
+ #sg-preview #sg-centers .sg-panel,
+ #sg-preview #sg-tickets>.sg-panel,
+ #sg-preview #sg-parts>.sg-panel,
+ #sg-preview #sg-quality>.sg-panel{border-radius:10px!important;border:1px solid #dfe3e6!important;box-shadow:0 1px 2px rgba(20,35,50,.04)!important}
+ #sg-preview #sg-centers .sg-panel-head,
+ #sg-preview #sg-parts .sg-panel-head,
+ #sg-preview #sg-quality .sg-panel-head{min-height:44px!important;align-items:flex-start!important}
+ #sg-preview #sg-centers .sg-panel-head h2,
+ #sg-preview #sg-tickets .sg-toolbar h2,
+ #sg-preview #sg-parts .sg-panel-head h2,
+ #sg-preview #sg-quality .sg-panel-head h2{font-size:16px!important;line-height:21px!important;font-weight:600!important}
+ #sg-preview #sg-tickets th,#sg-preview #sg-parts th{height:36px!important;padding-top:0!important;padding-bottom:0!important;vertical-align:middle!important}
+ #sg-preview #sg-tickets td,#sg-preview #sg-parts td{font-size:12px!important;line-height:17px!important}
+
+ /* Service-center area fills the page; trend chart removes decorative grid lines. */
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:82px 285px minmax(300px,1fr)!important;align-content:stretch!important;height:0!important;min-height:0!important}
+ #sg-preview #sg-centers .sg-center-layout>.sg-panel:first-child,
+ #sg-preview #sg-centers .sg-monthly-trend{height:100%!important;min-height:0!important}
+ #sg-preview .sg-curve-chart-clean .sg-curve-grid line{stroke:#dfe4e7!important;stroke-width:1!important}
+ #sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis{font-size:11px!important;fill:#596872!important}
+ #sg-preview .sg-curve-legend{font-size:11px!important;gap:6px 14px!important;padding-top:5px!important}
+ #sg-preview .sg-curve-line{stroke-width:2.2!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-overview .sg-kpi-received .sg-kpi-label{font-size:12px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-kpi-value{font-size:31px!important;line-height:38px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-annual{right:4px!important;width:calc(100% - 140px)!important;grid-template-columns:minmax(0,1fr) 88px!important;gap:6px!important}
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-legend span,
+ #sg-preview #sg-overview .sg-kpi-received .sg-received-legend b{font-size:9.5px!important;line-height:11px!important}
+ #sg-preview #sg-overview .sg-kpi-sla .sg-kpi-note{font-size:9.5px!important}
+ #sg-preview #sg-overview .sg-compare-list-head,
+ #sg-preview #sg-overview .sg-compare-list-row{gap:6px!important}
+ #sg-preview #sg-overview .sg-compare-list-row{font-size:11px!important;padding-left:8px!important;padding-right:8px!important}
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:76px 245px minmax(285px,1fr)!important}
+ #sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis,#sg-preview .sg-curve-legend{font-size:10px!important}
+}

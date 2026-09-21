@@ -166,7 +166,7 @@
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
         const value = item.value === null ? '—' : item.value;
-        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' đang mở quá SLA';
+        const note = item.value === null ? 'Chưa có thiết bị trả đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đúng hạn · ' + s.slaBreachedOpen + ' quá SLA';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
         const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
         return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
@@ -244,14 +244,15 @@
       q('#sg-system-trend').className = 'sg-trend-badge ' + systemTone;
       q('#sg-system-trend').textContent = systemTone === 'good' ? 'Đang cải thiện' : systemTone === 'bad' ? 'Cần chú ý' : 'Ổn định';
     }
-    table.innerHTML = '<table><thead><tr><th>Center</th><th>Tiếp nhận</th><th>Đã giao</th><th>Tồn cuối</th><th>Quá hạn</th><th>TAT</th><th>Nhận định</th></tr></thead><tbody>' + live.centers.map(function(x) {
+    const comparisonRows = live.centers.map(function(x) {
       const p = previousByCenter[x.center] || {};
       const tone = x.lowVolume && x.status !== 'action' ? 'neutral' : x.status === 'action' ? 'bad' : x.status === 'good' ? 'good' : 'neutral';
       const label = x.lowVolume && x.status !== 'action' ? 'Mẫu nhỏ' : x.status === 'action' ? 'Cần hành động' : x.status === 'good' ? 'Ổn định' : 'Cần theo dõi';
       const tat = x.medianDays === null ? '—' : x.medianDays + ' ngày';
       const flow = x.outflowInflowRatio === null || x.outflowInflowRatio === undefined ? '—' : pct(x.outflowInflowRatio);
-      return '<tr title="' + esc(x.reason || '') + '"><td><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><span class="sg-small">' + esc(x.reason || '') + '</span></td><td><strong>' + x.received + '</strong><span class="sg-small">' + pct(x.volumeShare) + ' tổng tiếp nhận</span></td><td><strong>' + x.completed + '</strong><span class="sg-small">Ra/vào ' + flow + '</span></td><td><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</td><td><strong>' + x.overdue + '</strong><span class="sg-small">' + pct(x.overdueRate) + ' thiết bị mở</span></td><td><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</td><td><span class="sg-trend-badge ' + tone + '">' + label + '</span></td></tr>';
-    }).join('') + '</tbody></table>';
+      return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small>' + esc(x.reason || '') + '</small></span><span><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tổng tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</span><span><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' thiết bị mở</small></span><span><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
+    }).join('');
+    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span>Tiếp nhận</span><span>Đã giao</span><span>Tồn cuối</span><span>Quá hạn</span><span>TAT</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
     q('#sg-compare-note').textContent = 'Khối lượng cho biết tải service. Ra/vào, tồn, quá hạn và TAT dùng để đánh giá vận hành. Tỷ trọng tiếp nhận chưa phải tỷ lệ hỏng vì chưa có số máy đang vận hành.';
   }
 
@@ -360,7 +361,16 @@
   const chartColors=['#ff7900','#365f78','#7d8b95','#d6a066','#a9b2b8','#c35a42'];
   function curvePath(points){if(!points.length)return '';let d='M'+points[0][0].toFixed(1)+','+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const p=points[i-1],n=points[i],mx=(p[0]+n[0])/2;d+=' C'+mx.toFixed(1)+','+p[1].toFixed(1)+' '+mx.toFixed(1)+','+n[1].toFixed(1)+' '+n[0].toFixed(1)+','+n[1].toFixed(1)}return d}
   function centerColor(name){if(/sungrow/i.test(name))return '#ff7900';if(/dat/i.test(name))return '#365f78';if(/xbsolar/i.test(name))return '#7d8b95';if(/bke/i.test(name))return '#d6a066';let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))>>>0;return chartColors[h%chartColors.length]}
-  function curveChart(series,axisLabels,maxValue,unit){const W=760,H=210,L=43,R=45,T=14,B=34,pw=W-L-R,ph=H-T-B,max=Math.max(1,maxValue),x=i=>L+(axisLabels.length===1?pw/2:i*pw/(axisLabels.length-1)),y=v=>T+ph-Math.max(0,Math.min(max,v))/max*ph;const grid=[0,.5,1].map(t=>{const yy=y(t*max);return '<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"></line><text x="'+(L-7)+'" y="'+(yy+4)+'" text-anchor="end">'+Math.round(t*max)+'</text>'}).join(''),axes=axisLabels.map((label,i)=>'<text class="sg-curve-axis" x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+label+'</text>').join(''),curves=series.map(s=>{const pts=s.values.map((v,i)=>[x(i),y(v)]),color=centerColor(s.name),dots=pts.map((p,i)=>{const safe=String(s.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;'),tip=safe+'|'+axisLabels[i]+': '+Math.round(s.values[i])+unit;return '<g class="sg-curve-point" data-chart-tip="'+tip+'"><circle class="sg-curve-dot" cx="'+p[0]+'" cy="'+p[1]+'" r="3" style="fill:'+color+'"></circle><circle class="sg-curve-hit" cx="'+p[0]+'" cy="'+p[1]+'" r="12"></circle></g>'}).join('');return '<path class="sg-curve-line" d="'+curvePath(pts)+'" style="stroke:'+color+'"></path>'+dots}).join(''),legend=series.map(s=>'<span><i style="background:'+centerColor(s.name)+'"></i>'+s.name.replace(' Service Center',' SC').replace(' Center','')+'</span>').join('');return '<div class="sg-curve-chart"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img"><g class="sg-curve-grid">'+grid+'</g>'+axes+curves+'</svg><div class="sg-curve-legend">'+legend+'</div></div>'}
+  function curveChart(series,axisLabels,maxValue,unit,options) {
+    options=options||{};
+    const W=760,H=210,L=43,R=45,T=14,B=34,pw=W-L-R,ph=H-T-B,max=Math.max(1,maxValue),x=i=>L+(axisLabels.length===1?pw/2:i*pw/(axisLabels.length-1)),y=v=>T+ph-Math.max(0,Math.min(max,v))/max*ph;
+    const ticks=options.grid===false?[0,1]:[0,.5,1];
+    const grid=ticks.map(t=>{const yy=y(t*max),line=options.grid===false?(t===0?'<line class="sg-curve-baseline" x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"></line>':''):'<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"></line>';return line+'<text x="'+(L-7)+'" y="'+(yy+4)+'" text-anchor="end">'+Math.round(t*max)+'</text>';}).join('');
+    const axes=axisLabels.map((label,i)=>'<text class="sg-curve-axis" x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+label+'</text>').join('');
+    const curves=series.map(s=>{const pts=s.values.map((v,i)=>[x(i),y(v)]),color=centerColor(s.name),dots=pts.map((p,i)=>{const safe=String(s.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;'),tip=safe+'|'+axisLabels[i]+': '+Math.round(s.values[i])+unit;return '<g class="sg-curve-point" data-chart-tip="'+tip+'"><circle class="sg-curve-dot" cx="'+p[0]+'" cy="'+p[1]+'" r="3" style="fill:'+color+'"></circle><circle class="sg-curve-hit" cx="'+p[0]+'" cy="'+p[1]+'" r="12"></circle></g>'}).join('');return '<path class="sg-curve-line" d="'+curvePath(pts)+'" style="stroke:'+color+'"></path>'+dots}).join('');
+    const legend=series.map(s=>'<span><i style="background:'+centerColor(s.name)+'"></i>'+esc(shortCenter(s.name))+'</span>').join('');
+    return '<div class="sg-curve-chart '+(options.grid===false?'sg-curve-chart-clean':'')+'"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img"><g class="sg-curve-grid">'+grid+'</g>'+axes+curves+'</svg><div class="sg-curve-legend">'+legend+'</div></div>';
+  }
   function installChartTooltip(){if(root.dataset.chartTooltipReady)return;root.dataset.chartTooltipReady='true';let tip=document.querySelector('.sg-chart-tooltip');if(!tip){tip=document.createElement('div');tip.className='sg-chart-tooltip';document.body.appendChild(tip)}root.addEventListener('pointermove',e=>{const point=e.target.closest&&e.target.closest('.sg-curve-point');if(!point){tip.classList.remove('show');return}const parts=(point.dataset.chartTip||'').split('|');tip.replaceChildren();const strong=document.createElement('strong');strong.textContent=parts.shift()||'';tip.appendChild(strong);parts.forEach(x=>{const span=document.createElement('span');span.textContent=x;tip.appendChild(span)});tip.style.left=Math.min(window.innerWidth-230,e.clientX+14)+'px';tip.style.top=Math.min(window.innerHeight-80,e.clientY+14)+'px';tip.classList.add('show')});root.addEventListener('pointerleave',()=>tip.classList.remove('show'))}
   installChartTooltip();
   function renderCenters() {
@@ -378,7 +388,7 @@
     const colors = ['#ff7900','#606060','#9a9a9a','#c4c4c4'];
     q('#sg-center-trend-legend').innerHTML = '';
     const trendLabels=live.trends.map(function(m){return m.label;}),trendSeries=cs.map(function(c){return {name:c.center,values:live.trends.map(function(m){return m.values[c.center]||0;})};}),max=Math.max(1,...trendSeries.flatMap(function(s){return s.values;}));
-    q('#sg-center-trend').innerHTML = curveChart(trendSeries,trendLabels,Math.ceil(max/5)*5,' thiết bị');
+    q('#sg-center-trend').innerHTML = curveChart(trendSeries,trendLabels,Math.ceil(max/5)*5,' thiết bị',{grid:false});
     if (cs[0]) q('#sg-center-detail').innerHTML = '<div class="sg-caption">CÁCH ĐỌC KẾT QUẢ</div><h3>' + esc(live.period.label) + '</h3><div class="sg-detail-block"><strong>Khối lượng</strong><p>Tiếp nhận mô tả tải service và tỷ trọng sự cố ghi nhận, không phải tỷ lệ hỏng sản phẩm.</p></div><div class="sg-detail-block"><strong>Hiệu quả</strong><p>Đọc đồng thời tỷ lệ ra/vào, tồn cuối kỳ, SLA trả thiết bị trong 7 ngày, quá hạn và TAT. Mẫu dưới 5 thiết bị chưa dùng để xếp hạng.</p></div><div class="sg-detail-block"><strong>Dữ liệu cần bổ sung</strong><p>Muốn tính tỷ lệ hư hỏng cần số máy bán hoặc đang vận hành theo model và khu vực.</p></div>';
   }
 
