@@ -709,3 +709,18 @@
  #sg-preview .sg-kpi-received .sg-received-annual{width:calc(100% - 132px)!important;top:8px!important;right:8px!important;bottom:8px!important;padding-left:5px!important;padding-right:5px!important}
  #sg-preview .sg-kpi-received .sg-received-legend{gap:6px!important}
 }
+/* September 2026 v12: balanced annual trend without a nested card. */
+@media(min-width:1101px){
+ #sg-preview .sg-kpi-received .sg-received-annual{top:11px!important;right:12px!important;bottom:11px!important;width:calc(100% - 160px)!important;display:grid!important;grid-template-columns:minmax(0,1fr) 90px!important;grid-template-rows:minmax(0,1fr)!important;align-items:stretch!important;gap:9px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:hidden!important}
+ #sg-preview .sg-kpi-received .sg-received-annual svg{width:100%!important;height:100%!important;min-height:0!important;overflow:visible!important}
+ #sg-preview .sg-annual-baseline{stroke:#e7eaec!important}
+ #sg-preview .sg-annual-series polyline{stroke-width:1.05!important}
+ #sg-preview .sg-annual-series:first-of-type polyline{stroke-width:1.65!important}
+ #sg-preview .sg-kpi-received .sg-received-legend{width:auto!important;height:100%!important;display:grid!important;align-content:center!important;grid-auto-rows:minmax(10px,auto);gap:1px!important;overflow-y:auto!important;overflow-x:hidden!important;padding:0 1px!important}
+ #sg-preview .sg-kpi-received .sg-received-legend span{display:grid!important;grid-template-columns:6px minmax(0,1fr) auto!important;gap:3px!important;min-height:10px;font-size:7.5px!important;line-height:1!important}
+ #sg-preview .sg-kpi-received .sg-received-legend b{font-size:7.5px!important;font-weight:600!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview .sg-kpi-received .sg-received-annual{top:10px!important;right:10px!important;bottom:10px!important;width:calc(100% - 142px)!important;grid-template-columns:minmax(0,1fr) 78px!important;gap:6px!important}
+ #sg-preview .sg-kpi-received .sg-received-legend span,#sg-preview .sg-kpi-received .sg-received-legend b{font-size:7px!important}
+}
