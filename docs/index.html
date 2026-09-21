@@ -412,7 +412,7 @@
   q('#sg-chart').innerHTML=arr.map((v,i)=>'<div class="sg-chart-group">'+v.map((n,j)=>'<div class="sg-bar '+(j?'out':'')+'" style="height:'+Math.round(n*factor/50*100)+'%"><b>'+Math.round(n*factor)+'</b></div>').join('')+'<span class="sg-month">T'+(i+(sep?4:3))+'</span></div>').join('');
   q('#sg-chart-note').textContent=sep?'Tháng 09 đang diễn ra · tính đến 17/09':'Kỳ báo cáo kết thúc ngày 31/08';q('#sg-period-date').textContent=sep?'01–17/09/2026':'01–31/08/2026';
   const errorNames=['Hỏng IGBT','Hỏng AC Relay','Hỏng quạt ngoài','Lỗi giao tiếp','Mất S/N'],errorCounts=(sep?[9,6,4,3,2]:[14,10,6,5,3]).map(n=>Math.round(n*factor)),errorTotal=errorCounts.reduce((sum,n)=>sum+n,0),errorMax=Math.max(1,...errorCounts);
-  q('#sg-errors').innerHTML='<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL · Tỷ trọng</span></div>'+errorNames.map((s,i)=>{const n=errorCounts[i],share=errorTotal?100*n/errorTotal:0;return '<div class="sg-error-line"><span class="sg-error-name" title="'+s+'">'+s+'</span><div class="sg-track"><i style="width:'+(n/errorMax*100)+'%"></i></div><span class="sg-error-metric"><b>'+n+'</b><small>'+share.toLocaleString('vi-VN',{maximumFractionDigits:1})+'%</small></span></div>'}).join('');
+  q('#sg-errors').innerHTML='<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div>'+errorNames.map((s,i)=>{const n=errorCounts[i],share=errorTotal?100*n/errorTotal:0;return '<div class="sg-error-line"><span class="sg-error-name" title="'+s+'">'+s+'</span><div class="sg-track"><i style="width:'+(n/errorMax*100)+'%"></i></div><b class="sg-error-count">'+n+'</b><small class="sg-error-share">'+share.toLocaleString('vi-VN',{maximumFractionDigits:1})+'%</small></div>'}).join('');
   const rows=activeRows();q('#sg-overview-table').innerHTML=table(rows.filter(t=>t.status!=='Đã trả'));
   const term=q('#sg-search').value.toLowerCase();const filtered=rows.filter(t=>[t.id,t.sn,t.model].join(' ').toLowerCase().includes(term)&&(q('#sg-status').value==='all'||t.status===q('#sg-status').value));q('#sg-tickets-table').innerHTML=table(filtered);q('#sg-result-count').textContent=filtered.length+' thiết bị mẫu · danh sách tra cứu gồm mọi kỳ';
   q('#sg-part-title').textContent='Linh kiện đã thay sửa';q('#sg-part-sub').textContent='Ghi nhận từ thiết bị sửa chữa';
@@ -504,4 +504,4 @@
 })();
 
 </script>
-<link rel="stylesheet" href="visual-polish.css?v=14"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=14"></script></body></html>
+<link rel="stylesheet" href="visual-polish.css?v=15"><script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="live-data.js?v=15"></script></body></html>
