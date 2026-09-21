@@ -1161,3 +1161,39 @@
  #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:76px 245px minmax(285px,1fr)!important}
  #sg-preview .sg-curve-grid text,#sg-preview .sg-curve-axis,#sg-preview .sg-curve-legend{font-size:10px!important}
 }
+/* September 2026 v23: align Service Center KPIs, compact center health, unify both charts. */
+@media(min-width:1501px){
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:119px 245px minmax(300px,1fr)!important}
+ #sg-preview #sg-centers .sg-center-summary-item{height:119px!important;min-height:119px!important;box-sizing:border-box!important}
+ #sg-preview #sg-centers .sg-center-health-grid{align-items:stretch!important}
+ #sg-preview #sg-centers .sg-center-card{height:166px!important;min-height:166px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-centers:not(.sg-hidden){grid-template-rows:116px 220px minmax(285px,1fr)!important}
+ #sg-preview #sg-centers .sg-center-summary-item{height:116px!important;min-height:116px!important;box-sizing:border-box!important;padding-top:11px!important;padding-bottom:11px!important}
+ #sg-preview #sg-centers .sg-center-card{height:145px!important;min-height:145px!important}
+}
+@media(min-width:1101px){
+ #sg-preview #sg-centers .sg-center-health-panel{min-height:0!important;overflow:hidden!important}
+ #sg-preview #sg-centers .sg-center-health-grid{height:auto!important;min-height:0!important}
+ #sg-preview #sg-centers .sg-center-card-reason{-webkit-line-clamp:2!important}
+ #sg-preview #sg-centers .sg-center-layout>.sg-panel:first-child,
+ #sg-preview #sg-centers .sg-monthly-trend{display:flex!important;flex-direction:column!important}
+ #sg-preview #sg-centers .sg-center-curve,
+ #sg-preview #sg-centers .sg-center-trend{flex:1 1 0!important;height:0!important;min-height:0!important}
+ #sg-preview #sg-centers .sg-center-curve,
+ #sg-preview #sg-centers .sg-center-trend{padding:0!important;margin:0!important;border:0!important;background:none!important}
+ #sg-preview #sg-centers .sg-curve-chart svg{min-height:0!important}
+ #sg-preview #sg-centers .sg-curve-grid line{stroke:#e4e8eb!important;stroke-width:1!important;opacity:1!important}
+ #sg-preview #sg-centers .sg-curve-grid text,
+ #sg-preview #sg-centers .sg-curve-axis{font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif!important;font-size:13px!important;fill:#596872!important}
+ #sg-preview #sg-centers .sg-curve-legend{font-size:13px!important;line-height:17px!important;gap:7px 16px!important;padding-top:7px!important;min-height:24px!important}
+ #sg-preview #sg-centers .sg-curve-legend i{width:9px!important;height:9px!important}
+ #sg-preview #sg-centers .sg-curve-line{stroke-width:2.2!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview #sg-centers .sg-curve-grid text,
+ #sg-preview #sg-centers .sg-curve-axis,
+ #sg-preview #sg-centers .sg-curve-legend{font-size:12px!important}
+ #sg-preview #sg-centers .sg-curve-legend{line-height:16px!important;gap:6px 13px!important}
+}

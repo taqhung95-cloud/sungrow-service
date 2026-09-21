@@ -388,7 +388,7 @@
     const colors = ['#ff7900','#606060','#9a9a9a','#c4c4c4'];
     q('#sg-center-trend-legend').innerHTML = '';
     const trendLabels=live.trends.map(function(m){return m.label;}),trendSeries=cs.map(function(c){return {name:c.center,values:live.trends.map(function(m){return m.values[c.center]||0;})};}),max=Math.max(1,...trendSeries.flatMap(function(s){return s.values;}));
-    q('#sg-center-trend').innerHTML = curveChart(trendSeries,trendLabels,Math.ceil(max/5)*5,' thiết bị',{grid:false});
+    q('#sg-center-trend').innerHTML = curveChart(trendSeries,trendLabels,Math.ceil(max/5)*5,' thiết bị',{grid:true});
     if (cs[0]) q('#sg-center-detail').innerHTML = '<div class="sg-caption">CÁCH ĐỌC KẾT QUẢ</div><h3>' + esc(live.period.label) + '</h3><div class="sg-detail-block"><strong>Khối lượng</strong><p>Tiếp nhận mô tả tải service và tỷ trọng sự cố ghi nhận, không phải tỷ lệ hỏng sản phẩm.</p></div><div class="sg-detail-block"><strong>Hiệu quả</strong><p>Đọc đồng thời tỷ lệ ra/vào, tồn cuối kỳ, SLA trả thiết bị trong 7 ngày, quá hạn và TAT. Mẫu dưới 5 thiết bị chưa dùng để xếp hạng.</p></div><div class="sg-detail-block"><strong>Dữ liệu cần bổ sung</strong><p>Muốn tính tỷ lệ hư hỏng cần số máy bán hoặc đang vận hành theo model và khu vực.</p></div>';
   }
 
