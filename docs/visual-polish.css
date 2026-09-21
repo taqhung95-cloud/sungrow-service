@@ -724,3 +724,36 @@
  #sg-preview .sg-kpi-received .sg-received-annual{top:10px!important;right:10px!important;bottom:10px!important;width:calc(100% - 142px)!important;grid-template-columns:minmax(0,1fr) 78px!important;gap:6px!important}
  #sg-preview .sg-kpi-received .sg-received-legend span,#sg-preview .sg-kpi-received .sg-received-legend b{font-size:7px!important}
 }
+/* September 2026 v13: balanced overview cards, larger model share, and error shares. */
+@media(min-width:1101px){
+ #sg-preview #sg-overview .sg-command-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #sg-preview #sg-overview .sg-command-centers{grid-column:1/3!important}
+ #sg-preview #sg-overview .sg-command-attention{grid-column:3!important}
+ #sg-preview #sg-overview .sg-command-model{grid-column:1!important}
+ #sg-preview #sg-overview .sg-command-errors{grid-column:2!important}
+ #sg-preview #sg-overview .sg-command-parts{grid-column:3!important}
+ #sg-preview .sg-model-donut-layout{grid-template-columns:138px minmax(0,1fr)!important;gap:12px!important}
+ #sg-preview .sg-model-donut{width:126px!important;height:126px!important}
+ #sg-preview .sg-model-donut:after{inset:25px!important}
+ #sg-preview .sg-model-donut strong{font-size:22px!important}
+ #sg-preview #sg-overview .sg-command-errors .sg-error-line{grid-template-columns:minmax(112px,138px) minmax(45px,1fr) 68px!important;gap:8px!important}
+ #sg-preview .sg-error-metric{display:flex;align-items:baseline;justify-content:flex-end;gap:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+ #sg-preview .sg-error-metric b{font-size:11px;font-weight:600;color:#243746}
+ #sg-preview .sg-error-metric small{font-size:10px;color:#687780}
+ #sg-preview .sg-kpi-received .sg-received-annual{right:9px!important;width:calc(100% - 174px)!important}
+ #sg-preview .sg-kpi-received .sg-received-legend span{font-size:8.5px!important}
+ #sg-preview .sg-kpi-received .sg-received-legend b{font-size:8.5px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){
+ #sg-preview .sg-model-donut-layout{grid-template-columns:126px minmax(0,1fr)!important;gap:9px!important}
+ #sg-preview .sg-model-donut{width:118px!important;height:118px!important}
+ #sg-preview .sg-model-donut:after{inset:24px!important}
+ #sg-preview #sg-overview .sg-command-errors .sg-error-line{grid-template-columns:minmax(92px,112px) minmax(36px,1fr) 58px!important;gap:6px!important}
+ #sg-preview .sg-error-metric b{font-size:10px}
+ #sg-preview .sg-error-metric small{font-size:9px}
+ #sg-preview .sg-kpi-received .sg-received-annual{right:8px!important;width:calc(100% - 154px)!important}
+ #sg-preview .sg-kpi-received .sg-received-legend span,#sg-preview .sg-kpi-received .sg-received-legend b{font-size:8px!important}
+}
+@media(min-width:1101px) and (max-width:1500px){#sg-preview #sg-overview .sg-model-head-tools .sg-command-select .sg-control{width:118px!important}}
+
+@media(min-width:1101px) and (max-width:1500px){#sg-preview #sg-overview .sg-command-model .sg-panel-head>div:first-child{flex:0 0 108px;min-width:108px}#sg-preview #sg-overview .sg-command-model .sg-panel-head h2{font-size:14px!important;white-space:nowrap!important}#sg-preview #sg-overview .sg-model-head-tools{width:auto!important;flex:1 1 auto!important;flex-wrap:nowrap!important;gap:5px!important}}

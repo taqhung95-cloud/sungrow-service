@@ -113,7 +113,7 @@
         const points=series.values.map(function(value,index){return value===null||value===undefined?null:[x(index),y(value),index,value];}).filter(Boolean);
         if(points.length<2)return '';
         const pointText=points.map(function(point){return point[0].toFixed(1)+','+point[1].toFixed(1);}).join(' ');
-        return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+dots+'</g>';
+        return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+'</g>';
       }).join('');
       const legend=allSeries.map(function(series){return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';}).join('');
       return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
@@ -136,7 +136,8 @@
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
-    q('#sg-errors').innerHTML = live.errors.map(x => `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b>${x.count}</b></div>`).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
+    const errorTotal = live.errors.reduce((sum,x) => sum + Number(x.count||0),0);
+    q('#sg-errors').innerHTML = live.errors.map(x => { const share=errorTotal ? 100*x.count/errorTotal : 0; return `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><span class="sg-error-metric"><b>${x.count}</b><small>${share.toLocaleString('vi-VN',{maximumFractionDigits:1})}%</small></span></div>`; }).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
     q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
   }
 
@@ -216,7 +217,7 @@
   function renderModels() {
     const rows = live.models;
     const total = rows.reduce((n,x) => n+x.count, 0);
-    q('#sg-model-total').textContent = `${total} thiết bị · ${rows.length} nhóm model`;
+    q('#sg-model-total').textContent = `${total} · ${rows.length} model`;
     const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',');
