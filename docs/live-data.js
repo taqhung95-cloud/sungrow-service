@@ -190,18 +190,24 @@
     const errorTotal = live.errors.reduce((sum,x) => sum + Number(x.count||0),0);
     const errorRows = live.errors.map(x => { const share=errorTotal ? 100*x.count/errorTotal : 0; return `<div class="sg-error-line"><span class="sg-error-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="sg-track"><i style="width:${100*x.count/max}%"></i></div><b class="sg-error-count">${x.count}</b><small class="sg-error-share">${share.toLocaleString('vi-VN',{maximumFractionDigits:1})}%</small></div>`; }).join('') || '<div class="sg-caption">Chưa có lỗi được ghi nhận trong kỳ.</div>';
     q('#sg-errors').innerHTML = '<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi ghi nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-error-list-body">' + errorRows + '</div>';
-    q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(isOpen).sort((a,b) => b.ageDays-a.ageDays));
+    q('#sg-overview-table').innerHTML = attentionTable(live.tickets.filter(needsAttention).sort((a,b) => b.ageDays-a.ageDays));
   }
 
 
-  function isOpen(t) { return !/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate; }
+  function needsAttention(t) {
+    if (t.returnDate) return false;
+    const status = ticketStatus(t);
+    return !/(?:đã\s*giao|đã\s*trả|đã\s*sửa\s*chữa|không\s*sửa\s*chữa|hoàn\s*(?:tất|thành))/i.test(status);
+  }
   function attentionTable(rows) {
     const body = rows.map(function(t) {
-      const status=t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật'; return '<div class="sg-attention-list-row"><span><b class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</b><small>' + esc(t.serialNumber || t.id) + '</small></span><span class="sg-attention-center" title="' + esc(t.center) + '">' + esc(shortCenter(t.center)) + '</span><span><span class="sg-status ' + statusTone(status) + '">' + esc(status) + '</span></span><span class="sg-age ' + (t.ageDays>7?'old':'') + '">' + (t.ageDays>=0?t.ageDays+' ngày':'—') + '</span></div>';
+      const status = ticketStatus(t);
+      const duration = ticketDuration(t);
+      const serial = t.serialNumber ? 'S/N ' + t.serialNumber : 'Chưa có S/N';
+      return '<div class="sg-attention-list-row"><span><b class="sg-sn">' + esc(t.model || t.deviceType || 'Chưa xác định') + '</b><small>' + esc(serial) + '</small></span><span class="sg-attention-center" title="' + esc(t.center) + '">' + esc(shortCenter(t.center)) + '</span><span><span class="sg-status ' + statusTone(status) + '">' + esc(status) + '</span></span><span class="sg-age ' + (duration.old?'old':'') + '" title="' + esc(duration.title) + '">' + esc(duration.text) + '</span></div>';
     }).join('') || '<div class="sg-caption sg-attention-empty">Không có thiết bị cần theo dõi.</div>';
-    return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span>Ngày</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
+    return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span title="Thời gian xử lý">Xử lý</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
   }
-
   function ticketStatus(t) {
     return t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật';
   }
