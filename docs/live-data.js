@@ -12,6 +12,7 @@
   let loadSequence = 0;
   let activeController = null;
   let lastSuccessfulSync = 0;
+  const failureRateCache = new Map();
   const AUTO_SYNC_MS = 120000;
 
   const style = document.createElement('style');
@@ -56,6 +57,7 @@
   async function loadLive(options = {}) {
     if (!token) return;
     const forceRefresh = options.force === true;
+    if (forceRefresh) failureRateCache.clear();
     const sequence = ++loadSequence;
     if (activeController) activeController.abort();
     const controller = new AbortController();
@@ -376,26 +378,71 @@
     }
   }
 
-  function receivedForFailureModel(model) {
-    const row = (live.models || []).find(function (x) { return x.name === model; });
+  function receivedForFailureModel(data, model) {
+    const row = ((data && data.models) || []).find(function (x) { return x.name === model; });
     return row ? Number(row.count) || 0 : 0;
   }
 
-  function calculateFailureRate() {
+  function cumulativeFailurePeriods() {
+    const fromYear = Number(live.cumulative && live.cumulative.fromYear) || 2024;
+    const cutoffYear = Number(live.period.year);
+    const periods = [];
+    for (let year = fromYear; year < cutoffYear; year += 1) periods.push(String(year));
+    if (live.period.isYear) periods.push(String(cutoffYear));
+    else {
+      const cutoffMonth = Number(String(live.period.key).slice(5,7));
+      for (let month = 1; month <= cutoffMonth; month += 1) periods.push(cutoffYear + '-' + String(month).padStart(2,'0'));
+    }
+    return periods;
+  }
+
+  async function cumulativeReceivedForFailureModel(model) {
+    const center = q('#sg-center').value;
+    const periods = cumulativeFailurePeriods();
+    const datasets = await Promise.all(periods.map(function (period) {
+      if (period === live.period.key) return Promise.resolve(live);
+      const cacheKey = center + '|' + period;
+      if (failureRateCache.has(cacheKey)) return Promise.resolve(failureRateCache.get(cacheKey));
+      const controller = new AbortController();
+      return fetchDashboard({action:'dashboard.read',idToken:token,period:period,center:center,includeAnnual:false,includeTickets:false},controller.signal,2).then(function (data) {
+        failureRateCache.set(cacheKey,data);
+        return data;
+      });
+    }));
+    return datasets.reduce(function (sum,data) { return sum + receivedForFailureModel(data,model); },0);
+  }
+
+  async function calculateFailureRate() {
     const result = q('#sg-fail-result');
+    const button = q('#sg-calc-fail');
     const model = q('#sg-fail-model').value;
     const sold = Number(q('#sg-sold-quantity').value);
     if (!model || !Number.isFinite(sold) || sold <= 0 || Math.floor(sold) !== sold) {
       result.className = 'sg-fail-result is-error';
-      result.innerHTML = '<p>Nhập số lượng đã bán là số nguyên lớn hơn 0.</p>';
+      result.innerHTML = '<p>Nhập lũy kế số lượng đã bán là số nguyên lớn hơn 0.</p>';
       return;
     }
-    const received = receivedForFailureModel(model);
-    const rate = received / sold * 100;
-    const perThousand = received / sold * 1000;
-    const mismatch = received > sold;
-    result.className = 'sg-fail-result has-result' + (mismatch ? ' is-warning' : '');
-    result.innerHTML = '<div><span>Thiết bị gửi về</span><strong>' + received.toLocaleString('vi-VN') + '</strong></div><div><span>Fail rate ghi nhận</span><strong>' + rate.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%</strong></div><p><b>' + esc(model) + '</b> ghi nhận tương đương ' + perThousand.toLocaleString('vi-VN',{maximumFractionDigits:1}) + ' lượt gửi về trên 1.000 thiết bị bán trong ' + esc(live.period.label.toLowerCase()) + '.' + (mismatch ? ' Số lượt gửi về lớn hơn số bán đã nhập; cần kiểm tra kỳ, model hoặc lượt sửa lặp.' : ' Cần đối chiếu ngưỡng chất lượng của model để kết luận cao hay thấp.') + '</p>';
+    button.disabled = true;
+    button.textContent = 'Đang tính…';
+    result.className = 'sg-fail-result';
+    result.innerHTML = '<p>Đang cộng dữ liệu tiếp nhận từ các kỳ…</p>';
+    try {
+      const received = await cumulativeReceivedForFailureModel(model);
+      const rate = received / sold * 100;
+      const perThousand = received / sold * 1000;
+      const mismatch = received > sold;
+      const fromYear = Number(live.cumulative && live.cumulative.fromYear) || 2024;
+      const asOf = String(live.period.asOf || '').slice(0,7).split('-');
+      const range = '01/' + fromYear + '–' + (asOf[1] || '12') + '/' + (asOf[0] || live.period.year);
+      result.className = 'sg-fail-result has-result' + (mismatch ? ' is-warning' : '');
+      result.innerHTML = '<div><span>Lũy kế lượt tiếp nhận</span><strong>' + received.toLocaleString('vi-VN') + '</strong></div><div><span>Tỷ lệ ước tính</span><strong>' + rate.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%</strong></div><p><b>' + esc(model) + '</b> tương đương ' + perThousand.toLocaleString('vi-VN',{maximumFractionDigits:1}) + ' lượt tiếp nhận trên 1.000 thiết bị bán, phạm vi ' + range + '.' + (mismatch ? ' Lượt tiếp nhận lớn hơn lũy kế bán; cần kiểm tra số bán hoặc các lượt sửa lặp.' : ' Dùng để sàng lọc xu hướng; chưa phải cohort fail rate do không có ngày bán.') + '</p>';
+    } catch (_) {
+      result.className = 'sg-fail-result is-error';
+      result.innerHTML = '<p>Chưa cộng được dữ liệu các kỳ. Kiểm tra kết nối rồi thử lại.</p>';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Tính toán';
+    }
   }
 
   function renderQuality() {
@@ -407,9 +454,11 @@
       ['Cột AE chưa có tên',x.unnamedColumnAERows,'Cần đặt tên trước khi tích hợp']
     ].map(i => `<div class="sg-quality-item"><div>${i[0]}<span class="sg-small">${i[2]}</span></div><strong>${i[1]}</strong></div>`).join('');
     syncFailureModelOptions();
-    q('#sg-fail-period').textContent = live.period.label + ' · theo ngày tiếp nhận';
-    if (q('#sg-sold-quantity').value) calculateFailureRate();
-    else q('#sg-fail-result').innerHTML = '<div><span>Thiết bị gửi về</span><strong>—</strong></div><div><span>Fail rate ghi nhận</span><strong>—</strong></div><p>Chọn model, nhập số lượng đã bán rồi bấm Tính toán.</p>';
+    const fromYear = Number(live.cumulative && live.cumulative.fromYear) || 2024;
+    const asOf = String(live.period.asOf || '').slice(0,7).split('-');
+    q('#sg-fail-period').textContent = 'Lũy kế 01/' + fromYear + '–' + (asOf[1] || '12') + '/' + (asOf[0] || live.period.year);
+    q('#sg-fail-result').className = 'sg-fail-result';
+    q('#sg-fail-result').innerHTML = '<div><span>Lũy kế lượt tiếp nhận</span><strong>—</strong></div><div><span>Tỷ lệ ước tính</span><strong>—</strong></div><p>Chọn model, nhập lũy kế số lượng đã bán rồi bấm Tính toán.</p>';
   }
 
   const chartColors=['#ff7900','#365f78','#7d8b95','#d6a066','#a9b2b8','#c35a42'];
@@ -500,7 +549,7 @@
   root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
   q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
-  q('#sg-fail-model').addEventListener('change',() => {if(live && q('#sg-sold-quantity').value)calculateFailureRate();});
+  q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
   setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
