@@ -33,7 +33,7 @@
 
     function sendToApp(payload){
       if(!allowedOpener||!window.opener){
-        showError('Phien dang nhap khong hop le. Hay dong cua so nay va mo lai tu ung dung nhap lieu.');
+        showError('Phi\u00ean \u0111\u0103ng nh\u1eadp kh\u00f4ng h\u1ee3p l\u1ec7. H\u00e3y \u0111\u00f3ng c\u1eeda s\u1ed5 n\u00e0y v\u00e0 m\u1edf l\u1ea1i t\u1eeb \u1ee9ng d\u1ee5ng nh\u1eadp li\u1ec7u.');
         return;
       }
       window.opener.postMessage(payload,openerOrigin);
@@ -41,8 +41,8 @@
 
     function onCredential(response){
       if(!response||!response.credential){
-        sendToApp({type:'sungrow-google-auth-error',message:'Google khong tra ve thong tin dang nhap.'});
-        showError('Google khong tra ve thong tin dang nhap.');
+        sendToApp({type:'sungrow-google-auth-error',message:'Google kh\u00f4ng tr\u1ea3 v\u1ec1 th\u00f4ng tin \u0111\u0103ng nh\u1eadp.'});
+        showError('Google kh\u00f4ng tr\u1ea3 v\u1ec1 th\u00f4ng tin \u0111\u0103ng nh\u1eadp.');
         return;
       }
       sendToApp({type:'sungrow-google-auth',credential:response.credential});
@@ -52,7 +52,7 @@
 
     window.addEventListener('load',()=>{
       if(!allowedOpener||!window.opener){
-        showError('Vui long mo trang dang nhap tu ung dung nhap lieu SUNGROW.');
+        showError('Vui l\u00f2ng m\u1edf trang \u0111\u0103ng nh\u1eadp t\u1eeb \u1ee9ng d\u1ee5ng nh\u1eadp li\u1ec7u SUNGROW.');
         return;
       }
       google.accounts.id.initialize({client_id:CLIENT_ID,callback:onCredential,auto_select:false,cancel_on_tap_outside:true});
