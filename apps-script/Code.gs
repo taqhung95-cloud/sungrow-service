@@ -1,4 +1,4 @@
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -17,8 +17,10 @@ function doPost(e) {
   try {
     const request = parseRequest_(e);
     const actor = authenticate_(request.idToken);
-    if (request.action !== 'dashboard.read') throw apiError_('ACTION_NOT_ALLOWED', 'Action is not allowed.');
-    const data = getDashboard_(request, actor);
+    let data;
+    if (request.action === 'dashboard.read') data = getDashboard_(request, actor);
+    else if (request.action === 'tickets.search') data = searchTickets_(request, actor);
+    else throw apiError_('ACTION_NOT_ALLOWED', 'Action is not allowed.');
     return json_({ ok: true, data: data });
   } catch (error) {
     console.error(String(error && error.stack || error));
@@ -111,6 +113,65 @@ function getDashboard_(request, actor) {
   const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor, yearlyTotals);
   if (request.includeTickets === false) output.tickets = [];
   safeCachePut_(cache, cacheKey, output, 300);
+  return output;
+}
+
+function searchTickets_(request, actor) {
+  const query = clean_(request.query);
+  if (query.length < 2 || query.length > 100) throw apiError_('INVALID_QUERY', 'Nhập ít nhất 2 và không quá 100 ký tự để tra cứu thiết bị.');
+
+  const centers = centerRegistry_();
+  const allowed = actor.role === 'service_manager'
+    ? centers.map(function (c) { return c.name; })
+    : centers.filter(function (c) { return actor.centers.includes(c.id) || actor.centers.includes(c.name); }).map(function (c) { return c.name; });
+  if (!allowed.length) throw apiError_('FORBIDDEN', 'Tài khoản chưa được gán service center.');
+
+  const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
+  if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
+  const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
+  const currentYear = new Date().getFullYear();
+  const requestedYear = Number(request.year);
+  const years = Number.isInteger(requestedYear) && requestedYear >= FIRST_REPORT_YEAR && requestedYear <= currentYear
+    ? [requestedYear]
+    : Array.from({length:currentYear - FIRST_REPORT_YEAR + 1}, function (_, index) { return FIRST_REPORT_YEAR + index; });
+  const cache = CacheService.getScriptCache();
+  const cacheKey = ['ticket-search', APP_VERSION, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
+  const lowerQuery = query.toLowerCase();
+  const compactQuery = normalizeDeviceKey_(query);
+  const matches = [];
+  for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
+    const year = years[yearIndex];
+    let source;
+    try { source = readSheetValuesAny_(spreadsheetId, year); }
+    catch (error) {
+      if (error.code === 'SOURCE_TAB_NOT_FOUND') continue;
+      throw error;
+    }
+    const values = source.values;
+    if (!values.length) continue;
+    const schema = schemaForHeaders_(values[0]);
+    values.slice(1).forEach(function (row, index) {
+      const record = normalizeRow_(row, index + 2, String(year), centers, schema);
+      if (!record.hasData || !scope.includes(record.center)) return;
+      const searchable = [record.id, record.sourceNo, record.serialNumber, record.model].join(' ');
+      const textMatch = searchable.toLowerCase().includes(lowerQuery);
+      const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
+      if (!textMatch && !compactMatch) return;
+      const ticket = publicTicket_(record);
+      ticket.sourceYear = year;
+      ticket.sourceRow = record.rowNumber;
+      matches.push(ticket);
+    });
+  }
+
+  matches.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
+  const limit = 200;
+  const output = { tickets: matches.slice(0, limit), total: matches.length, truncated: matches.length > limit, fromYear: years[0], toYear: years[years.length - 1] };
+  safeCachePut_(cache, cacheKey, output, 120);
   return output;
 }
 
@@ -285,9 +346,9 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.7',
+    schemaVersion: '1.8.0',
     generatedAt: new Date().toISOString(),
-    period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
+    period: { key: period.key, year: period.year, month: period.month, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
     source: {
       spreadsheetId: undefined,

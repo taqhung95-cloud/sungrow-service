@@ -13,6 +13,10 @@
   let activeController = null;
   let lastSuccessfulSync = 0;
   const failureRateCache = new Map();
+  let ticketSearchTimer = null;
+  let ticketSearchController = null;
+  let ticketSearchSequence = 0;
+  let ticketSearchState = {term:'',rows:null,total:0,truncated:false,loading:false,error:'',fromYear:null,toYear:null};
   const AUTO_SYNC_MS = 120000;
 
   const style = document.createElement('style');
@@ -198,8 +202,19 @@
     return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span>Ngày</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
   }
 
-  function ticketTable(rows) {
-    return '<table><thead><tr><th>Thiết bị / Thiết bị</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th></tr></thead><tbody>' + rows.map(t => `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(t.serialNumber || t.id)}</span></td><td>${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}">${esc(t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật')}</span></td><td class="sg-age ${t.ageDays>7?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td></tr>`).join('') + (rows.length?'':'<tr><td colspan="5">Không có dữ liệu phù hợp.</td></tr>') + '</tbody></table>';
+  function ticketStatus(t) {
+    return t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật';
+  }
+
+  function ticketTable(rows, emptyMessage) {
+    const columns = '<colgroup><col style="width:22%"><col style="width:32%"><col style="width:16%"><col style="width:16%"><col style="width:10%"><col style="width:52px"></colgroup>';
+    const body = rows.map(function(t) {
+      const serial = t.serialNumber ? 'S/N ' + t.serialNumber : 'Chưa có S/N';
+      const tracking = t.sourceNo ? 'No. ' + t.sourceNo + ' · ' + t.id : t.id;
+      const status = ticketStatus(t);
+      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span><span class="sg-small">${esc(tracking)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${t.ageDays>7?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin thiết bị ${esc(t.id)}">↗</button></td></tr>`;
+    }).join('');
+    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N · Mã theo dõi</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="6">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
   }
 
   function renderMonthlyComparison() {
@@ -261,10 +276,79 @@
   function renderTickets() {
     const term = (q('#sg-search').value || '').trim().toLowerCase();
     const center = q('#sg-center').value;
-    let rows = live.tickets.filter(t => center === 'all' || t.center === center);
-    if (term) rows = rows.filter(t => [t.id,t.sourceNo,t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
-    q('#sg-tickets-table').innerHTML = ticketTable(rows);
-    q('#sg-result-count').textContent = `${rows.length} thiết bị · dữ liệu từ tab ${live.source.sheetName}`;
+    const statusFilter = q('#sg-status').value;
+    const searchLoading = !!(term && ticketSearchState.term === term && ticketSearchState.loading);
+    const searchedAllYears = term && ticketSearchState.term === term && Array.isArray(ticketSearchState.rows);
+    let rows = searchedAllYears ? ticketSearchState.rows.slice() : live.tickets.slice();
+    rows = rows.filter(t => center === 'all' || t.center === center);
+    if (term && !searchedAllYears) rows = rows.filter(t => [t.id,t.sourceNo,t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
+    if (statusFilter !== 'all') rows = rows.filter(t => ticketStatus(t) === statusFilter);
+    q('#sg-tickets-table').innerHTML = searchLoading ? ticketTable([], 'Đang tìm trong năm đang chọn…') : ticketTable(rows);
+    if (searchLoading) {
+      q('#sg-result-count').textContent = 'Đang tra cứu dữ liệu năm đang chọn…';
+    } else if (term && ticketSearchState.term === term && ticketSearchState.error) {
+      q('#sg-result-count').textContent = ticketSearchState.error;
+    } else if (searchedAllYears) {
+      const shown = rows.length;
+      const total = ticketSearchState.total;
+      const searchPeriod = ticketSearchState.fromYear === ticketSearchState.toYear ? String(ticketSearchState.toYear) : ticketSearchState.fromYear + '–' + ticketSearchState.toYear;
+      q('#sg-result-count').textContent = `${shown} dòng hiển thị · ${total} kết quả trong dữ liệu ${searchPeriod}${ticketSearchState.truncated ? ' · giới hạn 200 dòng' : ''}`;
+    } else {
+      q('#sg-result-count').textContent = `${rows.length} thiết bị gần nhất · dữ liệu từ tab ${live.source.sheetName}`;
+    }
+  }
+
+  function scheduleTicketSearch() {
+    q('#sg-detail').classList.add('sg-hidden');
+    const term = (q('#sg-search').value || '').trim().toLowerCase();
+    clearTimeout(ticketSearchTimer);
+    if (ticketSearchController) ticketSearchController.abort();
+    const sequence = ++ticketSearchSequence;
+    ticketSearchState = {term:term,rows:null,total:0,truncated:false,loading:!!term,error:'',fromYear:null,toYear:null};
+    if (!term) { renderTickets(); return; }
+    if (term.length < 2) {
+      ticketSearchState.loading = false;
+      ticketSearchState.error = 'Nhập ít nhất 2 ký tự để tìm trong năm đang chọn.';
+      renderTickets();
+      return;
+    }
+    renderTickets();
+    ticketSearchTimer = setTimeout(async function() {
+      const controller = new AbortController();
+      ticketSearchController = controller;
+      try {
+        const data = await fetchDashboard({action:'tickets.search',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4))},controller.signal,2);
+        if (sequence !== ticketSearchSequence) return;
+        ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,truncated:!!data.truncated,loading:false,error:'',fromYear:data.fromYear,toYear:data.toYear};
+      } catch (error) {
+        if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
+        ticketSearchState = {term:term,rows:null,total:0,truncated:false,loading:false,error:'Không tra cứu được dữ liệu năm đang chọn. Vui lòng thử lại.',fromYear:null,toYear:null};
+      } finally {
+        if (ticketSearchController === controller) ticketSearchController = null;
+        if (sequence === ticketSearchSequence) renderTickets();
+      }
+    },300);
+  }
+
+  function showTicketDetail(ticketId) {
+    const candidates = (Array.isArray(ticketSearchState.rows) ? ticketSearchState.rows : []).concat(live.tickets || []);
+    const ticket = candidates.find(function(item) { return String(item.id) === String(ticketId); });
+    if (!ticket) return;
+    const status = ticketStatus(ticket);
+    const fields = [
+      ['Số serial',ticket.serialNumber || '—'],
+      ['Mã theo dõi',ticket.sourceNo ? 'No. ' + ticket.sourceNo + ' · ' + ticket.id : ticket.id],
+      ['Ngày tiếp nhận',formatDate(ticket.receivedDate)],
+      ['Trung tâm',ticket.center || '—'],
+      ['Bảo hành',ticket.warranty || ticket.warrantyStatus || '—'],
+      ['Lỗi ghi nhận',ticket.error || '—'],
+      ['Trạng thái',status],
+      ['Ngày trả',formatDate(ticket.returnDate)]
+    ];
+    const detail = q('#sg-detail');
+    detail.classList.remove('sg-hidden');
+    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(ticket.id) + ' · ' + esc(ticket.model || ticket.deviceType || 'Chưa xác định') + '</h2><span class="sg-caption">Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>';
+    detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
 
   function fallbackModelTypes() {
@@ -384,15 +468,20 @@
 
   function failureStatsForPeriod(data, model) {
     const key = normalizeModelName(model);
-    const deviceStat = ((data && data.modelDeviceStats) || []).find(function (x) { return (x.key || normalizeModelName(x.name)) === key; });
+    const deviceStats = data && data.modelDeviceStats;
+    const deviceStat = (Array.isArray(deviceStats) ? deviceStats : []).find(function (x) { return (x.key || normalizeModelName(x.name)) === key; });
     if (deviceStat) return { visits:Number(deviceStat.rowCount)||0, serialKeys:Array.isArray(deviceStat.uniqueSerialKeys)?deviceStat.uniqueSerialKeys:[], missingSerialRows:Number(deviceStat.missingSerialRows)||0, deduplicated:true };
+    // A current API response can legitimately have no row for the selected model
+    // in a month/year. Treat that period as an empty, deduplicated result instead
+    // of downgrading the whole cumulative calculation to the legacy visit count.
+    if (Array.isArray(deviceStats)) return { visits:0, serialKeys:[], missingSerialRows:0, deduplicated:true };
     const row = ((data && data.models) || []).find(function (x) { return normalizeModelName(x.name) === key; });
     return { visits:row?Number(row.count)||0:0, serialKeys:[], missingSerialRows:0, deduplicated:false };
   }
 
   function cumulativeFailurePeriods() {
     const fromYear = Number(live.cumulative && live.cumulative.fromYear) || 2024;
-    const cutoffYear = Number(live.period.year);
+    const cutoffYear = Number(live.period.year) || Number(String(live.period.key || '').slice(0,4)) || Number(live.annual && live.annual.year);
     const periods = [];
     for (let year = fromYear; year < cutoffYear; year += 1) periods.push(String(year));
     if (live.period.isYear) periods.push(String(cutoffYear));
@@ -562,10 +651,18 @@
       if (compare) compare.textContent = /^\d{4}$/.test(selectedPeriod()) ? 'Năm trước' : 'Tháng trước';
     }
     setTimeout(loadLive,0);
+    if (s === '#sg-center' && (q('#sg-search').value || '').trim()) setTimeout(scheduleTicketSearch,0);
   }));
   q('#sg-model-type').addEventListener('change',() => {if(live)setTimeout(renderModels,0);});
-  q('#sg-search').addEventListener('input',() => {if(live)setTimeout(renderTickets,0);});
-  root.addEventListener('click',e => {if(live && e.target.closest('[data-part],[data-page]'))setTimeout(renderAll,0);});
+  q('#sg-search').addEventListener('input',() => {if(live)scheduleTicketSearch();});
+  q('#sg-status').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');renderTickets();}});
+  root.addEventListener('click',e => {
+    if (!live) return;
+    const detailButton = e.target.closest('[data-live-ticket]');
+    if (detailButton) { showTicketDetail(detailButton.dataset.liveTicket); return; }
+    if (e.target.closest('[data-live-close]')) { q('#sg-detail').classList.add('sg-hidden'); return; }
+    if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
+  });
   q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
