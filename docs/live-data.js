@@ -378,9 +378,16 @@
     }
   }
 
-  function receivedForFailureModel(data, model) {
-    const row = ((data && data.models) || []).find(function (x) { return x.name === model; });
-    return row ? Number(row.count) || 0 : 0;
+  function normalizeModelName(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  }
+
+  function failureStatsForPeriod(data, model) {
+    const key = normalizeModelName(model);
+    const deviceStat = ((data && data.modelDeviceStats) || []).find(function (x) { return (x.key || normalizeModelName(x.name)) === key; });
+    if (deviceStat) return { visits:Number(deviceStat.rowCount)||0, serialKeys:Array.isArray(deviceStat.uniqueSerialKeys)?deviceStat.uniqueSerialKeys:[], missingSerialRows:Number(deviceStat.missingSerialRows)||0, deduplicated:true };
+    const row = ((data && data.models) || []).find(function (x) { return normalizeModelName(x.name) === key; });
+    return { visits:row?Number(row.count)||0:0, serialKeys:[], missingSerialRows:0, deduplicated:false };
   }
 
   function cumulativeFailurePeriods() {
@@ -397,19 +404,25 @@
   }
 
   async function cumulativeReceivedForFailureModel(model) {
-    const center = q('#sg-center').value;
+    const center = 'all';
     const periods = cumulativeFailurePeriods();
     const datasets = await Promise.all(periods.map(function (period) {
-      if (period === live.period.key) return Promise.resolve(live);
+      if (period === live.period.key && q('#sg-center').value === 'all') return Promise.resolve(live);
       const cacheKey = center + '|' + period;
       if (failureRateCache.has(cacheKey)) return Promise.resolve(failureRateCache.get(cacheKey));
       const controller = new AbortController();
-      return fetchDashboard({action:'dashboard.read',idToken:token,period:period,center:center,includeAnnual:false,includeTickets:false},controller.signal,2).then(function (data) {
-        failureRateCache.set(cacheKey,data);
-        return data;
-      });
+      return fetchDashboard({action:'dashboard.read',idToken:token,period:period,center:center,includeAnnual:false,includeTickets:false},controller.signal,2).then(function (data) { failureRateCache.set(cacheKey,data); return data; });
     }));
-    return datasets.reduce(function (sum,data) { return sum + receivedForFailureModel(data,model); },0);
+    const serialKeys = new Set();
+    let visits = 0, missingSerialRows = 0, deduplicated = true;
+    datasets.forEach(function (data) {
+      const stats = failureStatsForPeriod(data,model);
+      visits += stats.visits;
+      missingSerialRows += stats.missingSerialRows;
+      deduplicated = deduplicated && stats.deduplicated;
+      stats.serialKeys.forEach(function (key) { serialKeys.add(key); });
+    });
+    return { received:deduplicated?serialKeys.size:visits, visits:visits, uniqueSerials:deduplicated?serialKeys.size:null, missingSerialRows:missingSerialRows, deduplicated:deduplicated };
   }
 
   async function calculateFailureRate() {
@@ -427,15 +440,21 @@
     result.className = 'sg-fail-result';
     result.innerHTML = '<p>Đang cộng dữ liệu tiếp nhận từ các kỳ…</p>';
     try {
-      const received = await cumulativeReceivedForFailureModel(model);
+      const stats = await cumulativeReceivedForFailureModel(model);
+      const received = stats.received;
       const rate = received / sold * 100;
       const perThousand = received / sold * 1000;
       const mismatch = received > sold;
       const fromYear = Number(live.cumulative && live.cumulative.fromYear) || 2024;
       const asOf = String(live.period.asOf || '').slice(0,7).split('-');
       const range = '01/' + fromYear + '–' + (asOf[1] || '12') + '/' + (asOf[0] || live.period.year);
-      result.className = 'sg-fail-result has-result' + (mismatch ? ' is-warning' : '');
-      result.innerHTML = '<div><span>Lũy kế lượt tiếp nhận</span><strong>' + received.toLocaleString('vi-VN') + '</strong></div><div><span>Tỷ lệ ước tính</span><strong>' + rate.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%</strong></div><p><b>' + esc(model) + '</b> tương đương ' + perThousand.toLocaleString('vi-VN',{maximumFractionDigits:1}) + ' lượt tiếp nhận trên 1.000 thiết bị bán, phạm vi ' + range + '.' + (mismatch ? ' Lượt tiếp nhận lớn hơn lũy kế bán; cần kiểm tra số bán hoặc các lượt sửa lặp.' : ' Dùng để sàng lọc xu hướng; chưa phải cohort fail rate do không có ngày bán.') + '</p>';
+      const duplicateRows = stats.deduplicated ? Math.max(0,stats.visits-stats.uniqueSerials-stats.missingSerialRows) : null;
+      const numeratorLabel = stats.deduplicated ? 'S/N duy nhất gửi về' : 'Lũy kế lượt tiếp nhận';
+      const methodNote = stats.deduplicated
+        ? ' Từ ' + stats.visits.toLocaleString('vi-VN') + ' lượt tiếp nhận: loại ' + duplicateRows.toLocaleString('vi-VN') + ' lượt trùng S/N' + (stats.missingSerialRows ? '; ' + stats.missingSerialRows.toLocaleString('vi-VN') + ' dòng thiếu S/N không đưa vào tử số.' : '.')
+        : ' API hiện tại chưa trả khóa S/N đầy đủ nên kết quả đang tính theo lượt và chưa loại S/N trùng.';
+      result.className = 'sg-fail-result has-result' + (mismatch || !stats.deduplicated ? ' is-warning' : '');
+      result.innerHTML = '<div><span>' + numeratorLabel + '</span><strong>' + received.toLocaleString('vi-VN') + '</strong></div><div><span>Tỷ lệ ước tính</span><strong>' + rate.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%</strong></div><p><b>' + esc(model) + '</b> tương đương ' + perThousand.toLocaleString('vi-VN',{maximumFractionDigits:1}) + ' thiết bị trên 1.000 thiết bị bán, phạm vi ' + range + '.' + methodNote + (mismatch ? ' Tử số lớn hơn lũy kế bán; cần kiểm tra số bán.' : ' Chưa phải cohort fail rate do không có ngày bán.') + '</p>';
     } catch (_) {
       result.className = 'sg-fail-result is-error';
       result.innerHTML = '<p>Chưa cộng được dữ liệu các kỳ. Kiểm tra kết nối rồi thử lại.</p>';
@@ -458,7 +477,7 @@
     const asOf = String(live.period.asOf || '').slice(0,7).split('-');
     q('#sg-fail-period').textContent = 'Lũy kế 01/' + fromYear + '–' + (asOf[1] || '12') + '/' + (asOf[0] || live.period.year);
     q('#sg-fail-result').className = 'sg-fail-result';
-    q('#sg-fail-result').innerHTML = '<div><span>Lũy kế lượt tiếp nhận</span><strong>—</strong></div><div><span>Tỷ lệ ước tính</span><strong>—</strong></div><p>Chọn model, nhập lũy kế số lượng đã bán rồi bấm Tính toán.</p>';
+    q('#sg-fail-result').innerHTML = '<div><span>S/N duy nhất gửi về</span><strong>—</strong></div><div><span>Tỷ lệ ước tính</span><strong>—</strong></div><p>Chọn model, nhập lũy kế số lượng đã bán rồi bấm Tính toán.</p>';
   }
 
   const chartColors=['#ff7900','#365f78','#7d8b95','#d6a066','#a9b2b8','#c35a42'];

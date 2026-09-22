@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -272,6 +272,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const slaMet = slaDurations.filter(function (n) { return n <= SLA_DAYS; }).length;
   const slaBreachedOpen = openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }).length;
   const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
+  const modelDeviceStats = groupModelDeviceStats_(periodRows);
   const modelCatalog = Object.keys(records.reduce(function (catalog, r) {
     const model = clean_(r.model);
     if (model) catalog[model] = true;
@@ -284,7 +285,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.6',
+    schemaVersion: '1.7',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -331,6 +332,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     centers: centerMetrics,
     trends: backlogTrend_(records, period, scope),
     models: models,
+    modelDeviceStats: modelDeviceStats,
     modelCatalog: modelCatalog,
     modelTypes: modelTypes,
     errors: errors,
@@ -431,6 +433,40 @@ function groupCount_(rows, keyFn) {
   return Object.keys(counts).map(function (name) { return { name: name, count: counts[name] }; }).sort(function (a, b) { return b.count - a.count; });
 }
 
+function normalizeDeviceKey_(value) {
+  return clean_(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function serialHash_(value) {
+  const normalized = normalizeDeviceKey_(value);
+  if (!normalized) return '';
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, normalized, Utilities.Charset.UTF_8);
+  return Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '').slice(0, 22);
+}
+
+function groupModelDeviceStats_(rows) {
+  const groups = {};
+  rows.forEach(function (r) {
+    const name = r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định');
+    const key = normalizeDeviceKey_(name);
+    if (!groups[key]) groups[key] = { name: name, key: key, rowCount: 0, missingSerialRows: 0, serialKeys: {} };
+    const group = groups[key];
+    group.rowCount++;
+    const serialKey = serialHash_(r.serialNumber);
+    if (serialKey) group.serialKeys[serialKey] = true;
+    else group.missingSerialRows++;
+  });
+  return Object.keys(groups).map(function (key) {
+    const group = groups[key];
+    return {
+      name: group.name,
+      key: group.key,
+      rowCount: group.rowCount,
+      uniqueSerialKeys: Object.keys(group.serialKeys),
+      missingSerialRows: group.missingSerialRows
+    };
+  }).sort(function (a, b) { return b.rowCount - a.rowCount || a.name.localeCompare(b.name); });
+}
 function groupModelTypes_(rows) {
   const groups = {};
   rows.forEach(function (r) {
