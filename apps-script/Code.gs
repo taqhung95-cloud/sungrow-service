@@ -1,4 +1,4 @@
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.2';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '16lh3d4nDmmnGx6vBdKTrdWCLHFYMhf-g3cZjuupSv0s';
@@ -157,13 +157,11 @@ function searchTickets_(request, actor) {
     values.slice(1).forEach(function (row, index) {
       const record = normalizeRow_(row, index + 2, String(year), centers, schema);
       if (!record.hasData || !scope.includes(record.center)) return;
-      const searchable = [record.id, record.sourceNo, record.serialNumber, record.model].join(' ');
+      const searchable = [record.serialNumber, record.model].join(' ');
       const textMatch = searchable.toLowerCase().includes(lowerQuery);
       const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
       if (!textMatch && !compactMatch) return;
       const ticket = publicTicket_(record);
-      ticket.sourceYear = year;
-      ticket.sourceRow = record.rowNumber;
       matches.push(ticket);
     });
   }
@@ -346,7 +344,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
 
   return {
-    schemaVersion: '1.8.0',
+    schemaVersion: '1.8.2',
     generatedAt: new Date().toISOString(),
     period: { key: period.key, year: period.year, month: period.month, label: period.label, start: iso_(period.start), end: iso_(period.end), asOf: iso_(period.asOf), isYear: period.isYear },
     actor: { email: actor.email, role: actor.role, centers: scope },
@@ -438,9 +436,11 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
 }
 
 function publicTicket_(r) {
+  const deliveredWithoutReturn = /đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate;
+  const processingState = r.returnDate ? 'completed' : (deliveredWithoutReturn ? 'missing_return_date' : 'open');
+  const processingDays = deliveredWithoutReturn ? -1 : ageDays_(r.receivedDate, r.returnDate || new Date());
   return {
     id: r.id,
-    sourceNo: r.sourceNo,
     serialNumber: r.serialNumber,
     model: r.model,
     deviceType: r.deviceType,
@@ -452,7 +452,8 @@ function publicTicket_(r) {
     warrantyStatus: r.warrantyStatus,
     deliveryStatus: r.deliveryStatus,
     status: r.status,
-    ageDays: ageDays_(r.receivedDate, new Date()),
+    ageDays: processingDays,
+    processingState: processingState,
     parts: r.parts
   };
 }

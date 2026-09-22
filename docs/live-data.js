@@ -206,17 +206,28 @@
     return t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật';
   }
 
+  function ticketDuration(t) {
+    const deliveredWithoutReturn = (t.processingState === 'missing_return_date') || (/đã\s*giao/i.test(t.deliveryStatus || '') && !t.returnDate);
+    if (deliveredWithoutReturn) return {text:'Thiếu ngày trả',old:false,title:'Trạng thái đã giao nhưng nguồn chưa có Return date'};
+    if (!Number.isFinite(Number(t.ageDays)) || Number(t.ageDays) < 0) return {text:'—',old:false,title:'Chưa đủ dữ liệu để tính'};
+    return {
+      text:Number(t.ageDays) + ' ngày',
+      old:Number(t.ageDays) > 7,
+      title:t.returnDate ? 'Từ ngày tiếp nhận đến ngày trả' : 'Từ ngày tiếp nhận đến hiện tại'
+    };
+  }
+
   function ticketTable(rows, emptyMessage) {
     const columns = '<colgroup><col style="width:22%"><col style="width:32%"><col style="width:16%"><col style="width:16%"><col style="width:10%"><col style="width:52px"></colgroup>';
     const body = rows.map(function(t) {
       const serial = t.serialNumber ? 'S/N ' + t.serialNumber : 'Chưa có S/N';
-      const tracking = t.sourceNo ? 'No. ' + t.sourceNo + ' · ' + t.id : t.id;
       const status = ticketStatus(t);
-      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span><span class="sg-small">${esc(tracking)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${t.ageDays>7?'old':''}">${t.ageDays>=0?t.ageDays+' ngày':'—'}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin thiết bị ${esc(t.id)}">↗</button></td></tr>`;
+      const duration = ticketDuration(t);
+      const identity = [t.model || t.deviceType || 'Chưa xác định',t.serialNumber || ''].filter(Boolean).join(' ');
+      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${duration.old?'old':''}" title="${esc(duration.title)}">${esc(duration.text)}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin ${esc(identity)}">↗</button></td></tr>`;
     }).join('');
-    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N · Mã theo dõi</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Tuổi thiết bị</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="6">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
+    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="6">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
   }
-
   function renderMonthlyComparison() {
     const grid = q('#sg-month-compare-grid');
     const table = q('#sg-month-center-table');
@@ -281,7 +292,7 @@
     const searchedAllYears = term && ticketSearchState.term === term && Array.isArray(ticketSearchState.rows);
     let rows = searchedAllYears ? ticketSearchState.rows.slice() : live.tickets.slice();
     rows = rows.filter(t => center === 'all' || t.center === center);
-    if (term && !searchedAllYears) rows = rows.filter(t => [t.id,t.sourceNo,t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
+    if (term && !searchedAllYears) rows = rows.filter(t => [t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
     if (statusFilter !== 'all') rows = rows.filter(t => ticketStatus(t) === statusFilter);
     q('#sg-tickets-table').innerHTML = searchLoading ? ticketTable([], 'Đang tìm trong năm đang chọn…') : ticketTable(rows);
     if (searchLoading) {
@@ -335,22 +346,24 @@
     const ticket = candidates.find(function(item) { return String(item.id) === String(ticketId); });
     if (!ticket) return;
     const status = ticketStatus(ticket);
+    const duration = ticketDuration(ticket);
+    const model = ticket.model || ticket.deviceType || 'Chưa xác định';
+    const serial = ticket.serialNumber || 'Chưa có S/N';
     const fields = [
-      ['Số serial',ticket.serialNumber || '—'],
-      ['Mã theo dõi',ticket.sourceNo ? 'No. ' + ticket.sourceNo + ' · ' + ticket.id : ticket.id],
+      ['Số serial',serial],
       ['Ngày tiếp nhận',formatDate(ticket.receivedDate)],
+      ['Ngày trả',formatDate(ticket.returnDate)],
       ['Trung tâm',ticket.center || '—'],
       ['Bảo hành',ticket.warranty || ticket.warrantyStatus || '—'],
       ['Lỗi ghi nhận',ticket.error || '—'],
       ['Trạng thái',status],
-      ['Ngày trả',formatDate(ticket.returnDate)]
+      ['Thời gian xử lý',duration.text]
     ];
     const detail = q('#sg-detail');
     detail.classList.remove('sg-hidden');
-    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(ticket.id) + ' · ' + esc(ticket.model || ticket.deviceType || 'Chưa xác định') + '</h2><span class="sg-caption">Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>';
+    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>';
     detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
-
   function fallbackModelTypes() {
     const start = live.period?.start || '';
     const end = live.period?.end || '';
