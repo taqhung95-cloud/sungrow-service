@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dang nhap - SUNGROW Service Center</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root{--orange:#ff6b00;--ink:#18212b;--muted:#667085;--line:#e4e7ec;--soft:#f7f8fa;--red:#b42318}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--soft);color:var(--ink);font:14px Arial,sans-serif;padding:20px}.card{width:min(440px,100%);background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;box-shadow:0 10px 30px rgba(16,24,40,.08);text-align:center}.mark{width:5px;height:30px;border-radius:8px;background:var(--orange);margin:0 auto 16px}h1{font-size:20px;margin:0 0 8px}p{color:var(--muted);line-height:1.5;margin:0 0 22px}.button-slot{display:flex;justify-content:center;min-height:44px}.message{margin-top:16px;padding:11px 13px;border-radius:8px;background:#fff0ee;color:var(--red);display:none}.foot{font-size:12px;color:var(--muted);margin-top:20px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark"></div>
+    <h1>SUNGROW Service Center</h1>
+    <p>&#272;&#259;ng nh&#7853;p &#273;&#7875; ti&#7871;p t&#7909;c v&#224;o &#7913;ng d&#7909;ng nh&#7853;p li&#7879;u.</p>
+    <div id="googleButton" class="button-slot"></div>
+    <div id="message" class="message"></div>
+    <div class="foot">Ch&#7881; t&#224;i kho&#7843;n &#273;&#432;&#7907;c Service Manager c&#7845;p quy&#7873;n m&#7899;i c&#243; th&#7875; s&#7917; d&#7909;ng &#7913;ng d&#7909;ng.</div>
+  </main>
+  <script>
+    const CLIENT_ID='1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
+    const params=new URLSearchParams(window.location.search);
+    const openerOrigin=params.get('opener_origin')||'';
+    const allowedOpener=/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/i.test(openerOrigin);
+
+    function showError(message){
+      const box=document.getElementById('message');
+      box.textContent=message;
+      box.style.display='block';
+    }
+
+    function sendToApp(payload){
+      if(!allowedOpener||!window.opener){
+        showError('Phien dang nhap khong hop le. Hay dong cua so nay va mo lai tu ung dung nhap lieu.');
+        return;
+      }
+      window.opener.postMessage(payload,openerOrigin);
+    }
+
+    function onCredential(response){
+      if(!response||!response.credential){
+        sendToApp({type:'sungrow-google-auth-error',message:'Google khong tra ve thong tin dang nhap.'});
+        showError('Google khong tra ve thong tin dang nhap.');
+        return;
+      }
+      sendToApp({type:'sungrow-google-auth',credential:response.credential});
+      document.querySelector('p').innerHTML='&#272;&#259;ng nh&#7853;p th&#224;nh c&#244;ng. C&#7917;a s&#7893; s&#7869; t&#7921; &#273;&#243;ng.';
+      setTimeout(()=>window.close(),250);
+    }
+
+    window.addEventListener('load',()=>{
+      if(!allowedOpener||!window.opener){
+        showError('Vui long mo trang dang nhap tu ung dung nhap lieu SUNGROW.');
+        return;
+      }
+      google.accounts.id.initialize({client_id:CLIENT_ID,callback:onCredential,auto_select:false,cancel_on_tap_outside:true});
+      google.accounts.id.renderButton(document.getElementById('googleButton'),{theme:'outline',size:'large',text:'signin_with',locale:'vi',width:300});
+    });
+  </script>
+</body>
+</html>
