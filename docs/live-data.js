@@ -21,7 +21,7 @@
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
-  style.textContent += '#sg-preview .sg-brand{padding:0 4px 26px!important;border-bottom:1px solid #f0f1f2}#sg-preview .sg-side{gap:0}#sg-preview .sg-nav{margin-top:32px}#sg-preview .sg-subnav{display:grid;gap:4px;padding:5px 0 6px 13px}#sg-preview .sg-subnav button{min-height:40px;padding:9px 10px;font-size:12px}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-portal-user{margin-top:auto;border-top:1px solid #e5e7eb;padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5;min-width:0}#sg-preview .sg-portal-user>div:first-child{display:flex;align-items:center;min-width:0}#sg-preview .sg-portal-user>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#20252b}#sg-preview .sg-side-foot.sg-portal-meta{margin-top:0;padding:10px 4px 0;border-top:1px solid #f0f1f2;color:#667085;font-size:11px;line-height:1.5}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}';
+  style.textContent += '#sg-preview .sg-platform-parent{margin-top:12px;border-top:1px solid #f0f1f2;padding-top:18px!important;border-radius:0}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-subnav{display:grid;gap:3px;padding:3px 0 2px 14px}#sg-preview .sg-subnav button{min-height:38px;padding:8px 10px;font-size:12px}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}';
   document.head.appendChild(style);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
@@ -32,14 +32,8 @@
 
   function installPortalSidebar() {
     const nav = q('.sg-nav');
-    nav.replaceChildren();
-    const dashboardButton = document.createElement('button');
-    dashboardButton.type = 'button';
-    dashboardButton.className = 'sg-dashboard-nav';
-    dashboardButton.textContent = 'Dashboard quản lý';
-    dashboardButton.setAttribute('aria-current','page');
-    dashboardButton.addEventListener('click',showDashboardView);
-    nav.appendChild(dashboardButton);
+    const dashboardButtons = Array.from(nav.querySelectorAll('button[data-page]'));
+    dashboardButtons.forEach(button => button.addEventListener('click',closePortalView));
     const platformButton = document.createElement('button');
     platformButton.type = 'button';
     platformButton.className = 'sg-platform-parent';
@@ -62,17 +56,6 @@
       platformButton.setAttribute('aria-expanded',String(!expanded));
       subnav.hidden = expanded;
     });
-    const footer = q('.sg-side-foot');
-    const userBox = document.createElement('div');
-    userBox.className = 'sg-portal-user';
-    footer.before(userBox);
-    footer.classList.add('sg-portal-meta');
-    footer.replaceChildren();
-    const version = document.createElement('div');
-    version.textContent = 'Ứng dụng nhập liệu · v1.1.3-final';
-    const source = document.createElement('div');
-    source.textContent = 'Dữ liệu được lưu trên Google Sheets';
-    footer.append(version, source);
   }
 
   function openEntryView(view) {
@@ -89,7 +72,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) frame.src = (cfg.dataEntryPage || 'entry.html') + '#' + view;
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
-    q('.sg-dashboard-nav').removeAttribute('aria-current');
+    root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
     q('.sg-platform-parent').setAttribute('aria-expanded','true');
     q('.sg-subnav').hidden = false;
     root.querySelectorAll('[data-portal-view]').forEach(button => {
@@ -99,11 +82,15 @@
     q('#sg-crumb').textContent = ({cases:'Danh sách hồ sơ',receive:'Tiếp nhận mới',update:'Cập nhật hồ sơ',transfer:'Luân chuyển center'})[view] || 'Platform nhập liệu';
   }
 
-  function showDashboardView() {
+  function closePortalView() {
     q('.sg-main').classList.remove('sg-portal-mode');
-    q('.sg-dashboard-nav').setAttribute('aria-current','page');
     root.querySelectorAll('[data-portal-view]').forEach(button => button.removeAttribute('aria-current'));
-    q('#sg-crumb').textContent = 'Tổng quan';
+  }
+
+  function showDashboardView() {
+    closePortalView();
+    const overview = q('.sg-nav button[data-page="overview"]');
+    if (overview) overview.click();
   }
 
   function status(title, detail, type = '') {
@@ -751,7 +738,7 @@
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
-        q('.sg-dashboard-nav').hidden = true;
+        root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.hidden = true);
         openEntryView('cases');
         return;
       }
@@ -776,7 +763,7 @@
     identity.title = email;
     identity.textContent = email;
     loginSlot.appendChild(identity);
-    const footer = q('.sg-portal-user');
+    const footer = q('.sg-side-foot');
     if (footer) {
       footer.replaceChildren();
       const line = document.createElement('div');
@@ -789,8 +776,26 @@
       const role = document.createElement('div');
       role.className = 'sg-account-role';
       role.textContent = actor.role || 'Quản lý hệ thống';
-      footer.append(line, role);
+      const signOutButton = document.createElement('button');
+      signOutButton.type = 'button';
+      signOutButton.className = 'sg-signout';
+      signOutButton.textContent = 'Đăng xuất';
+      signOutButton.addEventListener('click', signOut);
+
+      footer.append(line, role, signOutButton);
     }
+  }
+
+  function signOut() {
+    token = '';
+    sessionStorage.removeItem('sungrow_id_token');
+    sessionStorage.removeItem('sungrow_portal_actor');
+    try {
+      window.google?.accounts?.id?.disableAutoSelect();
+    } catch (_) {
+      // Google Identity Services may not be loaded yet.
+    }
+    window.location.reload();
   }
 
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';

@@ -90,6 +90,10 @@ assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard
 const liveDataSource = readDocs('live-data.js');
 assert.match(liveDataSource, /sg-main\.sg-portal-mode>\.sg-content\{display:none!important\}/, 'Platform phải ẩn hoàn toàn nội dung dashboard để không chồng lớp.');
 assert.match(liveDataSource, /classList\.remove\('sg-portal-mode'\)/, 'Quay lại dashboard phải khôi phục nguyên nội dung KPI.');
+assert.doesNotMatch(liveDataSource, /nav\.replaceChildren\(\)/, 'Không được thay sidebar dashboard gốc.');
+assert.match(liveDataSource, /button\[data-page\]/, 'Phải giữ menu dashboard gốc.');
+assert.match(liveDataSource, /textContent = 'Đăng xuất'/, 'Sidebar phải có nút đăng xuất.');
+assert.match(liveDataSource, /sessionStorage\.removeItem\('sungrow_id_token'\)/, 'Đăng xuất phải xóa phiên đăng nhập.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }
