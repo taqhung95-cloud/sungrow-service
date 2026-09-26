@@ -2,6 +2,8 @@
   const cfg = window.SUNGROW_CONFIG || {};
   const root = document.getElementById('sg-preview');
   if (!root) return;
+  root.hidden = true;
+  document.documentElement.classList.add('sg-auth-pending');
   const q = s => root.querySelector(s);
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const shortCenter = value => String(value || 'Chưa xác định').replace(/\s+Service\s+Center$/i,'').replace(/\s+Center$/i,'').trim();
@@ -22,7 +24,15 @@
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
   style.textContent += '#sg-preview .sg-platform-parent{margin-top:12px;border-top:1px solid #f0f1f2;padding-top:18px!important;border-radius:0}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-subnav{display:grid;gap:3px;padding:3px 0 2px 14px}#sg-preview .sg-subnav button{min-height:38px;padding:8px 10px;font-size:12px}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}';
+  style.textContent += '#sg-auth-page{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#f8f9fa 0%,#f1f3f5 55%,#fff4e8 100%);font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif;color:#262626}#sg-auth-page[hidden]{display:none!important}#sg-auth-page .sg-auth-card{width:min(100%,430px);padding:44px 42px 38px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;box-shadow:0 22px 65px rgba(25,35,45,.12);text-align:center}#sg-auth-page .sg-auth-brand{display:flex;justify-content:center;padding-bottom:28px;border-bottom:1px solid #ededed}#sg-auth-page .sg-auth-brand .sg-brand{padding:0!important}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:210px;height:auto}#sg-auth-page .sg-auth-brand small{display:block;margin-top:9px;color:#606060;font-size:13px;letter-spacing:2px}#sg-auth-page h1{margin:28px 0 10px;font-size:24px;font-weight:600;line-height:1.35}#sg-auth-page .sg-auth-copy{margin:0 auto 26px;max-width:315px;color:#667085;font-size:13px;line-height:1.65}#sg-auth-login-slot{display:flex;justify-content:center;min-height:44px}#sg-auth-message{min-height:20px;margin:18px 0 0;color:#667085;font-size:12px;line-height:1.5}#sg-auth-message.sg-auth-error{color:#b42318}#sg-auth-page .sg-auth-note{margin:25px 0 0;padding-top:20px;border-top:1px solid #ededed;color:#8a8f98;font-size:11px;line-height:1.6}@media(max-width:520px){#sg-auth-page{padding:16px}#sg-auth-page .sg-auth-card{padding:34px 24px 30px}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:180px}}';
   document.head.appendChild(style);
+  const authPage = document.createElement('main');
+  authPage.id = 'sg-auth-page';
+  authPage.setAttribute('aria-label','Đăng nhập Sungrow Service Center');
+  authPage.innerHTML = '<section class="sg-auth-card"><div class="sg-auth-brand" id="sg-auth-brand"></div><h1>Đăng nhập hệ thống</h1><p class="sg-auth-copy">Sử dụng tài khoản Google đã được cấp quyền để truy cập Service Center.</p><div id="sg-auth-login-slot"></div><p id="sg-auth-message" role="status">Đang kiểm tra phiên đăng nhập…</p><p class="sg-auth-note">Giao diện và chức năng sẽ được hiển thị theo quyền của từng tài khoản.</p></section>';
+  document.body.appendChild(authPage);
+  const authBrand = q('.sg-brand')?.cloneNode(true);
+  if (authBrand) document.getElementById('sg-auth-brand').appendChild(authBrand);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
   host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" disabled>↻ Đồng bộ</button><span class="sg-login-slot" id="sg-login-slot"></span>';
@@ -721,17 +731,40 @@
   function initGoogle() {
     if (!cfg.appsScriptUrl || /PASTE_/.test(cfg.appsScriptUrl) || !cfg.googleClientId || /PASTE_/.test(cfg.googleClientId)) {
       status('Chưa cấu hình API','Cần Apps Script URL và Google Client ID','error');
+      setAuthMessage('Hệ thống đăng nhập chưa được cấu hình. Vui lòng liên hệ quản trị viên.', true);
       return;
     }
-    if (!window.google?.accounts?.id) { setTimeout(initGoogle,250); return; }
+    if (!window.google?.accounts?.id) {
+      setAuthMessage('Đang tải dịch vụ đăng nhập Google…');
+      setTimeout(initGoogle,250);
+      return;
+    }
     google.accounts.id.initialize({client_id:cfg.googleClientId,callback:handleCredential});
-    google.accounts.id.renderButton(q('#sg-login-slot'),{theme:'outline',size:'small',text:'signin_with',locale:'vi'});
+    const loginSlot = document.getElementById('sg-auth-login-slot');
+    loginSlot.replaceChildren();
+    google.accounts.id.renderButton(loginSlot,{theme:'outline',size:'large',text:'signin_with',shape:'rectangular',locale:'vi',width:300});
+    setAuthMessage('Vui lòng đăng nhập để tiếp tục.');
     status('Yêu cầu đăng nhập','Dữ liệu hiển thị sau khi xác thực');
+  }
+
+  function setAuthMessage(message, isError = false) {
+    const messageNode = document.getElementById('sg-auth-message');
+    if (!messageNode) return;
+    messageNode.textContent = message;
+    messageNode.classList.toggle('sg-auth-error', isError);
+  }
+
+  function revealApplication() {
+    root.hidden = false;
+    authPage.hidden = true;
+    document.documentElement.classList.remove('sg-auth-pending');
+    document.documentElement.classList.add('sg-authenticated');
   }
 
   async function handleCredential(response) {
     token = response?.credential || '';
     if (!token) return;
+    setAuthMessage('Đang xác thực tài khoản và phân quyền…');
     sessionStorage.setItem('sungrow_id_token', token);
     try {
       const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 1);
@@ -740,15 +773,20 @@
         renderIdentity(bootstrap.actor);
         root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.hidden = true);
         openEntryView('cases');
+        revealApplication();
         return;
       }
       renderIdentity(bootstrap.actor);
       showDashboardView();
+      revealApplication();
       loadLive();
     } catch (error) {
+      token = '';
       sessionStorage.removeItem('sungrow_id_token');
+      sessionStorage.removeItem('sungrow_portal_actor');
       status('Không thể đăng nhập', error.message || 'Tài khoản không được cấp quyền', 'error');
       initGoogle();
+      setAuthMessage(error.message || 'Tài khoản không được cấp quyền truy cập.', true);
     }
   }
 
@@ -826,7 +864,10 @@
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
   window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});
   const savedToken = sessionStorage.getItem('sungrow_id_token');
-  if (savedToken) handleCredential({credential:savedToken});
+  if (savedToken) {
+    setAuthMessage('Đang khôi phục phiên đăng nhập…');
+    handleCredential({credential:savedToken});
+  }
   else initGoogle();
   window.addEventListener('message',event => {
     if (event.origin !== window.location.origin) return;

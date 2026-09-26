@@ -94,6 +94,12 @@ assert.doesNotMatch(liveDataSource, /nav\.replaceChildren\(\)/, 'Không được
 assert.match(liveDataSource, /button\[data-page\]/, 'Phải giữ menu dashboard gốc.');
 assert.match(liveDataSource, /textContent = 'Đăng xuất'/, 'Sidebar phải có nút đăng xuất.');
 assert.match(liveDataSource, /sessionStorage\.removeItem\('sungrow_id_token'\)/, 'Đăng xuất phải xóa phiên đăng nhập.');
+assert.match(liveDataSource, /root\.hidden = true/, 'Dashboard phải ẩn trước khi xác thực.');
+assert.match(readDocs('index.html'), /id="sg-preview"[^>]*hidden/, 'Dashboard phải được ẩn ngay từ HTML để không nháy trước trang login.');
+assert.match(liveDataSource, /id = 'sg-auth-page'/, 'Phải có trang đăng nhập riêng.');
+assert.match(liveDataSource, /function revealApplication\(\)/, 'Chỉ hiển thị ứng dụng sau khi xác thực thành công.');
+assert.match(liveDataSource, /root\.hidden = false/, 'Ứng dụng phải được mở sau khi backend trả phân quyền.');
+assert.match(liveDataSource, /sg-auth-login-slot/, 'Nút Google phải nằm trên trang đăng nhập riêng.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }
