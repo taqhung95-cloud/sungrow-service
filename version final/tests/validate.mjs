@@ -87,6 +87,9 @@ assert.match(entryHtml, /name="returnTrackingCode"/, 'Form giao trả phải có
 const receiveForm = entryHtml.match(/<form id="receiveForm"[\s\S]*?<\/form>/i)?.[0] || '';
 assert.doesNotMatch(receiveForm, /Thông tin gửi hàng|senderCompany|trackingCode/, 'Form tiếp nhận không được yêu cầu thông tin gửi hàng.');
 assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard phải điều hướng tới trang nhập liệu GitHub Pages.');
+const liveDataSource = readDocs('live-data.js');
+assert.match(liveDataSource, /sg-main\.sg-portal-mode>\.sg-content\{display:none!important\}/, 'Platform phải ẩn hoàn toàn nội dung dashboard để không chồng lớp.');
+assert.match(liveDataSource, /classList\.remove\('sg-portal-mode'\)/, 'Quay lại dashboard phải khôi phục nguyên nội dung KPI.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }

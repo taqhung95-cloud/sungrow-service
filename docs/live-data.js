@@ -21,7 +21,7 @@
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
-  style.textContent += '#sg-preview .sg-brand{padding:0 4px 26px!important;border-bottom:1px solid #f0f1f2}#sg-preview .sg-side{gap:0}#sg-preview .sg-nav{margin-top:32px}#sg-preview .sg-subnav{display:grid;gap:4px;padding:5px 0 6px 13px}#sg-preview .sg-subnav button{min-height:40px;padding:9px 10px;font-size:12px}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-portal-user{margin-top:auto;border-top:1px solid #e5e7eb;padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5;min-width:0}#sg-preview .sg-portal-user>div:first-child{display:flex;align-items:center;min-width:0}#sg-preview .sg-portal-user>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#20252b}#sg-preview .sg-side-foot.sg-portal-meta{margin-top:0;padding:10px 4px 0;border-top:1px solid #f0f1f2;color:#667085;font-size:11px;line-height:1.5}#sg-preview .sg-portal-frame{display:block;width:100%;height:100%;min-height:100vh;border:0;background:#f5f6f7}';
+  style.textContent += '#sg-preview .sg-brand{padding:0 4px 26px!important;border-bottom:1px solid #f0f1f2}#sg-preview .sg-side{gap:0}#sg-preview .sg-nav{margin-top:32px}#sg-preview .sg-subnav{display:grid;gap:4px;padding:5px 0 6px 13px}#sg-preview .sg-subnav button{min-height:40px;padding:9px 10px;font-size:12px}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-portal-user{margin-top:auto;border-top:1px solid #e5e7eb;padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5;min-width:0}#sg-preview .sg-portal-user>div:first-child{display:flex;align-items:center;min-width:0}#sg-preview .sg-portal-user>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#20252b}#sg-preview .sg-side-foot.sg-portal-meta{margin-top:0;padding:10px 4px 0;border-top:1px solid #f0f1f2;color:#667085;font-size:11px;line-height:1.5}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}';
   document.head.appendChild(style);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
@@ -78,8 +78,7 @@
   function openEntryView(view) {
     if (token) sessionStorage.setItem('sungrow_id_token', token);
     const main = q('.sg-main');
-    q('.sg-top').style.display = 'none';
-    q('.sg-content').style.display = 'none';
+    main.classList.add('sg-portal-mode');
     let frame = q('.sg-portal-frame');
     if (!frame) {
       frame = document.createElement('iframe');
@@ -87,7 +86,6 @@
       frame.title = 'Sungrow Service Center - Platform nhập liệu';
       main.appendChild(frame);
     }
-    frame.hidden = false;
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) frame.src = (cfg.dataEntryPage || 'entry.html') + '#' + view;
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
@@ -98,15 +96,14 @@
       if (button.dataset.portalView === view) button.setAttribute('aria-current','page');
       else button.removeAttribute('aria-current');
     });
+    q('#sg-crumb').textContent = ({cases:'Danh sách hồ sơ',receive:'Tiếp nhận mới',update:'Cập nhật hồ sơ',transfer:'Luân chuyển center'})[view] || 'Platform nhập liệu';
   }
 
   function showDashboardView() {
-    const frame = q('.sg-portal-frame');
-    if (frame) frame.hidden = true;
-    q('.sg-top').style.display = '';
-    q('.sg-content').style.display = '';
+    q('.sg-main').classList.remove('sg-portal-mode');
     q('.sg-dashboard-nav').setAttribute('aria-current','page');
     root.querySelectorAll('[data-portal-view]').forEach(button => button.removeAttribute('aria-current'));
+    q('#sg-crumb').textContent = 'Tổng quan';
   }
 
   function status(title, detail, type = '') {
@@ -759,6 +756,7 @@
         return;
       }
       renderIdentity(bootstrap.actor);
+      showDashboardView();
       loadLive();
     } catch (error) {
       sessionStorage.removeItem('sungrow_id_token');
