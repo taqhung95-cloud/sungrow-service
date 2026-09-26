@@ -103,6 +103,12 @@ assert.match(liveDataSource, /sg-auth-login-slot/, 'Nút Google phải nằm tr�
 assert.match(liveDataSource, /button\.sg-role-hidden\{display:none!important\}/, 'Menu dashboard của center phải bị ẩn bất kể CSS display mặc định.');
 assert.match(liveDataSource, /classList\.add\('sg-role-hidden'\)/, 'Account center phải được gắn lớp ẩn menu quản lý.');
 assert.match(liveDataSource, /tabIndex = -1/, 'Menu quản lý ẩn không được nhận focus bàn phím.');
+const casesView = entryHtml.match(/<section id="cases"[\s\S]*?<\/section>/i)?.[0] || '';
+assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhận thiết bị/, 'Danh sách hồ sơ không được lặp lại tiêu đề và nút tiếp nhận phía trên.');
+assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
+assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
+assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
+assert.match(liveDataSource, /v=35#/, 'Iframe nhập liệu phải dùng cache key mới cho bố cục danh sách.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }
