@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--orange:#ff7900;--orange-dark:#b64e00;--orange-soft:#fff3e8;--ink:#222;--muted:#667085;--line:#e5e7eb;--soft:#f5f6f7;--green:#237a57;--green-soft:#eaf6f0;--blue:#3b68a0;--blue-soft:#edf3fb;--red:#b42318;--red-soft:#fff0ee;--sidebar:214px}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--soft);color:var(--ink);font-family:'Montserrat',Arial,sans-serif;font-size:14px;line-height:1.55}.hidden{display:none!important}button,input,select,textarea{font:inherit}
+    .login-page{min-height:100%;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#fff 0,#f7f7f7 58%,#fff1e4 100%)}.login-card{width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:34px;box-shadow:0 20px 55px rgba(24,32,40,.08);text-align:center}.login-card h1{font-size:20px;margin:24px 0 8px}.login-card .secondary{width:100%;margin-top:12px}
+    .app-shell{min-height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:#fff;border-right:1px solid var(--line);padding:25px 16px 18px;display:flex;flex-direction:column;z-index:20}.brand{padding:0 8px 26px;border-bottom:1px solid #f0f1f2}.brand svg{display:block;width:150px;height:auto}.brand small{display:block;margin-top:7px;color:#5f6872;font-size:11px;letter-spacing:1.25px}.tabs{display:grid;gap:5px;margin-top:22px}.tab{display:flex;align-items:center;width:100%;min-height:50px;border:0;border-radius:6px;background:transparent;color:#505050;padding:13px 12px;text-align:left;cursor:pointer;font-size:14px;font-weight:500;line-height:1.45}.tab:hover{background:#f7f7f7}.tab.active{background:var(--orange-soft);color:var(--orange-dark);box-shadow:inset 3px 0 var(--orange);font-weight:600}.sidebar-user{margin-top:auto;border-top:1px solid var(--line);padding:15px 10px 11px;color:#4d5761;font-size:11px;line-height:1.5}.sidebar-user strong{display:block;color:#20252b;font-size:13px;margin-bottom:2px}.side-foot{padding:10px 10px 0;border-top:1px solid #f0f1f2;color:var(--muted);font-size:11px}.workspace{grid-column:2;min-width:0;min-height:100vh}
+    #message{position:fixed;top:18px;right:26px;z-index:40;max-width:440px}.content{padding:22px 28px}.panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.03);padding:20px;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.panel-title h2{font-size:18px;margin:0 0 3px}.panel-title p{margin:0;color:var(--muted);font-size:12px}h3{font-size:15px;margin:18px 0 10px}
+    .filters{display:grid;grid-template-columns:minmax(240px,2fr) repeat(3,minmax(150px,1fr)) auto;gap:10px;padding:14px;background:#fafafa;border:1px solid #ededed;border-radius:8px;margin-bottom:14px}.search-field{position:relative}.search-field input{padding-right:38px}.search-field::after{content:'⌕';position:absolute;right:13px;top:7px;font-size:23px;color:#7d8790}.search{display:flex;gap:10px}
+    label{display:block;font-size:12px;color:#475467;margin-bottom:6px;font-weight:500}input,select,textarea{width:100%;min-height:40px;border:1px solid #cfd4dc;border-radius:6px;padding:9px 11px;background:#fff;color:var(--ink)}textarea{min-height:82px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid #ffe0c4;border-color:var(--orange)}
+    button{border:0;border-radius:6px;padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}button:disabled{opacity:.55;cursor:wait}.primary{background:var(--orange);color:#fff}.primary:hover{background:#e96f00}.secondary{background:#fff;border:1px solid #cfd4dc;color:var(--ink)}.secondary:hover{border-color:var(--orange);color:var(--orange-dark)}.danger{background:var(--red-soft);color:var(--red)}.icon-button{min-width:36px;height:34px;padding:0 9px;background:#fff;border:1px solid #d7dce1;color:#4c5965}.actions{display:flex;gap:9px;justify-content:flex-end;margin-top:15px;flex-wrap:wrap}
+    .case-table-shell{height:calc(100vh - 292px);min-height:330px;overflow:auto;border:1px solid var(--line);border-radius:8px}.case-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}.case-table th{position:sticky;top:0;z-index:2;background:#f7f8f9;color:#515b65;font-size:12px;font-weight:600;text-align:left;padding:12px 13px;border-bottom:1px solid var(--line)}.case-table td{padding:12px 13px;border-bottom:1px solid #edf0f2;vertical-align:middle}.case-table tbody tr.data-row:hover{background:#fcfcfc}.case-table th:nth-child(1){width:23%}.case-table th:nth-child(2){width:14%}.case-table th:nth-child(3){width:14%}.case-table th:nth-child(4){width:15%}.case-table th:nth-child(5){width:11%}.case-table th:nth-child(6){width:16%}.case-table th:nth-child(7){width:7%;text-align:center}.case-table td:last-child{text-align:center}.device-name{font-weight:600;color:#20252b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.device-sn{display:block;color:var(--muted);font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.badge{display:inline-flex;align-items:center;max-width:100%;padding:4px 8px;border-radius:5px;background:#f0f2f4;color:#53606c;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.badge.good{background:var(--green-soft);color:var(--green)}.badge.wait{background:#fff0df;color:#9b5c14}.badge.info{background:var(--blue-soft);color:var(--blue)}.badge.alert{background:var(--red-soft);color:var(--red)}.center-name,.date-cell{white-space:nowrap}.detail-row>td{padding:0!important;background:#fafbfc}.detail-box{padding:17px 18px 20px;border-bottom:1px solid var(--line)}.detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}.detail-field{min-width:0}.detail-field span{display:block;color:var(--muted);font-size:11px;margin-bottom:3px}.detail-field strong{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis}.drive-link{color:var(--orange-dark);font-weight:600;text-decoration:none}.work{background:#fff;border:1px solid var(--line);border-radius:7px;padding:12px;margin-top:10px}.meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:7px}.case-body{margin-top:0}.result{border:1px solid var(--line);border-radius:9px;padding:16px;margin-top:12px;background:#fff}.result-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.result-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.result-title strong{font-size:16px}.case-sequence{color:var(--orange-dark);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.45px}.case-info-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 18px;margin-top:14px;padding-top:13px;border-top:1px solid #edf0f2}.case-info{min-width:0}.case-info span{display:block;color:var(--muted);font-size:10px;margin-bottom:2px}.case-info strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.case-history{margin-top:12px;border:1px solid #edf0f2;border-radius:7px;background:#fafafa}.case-history summary{cursor:pointer;padding:9px 11px;font-size:11px;font-weight:600;color:#59636d}.case-history-body{padding:0 12px 11px}.case-work-row{display:grid;grid-template-columns:125px 150px 110px minmax(180px,1fr);gap:10px;padding:9px 0;border-top:1px solid #edf0f2;font-size:11px;color:var(--muted)}.case-work-row strong{color:var(--ink)}.case-action-grid{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding:10px 0 0;border-top:1px solid #edf0f2}.case-action{width:auto;min-width:132px;min-height:34px;padding:7px 11px;border:1px solid #d8dde2;border-radius:5px;background:#f2f3f4;color:#8a929a;font-size:11px;font-weight:600}.case-action:disabled{opacity:1;cursor:not-allowed}.case-action.enabled{background:var(--orange-soft);border-color:#f2b47e;color:var(--orange-dark)}.case-action.enabled:hover{background:#ffe6d0;border-color:var(--orange);color:#8f3d00}.case-lock-note{margin-top:10px;color:#7a838c;font-size:11px}.case-form-panel:empty{display:none}.case-form-panel:not(:empty){margin-top:14px;padding-top:4px;border-top:1px solid var(--line)}
+    .pagination{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 2px 0;color:var(--muted);font-size:11px}.pager-controls{display:flex;align-items:center;gap:7px}.pager-controls select{width:auto;min-height:34px;padding:6px 27px 6px 9px}.page-buttons{display:flex;gap:4px}.page-button{min-width:34px;height:34px;padding:0 8px;background:#fff;border:1px solid transparent;color:#59636d}.page-button:hover{border-color:#d2d7dc}.page-button.active{border-color:var(--orange);color:var(--orange-dark);background:var(--orange-soft)}.empty{text-align:center;color:var(--muted);padding:38px}.empty-row td{text-align:center!important;padding:40px!important}
+    .notice{padding:11px 13px;border:1px solid #cce7d9;border-radius:7px;background:#eef8f3;color:var(--green);box-shadow:0 5px 18px rgba(0,0,0,.06)}.notice.error{border-color:#ffd1cc;background:var(--red-soft);color:var(--red)}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.span2{grid-column:span 2}.span3{grid-column:1/-1}.row-list{display:grid;gap:8px}.repeat-row{display:grid;grid-template-columns:1fr 1.6fr 110px auto;gap:8px;align-items:end}.muted{color:var(--muted)}
+    .dashboard-panel{background:transparent;border:0;box-shadow:none;padding:0}.dashboard-toolbar{display:grid;grid-template-columns:minmax(130px,180px) minmax(150px,210px) minmax(210px,1fr) auto;gap:10px;margin-bottom:14px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:9px}.dashboard-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.dashboard-kpi{background:#fff;border:1px solid var(--line);border-top:3px solid var(--orange);border-radius:9px;padding:14px;min-width:0}.dashboard-kpi strong{display:block;font-size:26px;line-height:1.1;color:var(--orange-dark);margin-bottom:5px}.dashboard-kpi span{display:block;color:var(--muted);font-size:11px}.dashboard-kpi.alert{border-top-color:var(--red)}.dashboard-kpi.alert strong{color:var(--red)}.dashboard-kpi.good{border-top-color:var(--green)}.dashboard-kpi.good strong{color:var(--green)}.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.dashboard-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:16px;min-width:0}.dashboard-card h3{margin:0 0 13px;font-size:14px}.dashboard-bar{display:grid;grid-template-columns:minmax(110px,170px) 1fr 42px;align-items:center;gap:9px;margin:9px 0;font-size:11px}.dashboard-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dashboard-track{height:9px;background:#eef0f2;border-radius:10px;overflow:hidden}.dashboard-fill{height:100%;background:var(--orange);border-radius:10px}.dashboard-trend{width:100%;border-collapse:collapse;font-size:11px}.dashboard-trend th,.dashboard-trend td{padding:8px 7px;border-bottom:1px solid #edf0f2;text-align:right}.dashboard-trend th:first-child,.dashboard-trend td:first-child{text-align:left}.dashboard-attention{grid-column:1/-1}.dashboard-table-shell{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:7px}.dashboard-table{width:100%;border-collapse:collapse;min-width:760px}.dashboard-table th{position:sticky;top:0;background:#f7f8f9;z-index:1;color:#59636d;font-size:11px;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}.dashboard-table td{padding:9px 10px;border-bottom:1px solid #edf0f2;font-size:11px}.dashboard-table tr:hover{background:#fff9f3}.dashboard-link{border:0;background:transparent;color:var(--orange-dark);padding:0;font-size:11px}.dashboard-foot{margin-top:10px;color:var(--muted);font-size:10px}
+    @media(max-width:1100px){:root{--sidebar:184px}.content{padding:18px}.filters{grid-template-columns:2fr 1fr 1fr}.filters select:nth-of-type(3){grid-column:auto}.filters .primary{grid-column:3}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.case-table th:nth-child(6),.case-table td:nth-child(6){display:none}.case-table th:nth-child(1){width:28%}.case-info-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.case-work-row{grid-template-columns:110px 135px 100px minmax(150px,1fr)}.dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:760px){.app-shell{display:block}.sidebar{position:static;width:100%;padding:15px}.brand{padding:0 4px 14px}.brand svg{width:132px}.nav-label,.side-foot{display:none}.tabs{grid-template-columns:repeat(2,1fr)}.tab{justify-content:center;padding:10px 8px}.sidebar-user{margin-top:12px;padding:10px 8px 0}.workspace{min-height:auto}.content{padding:14px}.panel{padding:14px}.panel-head{align-items:flex-start}.filters,.grid{grid-template-columns:1fr}.filters .primary,.span2,.span3{grid-column:auto}.case-table-shell{height:58vh}.case-table{min-width:760px}.pagination{align-items:flex-start;flex-direction:column}.repeat-row{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.dashboard-toolbar,.dashboard-grid{grid-template-columns:1fr}.dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-attention{grid-column:auto}}
+    .drawer-backdrop{position:fixed;inset:0;background:rgba(24,32,40,.28);z-index:50}.case-drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:51;background:#fff;box-shadow:-18px 0 55px rgba(24,32,40,.18);display:flex;flex-direction:column}.drawer-head{height:68px;flex:0 0 68px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}.drawer-head h2{font-size:16px;margin:0}.drawer-head p{font-size:11px;color:var(--muted);margin:3px 0 0}.drawer-close{width:36px;height:36px;padding:0;border:1px solid var(--line);background:#fff;font-size:20px;color:#59636d}.drawer-body{padding:20px;overflow:auto}.drawer-device{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}.drawer-device h3{font-size:18px;margin:0 0 4px}.drawer-device p{margin:0;color:var(--muted)}.drawer-section-title{margin:20px 0 9px;font-size:11px;color:#667085;text-transform:uppercase;letter-spacing:.8px}.drawer-actions{position:sticky;bottom:-20px;margin:20px -20px -20px;padding:14px 20px;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.case-drawer .work{background:#fafafa}.case-drawer .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media(min-width:761px){.view.panel{max-height:calc(100vh - 44px);overflow:auto}.case-table-shell{height:calc(100vh - 286px);min-height:288px}}
+    @media(max-width:600px){.case-drawer{width:100%}.drawer-body{padding:16px}.drawer-actions{margin-left:-16px;margin-right:-16px;margin-bottom:-16px}.case-drawer .detail-grid{grid-template-columns:1fr}.case-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.case-action{flex:1 1 calc(50% - 7px);min-width:0}.case-work-row{grid-template-columns:1fr 1fr}.result{padding:13px}}
+    .sidebar-user strong,.sidebar-user .user-role{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-user .user-role{color:#667085}.side-foot{line-height:1.4}
+    .case-form-panel form{position:relative}.form-close{position:absolute;top:10px;right:10px;z-index:2;width:30px;height:30px;padding:0;border:1px solid #d8dde2;border-radius:5px;background:#fff;color:#68727c;font-size:19px;line-height:1}.form-close:hover{border-color:var(--orange);color:var(--orange-dark);background:var(--orange-soft)}
+    .work-edit,.case-form-panel .work{border:1px solid #e3e7eb;border-radius:7px;background:#fff;padding:13px;max-width:100%;overflow:hidden}.work-edit{font-size:12px}.work-edit h3,.case-form-panel .work h3{font-size:13px;margin:12px 36px 8px 0}.work-edit .grid{gap:9px 10px}.work-edit label,.case-form-panel .work label{font-size:11px;margin-bottom:4px}.work-edit input,.work-edit select,.work-edit textarea,.case-form-panel .work input,.case-form-panel .work select,.case-form-panel .work textarea{min-width:0;max-width:100%;min-height:36px;padding:7px 9px;font-size:12px}.work-edit textarea{min-height:58px}.work-edit .row-list{gap:6px;min-width:0}.work-edit .repeat-row{gap:6px;min-width:0}.issues .repeat-row{grid-template-columns:minmax(120px,1fr) minmax(180px,1.55fr) minmax(145px,.48fr) 56px 108px;align-items:center}.parts .repeat-row{grid-template-columns:minmax(120px,1fr) minmax(180px,1.55fr) minmax(100px,.48fr) 56px 138px;align-items:center}.holds .repeat-row{grid-template-columns:minmax(190px,1fr) minmax(145px,.45fr) minmax(145px,.45fr) 56px;align-items:center}.work-edit .danger{height:36px;padding:7px 10px}.inline-add{width:100%;height:36px;padding:7px 8px;font-size:11px}.work-edit .actions{margin-top:10px}.work-edit .actions button{min-height:36px;padding:8px 12px;font-size:12px}
+    .warranty-confirm{padding:13px!important}.warranty-confirm h3{margin:0 36px 10px 0!important}.warranty-confirm .grid{grid-template-columns:minmax(180px,280px) minmax(0,1fr);gap:10px}.warranty-confirm .span2{grid-column:auto}.warranty-confirm textarea{width:100%;height:38px;min-height:38px;resize:vertical}.warranty-confirm .actions{margin-top:9px}.warranty-confirm .actions button{min-height:36px;padding:8px 12px;font-size:12px}.case-drawer .warranty-confirm .grid{grid-template-columns:1fr}.case-drawer .warranty-confirm textarea{height:54px;min-height:54px}
+    @media(max-width:900px){.issues .repeat-row,.parts .repeat-row,.holds .repeat-row{grid-template-columns:1fr 1fr}.inline-add{width:100%}.warranty-confirm .grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+    <section id="loginView" class="login-page">
+      <div class="login-card">
+        <div style="font-size:28px;font-weight:700;letter-spacing:-1px;color:#ff7900">SUNGROW</div>
+        <h1>Đăng nhập ứng dụng nhập liệu</h1>
+        <p class="muted">Chỉ tài khoản đã được Service Manager cấp quyền mới truy cập được.</p>
+        <div id="googleButton"></div><div id="loginMessage"></div>
+      </div>
+    </section>
+    <section id="appView" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand">
+          <svg role="img" aria-label="Sungrow" viewBox="0 0 150 20" xmlns="http://www.w3.org/2000/svg">
+            <g fill="#FF7900">
+              <path d="M147.137 1.016v13.681l-6.699-7.172-6.699 7.172V1.016h-2.86v17.767h1.965c.49 0 .96-.2 1.336-.58l6.253-6.689 6.254 6.689c.375.38.845.58 1.335.58h1.972V1.016h-2.857z"/>
+              <path d="M14.667 8.296H3.744a.9.9 0 01-.912-.911V5.077a.9.9 0 01.912-.911h11.873c1.19 0 2.19-.68 2.596-3.15H3.744C0 1.016 0 4.27 0 4.27v3.594s0 3.255 3.744 3.255h10.923a.9.9 0 01.911.912v2.689a.9.9 0 01-.911.912H2.597c-1.19 0-2.19.68-2.597 3.15h14.667c3.744 0 3.744-3.256 3.744-3.256v-3.975s0-3.255-3.744-3.255zM37.185 1.016v14.766c0 .219-.837.596-6.065.596s-6.065-.376-6.065-.596V1.016h-3.024v16.028c.931 2.114 7.619 1.993 9.089 1.993s8.162.121 9.089-1.993V1.016h-3.024zM62.287 1.016h-3.024v13.448L47.299 1.603a1.8 1.8 0 00-1.338-.582h-2.125v17.767h3.024V5.34l11.982 12.863c.375.38.845.581 1.338.581h2.107V1.016zM83.239 8.294h-7.464c-1.13 0-1.92.87-2.333 2.827h7.63c.188 0 .42.207.42 2.419 0 1.884-.236 2.094-.42 2.094H69.341c-.139 0-.572-.595-.572-5.734s.433-5.734.572-5.734h12.183c1.19 0 2.19-.68 2.596-3.15H67.735c-1.938.849-1.826 7.537-1.826 8.883 0 1.345-.112 8.034 1.826 8.883h15.504c1.144-.502 1.078-4.448 1.078-5.244 0-.795.066-4.743-1.078-5.244zM104.105 11.119c1.144-.5 1.078-4.257 1.078-5.051 0-.795.066-4.552-1.078-5.052H87.981v3.15h14.042c.139 0 .336.529.336 1.902 0 1.697-.199 2.228-.336 2.228H87.981v10.487h2.861v-7.664h4.082l7.128 7.128c.342.343.807.536 1.292.536h3.595l-7.664-7.664h4.83zM118.031.767c-1.47 0-8.298-.122-9.224 1.993v9.197a10 10 0 002.267-1.048c.469-.303.756-.823.756-1.386V4.087c0-.331 1.089-.662 6.201-.662 5.113 0 6.201.331 6.201.662v3.296a10 10 0 002.267-1.049c.469-.302.757-.822.757-1.386V2.76C126.325.645 119.497.767 118.031.767zm.001 18.276c1.47 0 8.299.122 9.225-1.994V7.852a10 10 0 00-2.268 1.049c-.469.302-.756.822-.756 1.386v5.436c0 .331-1.088.662-6.201.662-5.112 0-6.201-.33-6.201-.662v-3.297a10 10 0 00-2.267 1.049c-.469.302-.757.822-.757 1.386v2.189c.931 2.115 7.758 1.993 9.225 1.993z"/>
+            </g>
+          </svg>
+          <small>SERVICE CENTER</small>
+        </div>
+        <nav class="tabs">
+          <button id="dashboardTab" class="tab hidden" data-view="dashboard">Dashboard quản lý</button>
+          <button class="tab active" data-view="cases">Danh sách hồ sơ</button>
+          <button class="tab" data-view="receive">Tiếp nhận mới</button>
+          <button class="tab" data-view="update">Cập nhật hồ sơ</button>
+          <button class="tab" data-view="transfer">Luân chuyển center</button>
+        </nav>
+        <div class="sidebar-user" id="userBox"></div>
+        <div class="side-foot">Ứng dụng nhập liệu · v<?= appVersion ?><br>Dữ liệu được lưu trên Google Sheets</div>
+      </aside>
+      <div class="workspace">
+      <div id="message"></div>
+        <main class="content">
+
+      <section id="dashboard" class="view dashboard-panel hidden">
+        <div class="dashboard-toolbar">
+          <select id="dashboardYear" aria-label="Năm báo cáo"></select>
+          <select id="dashboardMonth" aria-label="Tháng báo cáo"><option value="0">Cả năm</option><option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option><option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8">Tháng 8</option><option value="9">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option></select>
+          <select id="dashboardCenter" aria-label="Center"><option value="">Tất cả center</option></select>
+          <button id="dashboardRefresh" class="primary" type="button">Làm mới</button>
+        </div>
+        <div id="dashboardContent"><div class="empty">Chỉ tài khoản quản lý được xem dashboard.</div></div>
+      </section>
+
+      <section id="cases" class="view panel">
+        <div class="panel-head">
+          <div class="panel-title"><h2>Quản lý hồ sơ thiết bị</h2><p>Tìm kiếm, kiểm tra và xử lý hồ sơ theo quyền được cấp</p></div>
+          <button class="primary" type="button" onclick="showView('receive')">+ Tiếp nhận thiết bị</button>
+        </div>
+        <div class="filters">
+          <div class="search-field"><input id="caseQuery" placeholder="Model, S/N, nơi gửi hàng..."></div>
+          <select id="caseStatus"><option value="">Tất cả trạng thái</option><option>Mới tiếp nhận</option><option>Đang xử lý</option><option>Đang luân chuyển</option><option>Sẵn sàng trả khách</option><option>Đã hoàn tất</option></select>
+          <select id="caseWarranty"><option value="">Tất cả bảo hành</option><option>Chờ xác nhận</option><option>Trong bảo hành</option><option>Ngoài bảo hành</option><option>Sửa làm hàng good</option></select>
+          <select id="caseCenter"><option value="">Tất cả center</option></select>
+          <button class="primary" id="caseRefresh" type="button">Tìm kiếm</button>
+        </div>
+        <div class="case-table-shell">
+          <table class="case-table">
+            <thead><tr><th>Thiết bị / S/N</th><th>Trạng thái</th><th>Bảo hành</th><th>Center</th><th>Ngày nhận</th><th>Kết quả gần nhất</th><th>Thao tác</th></tr></thead>
+            <tbody id="caseResults"><tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div id="caseCount">Đang tải dữ liệu…</div>
+          <div class="pager-controls">
+            <label for="casePageSize" style="margin:0">Hiển thị</label>
+            <select id="casePageSize"><option>20</option><option>50</option><option>100</option></select>
+            <div class="page-buttons" id="casePager"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="receive" class="view panel hidden">
+        <div class="panel-head"><div class="panel-title"><h2>Tiếp nhận thiết bị mới</h2><p>Tạo hồ sơ và công việc đầu tiên cho center tiếp nhận</p></div></div>
+        <form id="receiveForm"><div class="grid">
+          <div><label>Ngày nhận từ khách *</label><input name="receivedAt" type="date" required></div>
+          <div><label>Trung tâm tiếp nhận *</label><select name="intakeCenter" class="center-select" required></select></div>
+          <div><label>Loại thiết bị *</label><select name="deviceType" required><option value="">Chọn loại thiết bị</option><option>Inverter</option><option>Fan</option><option>Power Stack</option><option>Battery</option><option>Thiết bị giám sát</option><option>Backup Box</option><option>Meter</option><option>Khác</option></select></div>
+          <div><label>Model *</label><input name="model" required placeholder="Ví dụ: SG110CX"></div>
+          <div><label>Số sê-ri (S/N) *</label><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"></div>
+          <div><label>Số lượng *</label><input name="quantity" type="number" min="1" value="1" required></div>
+          <div><label>Tình trạng bảo hành</label><input value="Chờ xác nhận - do quản lý Sungrow xác nhận" disabled></div>
+          <div class="span3"><h3>Thông tin khách hàng</h3></div>
+          <div><label>Tên khách hàng *</label><input name="customerName" required></div>
+          <div><label>Số điện thoại khách hàng *</label><input name="customerPhone" type="tel" required></div>
+          <div><label>Email khách hàng</label><input name="customerEmail" type="email" placeholder="Nếu có"></div>
+          <div class="span3"><label>Địa chỉ khách hàng *</label><input name="customerAddress" required></div>
+          <div class="span3"><h3>Thông tin gửi hàng</h3></div>
+          <div><label>Tên công ty</label><input name="senderCompany" placeholder="Nếu có"></div>
+          <div><label>Tên người gửi hàng *</label><input name="senderCustomer" required></div>
+          <div><label>Số điện thoại gửi hàng *</label><input name="senderPhone" type="tel" required></div>
+          <div class="span2"><label>Địa chỉ gửi hàng *</label><input name="senderAddress" required></div>
+          <div><label>Email gửi hàng</label><input name="senderEmail" type="email" placeholder="Nếu có"></div>
+          <div><label>Đơn vị vận chuyển *</label><input name="carrier" required placeholder="Ví dụ: Viettel Post"></div>
+          <div><label>Mã vận đơn *</label><input name="trackingCode" required></div>
+          <div class="span3"><label>Liên kết hồ sơ Google Drive *</label><input name="evidenceLink" type="url" required placeholder="https://drive.google.com/..."><div class="muted">Center cần cấp quyền xem liên kết này cho người quản lý.</div></div>
+          <div class="span3"><label>Hiện tượng ban đầu *</label><textarea name="initialIssue" required></textarea></div>
+          <div class="span3"><label>Ghi chú chung</label><textarea name="note"></textarea></div>
+        </div><div class="actions"><button class="primary" type="submit">Tạo hồ sơ</button></div></form>
+      </section>
+
+      <section id="update" class="view panel hidden">
+        <div class="panel-head"><div class="panel-title"><h2>Tìm và cập nhật hồ sơ</h2><p>Tra cứu theo Model hoặc S/N và ghi nhận tiến độ kỹ thuật</p></div></div>
+        <div class="search"><input id="updateQuery" placeholder="Nhập Mã hồ sơ, S/N hoặc Model"><button class="primary" id="updateSearch" type="button">Tìm kiếm</button></div>
+        <div id="updateResults"></div>
+      </section>
+
+      <section id="transfer" class="view panel hidden">
+        <div class="panel-head"><div class="panel-title"><h2>Luân chuyển giữa các center</h2><p>Tạo và xác nhận bàn giao thiết bị giữa các trung tâm</p></div></div>
+        <div class="search"><input id="transferQuery" placeholder="Nhập Mã hồ sơ hoặc S/N"><button class="primary" id="transferSearch" type="button">Tìm kiếm</button></div>
+        <div id="transferResults"></div>
+      </section>
+        </main>
+      </div>
+      <div id="caseDrawerBackdrop" class="drawer-backdrop hidden" onclick="closeCaseDrawer()"></div>
+      <aside id="caseDrawer" class="case-drawer hidden" aria-hidden="true" aria-label="Chi tiết thiết bị">
+        <div class="drawer-head"><div><h2>Chi tiết thiết bị</h2><p>Xem thông tin và chuyển tới đúng chức năng</p></div><button class="drawer-close" type="button" aria-label="Đóng chi tiết" onclick="closeCaseDrawer()">×</button></div>
+        <div id="caseDrawerBody" class="drawer-body"></div>
+      </aside>
+    </section>
+  <script>
+    const AUTH_BROKER_URL = '<?= authBrokerUrl ?>';
+    const AUTH_BROKER_ORIGIN = new URL(AUTH_BROKER_URL).origin;
+    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false };
+    let authPopup = null;
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const formData = form => Object.fromEntries(new FormData(form).entries());
+    const today = () => new Date().toISOString().slice(0,10);
+
+    window.onload = () => {
+      $('[name=receivedAt]').value = today();
+      bindEvents();
+      $('#googleButton').innerHTML='<button id="googleLoginTrigger" class="secondary" type="button">&#272;&#259;ng nh&#7853;p b&#7857;ng Google</button>';
+      $('#googleLoginTrigger').addEventListener('click',openGoogleLogin);
+      window.addEventListener('message',receiveGoogleCredential);
+    };
+
+    function openGoogleLogin(){
+      const url = new URL(AUTH_BROKER_URL);
+      url.searchParams.set('opener_origin',window.location.origin);
+      authPopup=window.open(url.toString(),'sungrowGoogleLogin','popup=yes,width=520,height=650,resizable=yes,scrollbars=yes');
+      if(!authPopup)showLoginError('Tr\u00ecnh duy\u1ec7t \u0111\u00e3 ch\u1eb7n c\u1eeda s\u1ed5 \u0111\u0103ng nh\u1eadp. H\u00e3y cho ph\u00e9p popup r\u1ed3i th\u1eed l\u1ea1i.');
+      else $('#loginMessage').innerHTML='<div class="notice">&#272;ang ch&#7901; x&#225;c th&#7921;c t&#224;i kho&#7843;n Google&#8230;</div>';
+    }
+
+    function receiveGoogleCredential(event){
+      if(event.origin!==AUTH_BROKER_ORIGIN||event.source!==authPopup)return;
+      const data=event.data||{};
+      if(data.type==='sungrow-google-auth-error'){
+        showLoginError(data.message||'Kh\u00f4ng th\u1ec3 \u0111\u0103ng nh\u1eadp b\u1eb1ng Google.');
+        return;
+      }
+      if(data.type!=='sungrow-google-auth'||!data.credential)return;
+      authPopup=null;
+      onCredential({credential:data.credential});
+    }
+
+    function onCredential(response){
+      state.token=response.credential;
+      call('getBootstrap',[state.token]).then(data=>{
+        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;
+        $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
+        $('#userBox').innerHTML=`<strong title="${esc(data.actor.name||data.actor.email)}">${esc(data.actor.name||data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span>`;
+        fillCenters();
+        setupDashboardAccess();
+        showView(data.actor.isGlobalManager?'dashboard':'cases');
+      }).catch(err=>showLoginError(err.message));
+    }
+
+    function bindEvents(){
+      $$('.tab').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
+      $('#receiveForm').addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{const result=await call('createCase',[state.token,formData(e.target)]);showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}});
+      $('#caseRefresh').addEventListener('click',()=>loadCases(true));
+      $('#caseQuery').addEventListener('keydown',e=>{if(e.key==='Enter')loadCases(true)});
+      $('#caseStatus').addEventListener('change',()=>loadCases(true));
+      $('#caseWarranty').addEventListener('change',()=>loadCases(true));
+      $('#caseCenter').addEventListener('change',()=>loadCases(true));
+      $('#casePageSize').addEventListener('change',e=>{state.casePageSize=Number(e.target.value)||20;loadCases(true)});
+      $('#updateSearch').addEventListener('click',()=>searchInto($('#updateQuery').value,'updateResults','update'));
+      $('#transferSearch').addEventListener('click',()=>searchInto($('#transferQuery').value,'transferResults','transfer'));
+      $('#updateQuery').addEventListener('keydown',e=>{if(e.key==='Enter')$('#updateSearch').click()});
+      $('#transferQuery').addEventListener('keydown',e=>{if(e.key==='Enter')$('#transferSearch').click()});
+      $('#dashboardRefresh').addEventListener('click',()=>loadManagerDashboard());
+      $('#dashboardYear').addEventListener('change',()=>loadManagerDashboard());
+      $('#dashboardMonth').addEventListener('change',()=>loadManagerDashboard());
+      $('#dashboardCenter').addEventListener('change',()=>loadManagerDashboard());
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCaseDrawer()});
+    }
+
+    function showView(id){if(id==='dashboard'&&(!state.actor||!state.actor.isGlobalManager))id='cases';state.currentView=id;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='dashboard'&&state.token)loadManagerDashboard();else if(id==='cases'&&state.token)loadCases(false)}
+    function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
+    function setupDashboardAccess(){
+      if(!state.actor||!state.actor.isGlobalManager)return;
+      $('#dashboardTab').classList.remove('hidden');
+      const now=new Date(),year=$('#dashboardYear'),center=$('#dashboardCenter');
+      year.innerHTML=Array.from({length:7},(_,i)=>now.getFullYear()+1-i).map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>Năm ${y}</option>`).join('');
+      $('#dashboardMonth').value=String(now.getMonth()+1);
+      center.innerHTML='<option value="">Tất cả center</option>'+state.allCenters.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    }
+    async function loadManagerDashboard(){
+      if(!state.actor||!state.actor.isGlobalManager)return;
+      const box=$('#dashboardContent');
+      box.innerHTML='<div class="panel empty">Đang tổng hợp dữ liệu từ Google Sheets…</div>';
+      try{
+        const filters={year:Number($('#dashboardYear').value),month:Number($('#dashboardMonth').value),center:$('#dashboardCenter').value};
+        const data=await call('getManagerDashboard',[state.token,filters]);
+        syncDashboardYears(data.filters.availableYears);
+        renderManagerDashboard(data);
+        state.dashboardReady=true;
+      }catch(err){box.innerHTML=`<div class="notice error">${esc(err.message)}</div>`}
+    }
+    function syncDashboardYears(years){
+      const select=$('#dashboardYear'),current=Number(select.value),values=Array.from(new Set([current,...(years||[])])).filter(Boolean).sort((a,b)=>b-a);
+      select.innerHTML=values.map(y=>`<option value="${y}" ${y===current?'selected':''}>Năm ${y}</option>`).join('');
+    }
+    function renderManagerDashboard(data){
+      const k=data.kpis,sla=k.slaRate==null?'—':`${formatNumber(k.slaRate)}%`;
+      const cards=[
+        ['Tiếp nhận',formatNumber(k.received),'Thiết bị trong kỳ',''],
+        ['Hoàn tất kỹ thuật',formatNumber(k.technicalCompleted),'Thiết bị trong kỳ','good'],
+        ['Đã trả khách',formatNumber(k.returned),'Thiết bị trong kỳ','good'],
+        ['Tồn cuối kỳ',formatNumber(k.openAtEnd),'Chưa trả tại ngày chốt',''],
+        ['Tồn quá 7 ngày',formatNumber(k.overdueOpen),'Cần theo dõi','alert'],
+        ['SLA ≤ 7 ngày',sla,`${formatNumber(k.slaOnTime)} / ${formatNumber(k.slaPopulation)} thiết bị`,'good']
+      ];
+      $('#dashboardContent').innerHTML=`
+        <div class="dashboard-kpis">${cards.map(c=>`<article class="dashboard-kpi ${c[3]}"><strong>${c[1]}</strong><span>${c[0]}</span><span>${c[2]}</span></article>`).join('')}</div>
+        <div class="dashboard-grid">
+          <article class="dashboard-card"><h3>Tiếp nhận theo center</h3>${dashboardBars(data.receivedByCenter)}</article>
+          <article class="dashboard-card"><h3>Tồn cuối kỳ theo center</h3>${dashboardBars(data.openByCenter)}</article>
+          <article class="dashboard-card"><h3>Trạng thái hồ sơ đang tồn</h3>${dashboardBars(data.openByStatus)}</article>
+          <article class="dashboard-card"><h3>Top model tiếp nhận</h3>${dashboardBars(data.receivedByModel)}</article>
+          <article class="dashboard-card"><h3>Xu hướng ${esc(data.period.year)}</h3>${dashboardTrend(data.monthlyTrend)}</article>
+          <article class="dashboard-card"><h3>Thông tin cần xử lý</h3><div class="detail-grid"><div class="detail-field"><span>Chờ xác nhận bảo hành</span><strong>${formatNumber(k.pendingWarranty)}</strong></div><div class="detail-field"><span>Kỳ báo cáo</span><strong>${esc(data.period.label)}</strong></div><div class="detail-field"><span>Center</span><strong>${esc(data.filters.center||'Tất cả center')}</strong></div><div class="detail-field"><span>Nguồn</span><strong>Một Google Sheets database</strong></div></div></article>
+          <article class="dashboard-card dashboard-attention"><h3>Thiết bị tồn quá 7 ngày</h3>${dashboardAttentionTable(data.attention)}<div class="dashboard-foot">Cập nhật lúc ${esc(formatDateTime(data.generatedAt))} · Dữ liệu lấy trực tiếp từ các tab nghiệp vụ, không dùng database hoặc file sao chép.</div></article>
+        </div>`;
+    }
+    function dashboardBars(items){
+      if(!items||!items.length)return'<div class="empty">Không có dữ liệu trong kỳ.</div>';
+      const max=Math.max(1,...items.map(x=>Number(x.value)||0));
+      return items.map(x=>`<div class="dashboard-bar"><span class="dashboard-bar-label" title="${esc(x.label)}">${esc(shortCenter(x.label))}</span><div class="dashboard-track"><div class="dashboard-fill" style="width:${Math.max(2,(Number(x.value)||0)*100/max)}%"></div></div><strong>${formatNumber(x.value)}</strong></div>`).join('');
+    }
+    function dashboardTrend(rows){return`<div style="overflow:auto"><table class="dashboard-trend"><thead><tr><th>Tháng</th><th>Tiếp nhận</th><th>Hoàn tất KT</th><th>Đã trả</th></tr></thead><tbody>${rows.map(r=>`<tr><td>T${r.month}</td><td>${formatNumber(r.received)}</td><td>${formatNumber(r.technicalCompleted)}</td><td>${formatNumber(r.returned)}</td></tr>`).join('')}</tbody></table></div>`}
+    function dashboardAttentionTable(rows){
+      if(!rows||!rows.length)return'<div class="empty">Không có thiết bị tồn quá 7 ngày tại ngày chốt.</div>';
+      return`<div class="dashboard-table-shell"><table class="dashboard-table"><thead><tr><th>Thiết bị</th><th>S/N</th><th>Center</th><th>Ngày nhận</th><th>Tuổi tồn</th><th>Trạng thái</th></tr></thead><tbody>${rows.map(r=>`<tr><td><button class="dashboard-link" onclick='openDashboardCase(${JSON.stringify(r.serialNumber||r.caseId)})'>${esc(r.model||r.caseId)}</button></td><td>${esc(r.serialNumber||'—')}</td><td>${esc(shortCenter(r.center))}</td><td>${esc(r.receivedAt||'—')}</td><td><strong>${formatNumber(r.ageDays)} ngày</strong></td><td><span class="badge ${badgeClass(r.status)}">${esc(r.status||'—')}</span></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    function openDashboardCase(query){showView('cases');$('#caseQuery').value=query||'';loadCases(true)}
+    function formatNumber(value){return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(Number(value)||0)}
+    function formatDateTime(value){const date=new Date(value);return isNaN(date.getTime())?'—':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(date)}
+    async function loadCases(resetPage=false){if(resetPage)state.casePage=1;const box=$('#caseResults');box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';try{const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};const response=await call('listCases',[state.token,filters]);const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;$('#casePageSize').value=String(data.pageSize);box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';const first=data.total?(data.page-1)*data.pageSize+1:0;const last=Math.min(data.page*data.pageSize,data.total);$('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager()}catch(err){box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)}</span></td></tr>`}}
+    function renderPager(){const total=state.caseTotalPages,current=state.casePage,pages=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-current)<=2)pages.push(p)}let html=`<button class="page-button" ${current<=1?'disabled':''} onclick="goCasePage(${current-1})">‹</button>`,previous=0;pages.forEach(p=>{if(previous&&p-previous>1)html+='<span style="padding:8px 3px">…</span>';html+=`<button class="page-button ${p===current?'active':''}" onclick="goCasePage(${p})">${p}</button>`;previous=p});html+=`<button class="page-button" ${current>=total?'disabled':''} onclick="goCasePage(${current+1})">›</button>`;$('#casePager').innerHTML=html}
+    function goCasePage(page){if(page<1||page>state.caseTotalPages||page===state.casePage)return;state.casePage=page;loadCases(false)}
+    function refreshCurrent(){if(state.currentView==='cases')loadCases(false);else if(state.currentView==='transfer')$('#transferSearch').click();else $('#updateSearch').click()}
+    async function searchInto(query,target,mode){const box=$('#'+target);box.innerHTML='<div class="empty">Đang tìm kiếm…</div>';try{const rows=await call('searchCases',[state.token,query]);box.innerHTML=rows.length?rows.map((item,index)=>renderCase(item,mode,index+1)).join(''):'<div class="empty">Không tìm thấy hồ sơ phù hợp.</div>'}catch(err){box.innerHTML=`<div class="notice error">${esc(err.message)}</div>`}}
+
+    function badgeClass(value){const text=String(value||'').toLowerCase();if(/đã hoàn tất|đã sửa chữa|đã giao|trong bảo hành|hàng good/.test(text))return'good';if(/chờ|không sửa|ngoài bảo hành/.test(text))return'wait';if(/kiểm tra|đang xử lý|luân chuyển|đổi/.test(text))return'info';return''}
+    function shortCenter(value){return {'Sungrow Service Center':'Sungrow','XBSolar Center':'XBSolar','DAT Center':'DAT','BKE Center':'BKE','JGP Center':'JGP'}[value]||value||'—'}
+    function renderCaseTableRows(item){
+      const latest=item.workOrders.length?item.workOrders[item.workOrders.length-1]:{};
+      const result=latest.outcome||latest.workflowStatus||'Chưa cập nhật';
+      return `<tr class="data-row"><td><div class="device-name">${esc(item.model||item.deviceType||'Chưa có Model')}</div><span class="device-sn">S/N: ${esc(item.serialNumber||'Chưa nhập')}</span></td><td><span class="badge ${badgeClass(item.caseStatus)}">${esc(item.caseStatus||'Chưa cập nhật')}</span></td><td><span class="badge ${badgeClass(item.warrantyStatus)}">${esc(item.warrantyStatus||'Chờ xác nhận')}</span></td><td class="center-name">${esc(shortCenter(item.currentCenter))}</td><td class="date-cell">${esc(item.receivedAt||'—')}</td><td><span class="badge ${badgeClass(result)}">${esc(result)}</span></td><td><button class="icon-button" title="Xem chi tiết thiết bị" aria-label="Xem chi tiết thiết bị" onclick='openCaseDrawer(${JSON.stringify(JSON.stringify(item))})'>↗</button></td></tr>`;
+    }
+    function renderCaseDetail(item){
+      const works=(item.workOrders||[]).map(w=>`<div class="work"><strong>${esc(shortCenter(w.center))}</strong> <span class="badge ${badgeClass(w.workflowStatus)}">${esc(w.workflowStatus||'Chưa cập nhật')}</span><div class="meta"><span>Ngày nhận: ${esc(w.receivedAt||'—')}</span><span>Hoàn tất kỹ thuật: ${esc(w.technicalCompletedAt||'—')}</span><span>Kết quả: ${esc(w.outcome||'—')}</span><span>Ghi chú: ${esc(w.note||'—')}</span></div></div>`).join('')||'<div class="muted">Chưa có tiến trình xử lý.</div>';
+      const pending=(item.transfers||[]).filter(t=>t.canAccept).map(t=>`<div class="work"><strong>Đang luân chuyển</strong><div class="meta"><span>Từ ${esc(shortCenter(t.fromCenter))}</span><span>Đến ${esc(shortCenter(t.toCenter))}</span><span>Ngày gửi: ${esc(t.dispatchedAt||'—')}</span></div></div>`).join('');
+      const query=item.serialNumber||item.model||item.caseId||'';
+      const transferAction=item.canTransfer?`<button class="secondary" onclick='navigateToCase("transfer",${JSON.stringify(query)})'>Luân chuyển center</button>`:'';
+      const updateAction=item.canEditCase?`<button class="secondary" onclick='navigateToCase("update",${JSON.stringify(query)})'>Cập nhật kỹ thuật</button>`:'';
+      const warrantyAction=item.canConfirmWarranty&&item.warrantyStatus==='Chờ xác nhận'?`<button class="primary" onclick='openWarranty(${JSON.stringify(JSON.stringify(item))})'>Duyệt bảo hành</button>`:'';
+      const lockNotice=item.isClosed?`<div class="case-lock-note">${item.canEditCase?'Hồ sơ đã hoàn tất · Quyền quản lý được phép điều chỉnh':'Hồ sơ đã hoàn tất · Chỉ quản lý toàn bộ center được phép điều chỉnh'}</div>`:'';
+      const link=item.evidenceLink?`<a class="drive-link" href="${esc(item.evidenceLink)}" target="_blank" rel="noopener">Mở hồ sơ Google Drive ↗</a>`:'<span class="muted">Chưa có liên kết Drive</span>';
+      return `<div class="drawer-device"><div><h3>${esc(item.model||item.deviceType||'Chưa có Model')}</h3><p>S/N: ${esc(item.serialNumber||'Chưa nhập')}</p></div><span class="badge ${badgeClass(item.caseStatus)}">${esc(item.caseStatus||'Chưa cập nhật')}</span></div>${lockNotice}<div class="detail-grid"><div class="detail-field"><span>Loại thiết bị</span><strong>${esc(item.deviceType||'—')}</strong></div><div class="detail-field"><span>Ngày tiếp nhận</span><strong>${esc(item.receivedAt||'—')}</strong></div><div class="detail-field"><span>Center tiếp nhận</span><strong>${esc(shortCenter(item.intakeCenter))}</strong></div><div class="detail-field"><span>Center hiện tại</span><strong>${esc(shortCenter(item.currentCenter))}</strong></div><div class="detail-field"><span>Tình trạng bảo hành</span><strong>${esc(item.warrantyStatus||'Chờ xác nhận')}</strong></div><div class="detail-field"><span>Tên khách hàng</span><strong>${esc(item.customerName||'—')}</strong></div><div class="detail-field"><span>SĐT khách hàng</span><strong>${esc(item.customerPhone||'—')}</strong></div><div class="detail-field"><span>Email khách hàng</span><strong>${esc(item.customerEmail||'—')}</strong></div><div class="detail-field span2"><span>Địa chỉ khách hàng</span><strong>${esc(item.customerAddress||'—')}</strong></div><div class="detail-field"><span>Tên công ty gửi</span><strong>${esc(item.senderCompany||'—')}</strong></div><div class="detail-field"><span>Người gửi hàng</span><strong>${esc(item.senderCustomer||item.sender||'—')}</strong></div><div class="detail-field"><span>SĐT gửi hàng</span><strong>${esc(item.senderPhone||'—')}</strong></div><div class="detail-field"><span>Email gửi hàng</span><strong>${esc(item.senderEmail||'—')}</strong></div><div class="detail-field span2"><span>Địa chỉ gửi hàng</span><strong>${esc(item.senderAddress||'—')}</strong></div><div class="detail-field"><span>Đơn vị vận chuyển</span><strong>${esc(item.carrier||'—')}</strong></div><div class="detail-field"><span>Mã vận đơn</span><strong>${esc(item.trackingCode||'—')}</strong></div><div class="detail-field"><span>Dự án/Địa điểm</span><strong>${esc(item.project||'—')}</strong></div><div class="detail-field"><span>Người submit</span><strong>${esc(item.createdBy||'—')}</strong></div><div class="detail-field"><span>Xác nhận bảo hành bởi</span><strong>${esc(item.warrantyConfirmedBy||'Chưa xác nhận')}</strong></div><div class="detail-field"><span>Ngày xác nhận</span><strong>${esc(item.warrantyConfirmedAt||'—')}</strong></div><div class="detail-field"><span>Tài liệu thiết bị</span><strong>${link}</strong></div></div><h4 class="drawer-section-title">Tiến trình xử lý</h4>${works}${pending}<div id="panel-${esc(item.caseId)}"></div><div class="drawer-actions">${warrantyAction}${updateAction}${transferAction}</div>`;
+    }
+    function openCaseDrawer(raw){const item=JSON.parse(raw);$('#caseDrawerBody').innerHTML=renderCaseDetail(item);$('#caseDrawerBackdrop').classList.remove('hidden');$('#caseDrawer').classList.remove('hidden');$('#caseDrawer').setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
+    function closeCaseDrawer(){$('#caseDrawerBackdrop').classList.add('hidden');$('#caseDrawer').classList.add('hidden');$('#caseDrawer').setAttribute('aria-hidden','true');$('#caseDrawerBody').innerHTML='';document.body.style.overflow=''}
+    function navigateToCase(view,query){closeCaseDrawer();showView(view);const input=$(view==='update'?'#updateQuery':'#transferQuery');const button=$(view==='update'?'#updateSearch':'#transferSearch');input.value=query||'';if(input.value)button.click()}
+
+    function caseAction(label,enabled,onclick,reason){return `<button type="button" class="case-action ${enabled?'enabled':''}" ${enabled?`onclick='${onclick}'`:'disabled'} title="${esc(enabled?'Thực hiện '+label:reason)}">${esc(label)}</button>`}
+    function renderCase(item,mode,position){
+      const works=item.workOrders||[],latest=works.length?works[works.length-1]:{},editableWorks=works.filter(w=>w.canUpdate),editableWork=editableWorks.length?editableWorks[editableWorks.length-1]:null;
+      const pending=(item.transfers||[]).filter(t=>t.canAccept),pendingTransfer=pending.length?pending[0]:null;
+      const itemRaw=JSON.stringify(JSON.stringify(item));
+      const closedReason=item.isClosed&&!item.canEditCase?'Hồ sơ đã hoàn tất':'Chưa đủ quyền hoặc điều kiện xử lý';
+      const updateAction=caseAction('Cập nhật công việc',!!editableWork,editableWork?`openWork(${JSON.stringify(JSON.stringify({case:item,work:editableWork}))})`:'',closedReason);
+      const warrantyAction=caseAction('Xác nhận bảo hành',!!item.canConfirmWarranty,`openWarranty(${itemRaw})`,item.isClosed?'Hồ sơ đã hoàn tất':'Chỉ quản lý toàn bộ center được xác nhận');
+      const returnAction=caseAction('Giao trả khách hàng',!!item.canReturn,`openReturn(${itemRaw})`,item.isClosed?'Hồ sơ đã hoàn tất':'Thiết bị chưa đủ điều kiện giao trả');
+      const transferAction=caseAction('Luân chuyển center',!!item.canTransfer,`openTransfer(${itemRaw})`,item.isClosed?'Hồ sơ đã hoàn tất':'Không có quyền luân chuyển thiết bị');
+      const acceptAction=caseAction('Xác nhận nhận hàng',!!pendingTransfer,pendingTransfer?`acceptTransferUI(${JSON.stringify(JSON.stringify(pendingTransfer))},${JSON.stringify(item.caseId)})`:'','Không có luân chuyển chờ nhận');
+      const historyRows=works.map(w=>`<div class="case-work-row"><strong>${esc(shortCenter(w.center))}</strong><span>${esc(w.workflowStatus||'Chưa cập nhật')}</span><span>${esc(w.technicalCompletedAt||w.receivedAt||'—')}</span><span>${esc(w.outcome||w.note||'Chưa có kết quả')}</span></div>`).join('')||'<div class="case-work-row"><span>Chưa có lịch sử xử lý</span></div>';
+      const history=`<details class="case-history"><summary>${works.length} công việc · Gần nhất: ${esc(latest.outcome||latest.workflowStatus||'Chưa cập nhật')}</summary><div class="case-history-body">${historyRows}</div></details>`;
+      const link=item.evidenceLink?`<a class="drive-link" href="${esc(item.evidenceLink)}" target="_blank" rel="noopener">Mở Google Drive ↗</a>`:'<span class="muted">Chưa có liên kết</span>';
+      const lockLine=item.isClosed?`<div class="case-lock-note">${item.canEditCase?'Hồ sơ đã hoàn tất · Quyền quản lý được phép điều chỉnh':'Hồ sơ đã hoàn tất · Các thao tác đã được khóa'}</div>`:'';
+      return `<article class="result"><div class="result-head"><div><div class="case-sequence">Kết quả #${position||1} · Nhận ngày ${esc(item.receivedAt||'—')}</div><div class="result-title"><strong>${esc(item.model||item.deviceType||'Chưa có Model')}</strong><span class="device-sn">S/N: ${esc(item.serialNumber||'Không có')}</span></div></div><span class="badge ${badgeClass(item.caseStatus)}">${esc(item.caseStatus||'Chưa cập nhật')}</span></div><div class="case-info-grid"><div class="case-info"><span>Center đang giữ</span><strong>${esc(shortCenter(item.currentCenter))}</strong></div><div class="case-info"><span>Bảo hành</span><strong>${esc(item.warrantyStatus||'Chờ xác nhận')}</strong></div><div class="case-info"><span>Đơn vị gửi / Dự án</span><strong>${esc(item.sender||'—')} · ${esc(item.project||'—')}</strong></div><div class="case-info"><span>Hồ sơ thiết bị</span><strong>${link}</strong></div></div>${lockLine}${history}<div class="case-action-grid">${updateAction}${warrantyAction}${returnAction}${transferAction}${acceptAction}</div><div class="case-form-panel" id="panel-${esc(item.caseId)}"></div></article>`;
+    }
+    function toggleCase(btn){const body=btn.closest('.result').querySelector('.case-body');body.classList.toggle('hidden');btn.textContent=body.classList.contains('hidden')?'Xem chi tiết':'Thu gọn'}
+
+    function openWarranty(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work warranty-confirm"><h3>Xác nhận tình trạng bảo hành</h3><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div class="grid"><div><label>Tình trạng bảo hành *</label><select name="warrantyStatus" required><option value="">Chọn tình trạng</option>${['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].map(x=>`<option ${item.warrantyStatus===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="span2"><label>Ghi chú xác nhận</label><textarea name="note" placeholder="Bắt buộc khi thay đổi kết quả đã xác nhận">${esc(item.warrantyNote||'')}</textarea></div></div><div class="actions"><button class="primary" type="submit">Xác nhận bảo hành</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('confirmWarranty',[state.token,formData(e.target)]);showMessage('Đã xác nhận tình trạng bảo hành.');closeCaseDrawer();refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
+    function workStatuses(item){return item.warrantyStatus==='Chờ xác nhận'?['Đã nhận hàng','Đang kiểm tra']:['Đã nhận hàng','Đang kiểm tra','Chờ linh kiện','Đang sửa chữa','Đang kiểm tra sau sửa','Đang theo dõi','Hoàn tất kỹ thuật','Đã chuyển hàng đi','Đã đóng công việc']}
+
+    function openWork(raw){const data=JSON.parse(raw),w=data.work,c=data.case;const panel=$(`#panel-${CSS.escape(c.caseId)}`);panel.innerHTML=`<form class="work-edit"><h3>Cập nhật ${esc(w.workOrderId)}</h3>${c.warrantyStatus==='Chờ xác nhận'?'<div class="notice error">Chỉ được tiếp nhận và kiểm tra ban đầu cho đến khi quản lý Sungrow xác nhận bảo hành.</div>':''}<div class="grid"><input type="hidden" name="workOrderId" value="${esc(w.workOrderId)}"><div><label>Trạng thái xử lý *</label><select name="workflowStatus">${workStatuses(c).map(x=>`<option ${x===w.workflowStatus?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Ngày hoàn tất chẩn đoán</label><input type="date" name="diagnosisCompletedAt" value="${esc(w.diagnosisCompletedAt)}"></div><div><label>Ngày hoàn tất kỹ thuật</label><input type="date" name="technicalCompletedAt" value="${esc(w.technicalCompletedAt)}"></div><div><label>Kết quả xử lý</label><select name="outcome"><option value="">Chưa có kết quả</option>${['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].map(x=>`<option ${x===w.outcome?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Loại thiết bị đổi</label><select name="replacementType"><option value="">Không áp dụng</option>${['Inverter','Battery','Logger','Meter','Khác'].map(x=>`<option ${x===w.replacementType?'selected':''}>${x}</option>`).join('')}</select></div><div class="span3"><label>Ghi chú nội bộ</label><textarea name="note">${esc(w.note)}</textarea></div></div><h3>Lỗi xác nhận</h3><div class="row-list issues"><div class="repeat-row"><input placeholder="Mã lỗi"><input placeholder="Tên lỗi"><input type="date" value="${today()}"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><button type="button" class="secondary" onclick="addIssueRow(this)">+ Thêm lỗi</button><h3>Linh kiện sử dụng</h3><div class="row-list parts"><div class="repeat-row"><input placeholder="Part Number"><input placeholder="Tên linh kiện"><input type="number" min="1" value="1"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><button type="button" class="secondary" onclick="addPartRow(this)">+ Thêm linh kiện</button><h3>Tạm dừng SLA</h3><div class="row-list holds"><div class="repeat-row"><select><option value="">Chọn lý do</option><option>Chờ khách hàng xác nhận</option><option>Khách hàng yêu cầu giữ hàng</option><option>Chờ linh kiện</option><option>Chờ phê duyệt bảo hành</option><option>Chờ vận chuyển</option><option>Yếu tố khách quan khác</option></select><input type="date"><input type="date"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><div class="actions"><button class="primary" type="submit">Lưu cập nhật</button></div></form>`;panel.querySelector('form').onsubmit=e=>saveWork(e,c.caseId)}
+    function addIssueRow(btn){btn.closest('.row-list').insertAdjacentHTML('beforeend',`<div class="repeat-row"><input placeholder="Mã lỗi"><input placeholder="Tên lỗi"><input type="date" value="${today()}"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div>`)}
+    function addPartRow(btn){btn.closest('.row-list').insertAdjacentHTML('beforeend','<div class="repeat-row"><input placeholder="Part Number"><input placeholder="Tên linh kiện"><input type="number" min="1" value="1"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div>')}
+    async function saveWork(e,caseId){e.preventDefault();const btn=e.submitter,data=formData(e.target);data.issues=Array.from(e.target.querySelectorAll('.issues .repeat-row')).map(r=>({code:r.children[0].value,name:r.children[1].value,confirmedAt:r.children[2].value,type:'Lỗi xác nhận'}));data.parts=Array.from(e.target.querySelectorAll('.parts .repeat-row')).map(r=>({partNumber:r.children[0].value,name:r.children[1].value,quantity:r.children[2].value,usedAt:data.technicalCompletedAt}));data.holds=Array.from(e.target.querySelectorAll('.holds .repeat-row')).map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));busy(btn,true);try{await call('updateWorkOrder',[state.token,data]);showMessage('Đã lưu cập nhật kỹ thuật.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}
+
+    function openTransfer(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);const options=state.allCenters.filter(c=>c!==item.currentCenter).map(c=>`<option>${esc(c)}</option>`).join('');panel.innerHTML=`<form class="work"><h3>Chuyển ${esc(item.caseId)} sang center khác</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Trung tâm nhận *</label><select name="toCenter" required><option value="">Chọn trung tâm</option>${options}</select></div><div><label>Ngày gửi *</label><input type="date" name="dispatchedAt" value="${today()}" required></div><div><label>Mã vận chuyển</label><input name="trackingReference"></div><div class="span3"><label>Ghi chú bàn giao</label><textarea name="note"></textarea></div></div><div class="actions"><button class="primary" type="submit">Tạo luân chuyển</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{const out=await call('createTransfer',[state.token,formData(e.target)]);showMessage(`Đã tạo luân chuyển ${out.transferId}.`);refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
+    async function acceptTransferUI(raw,caseId){const transfer=JSON.parse(raw),date=prompt('Ngày nhận hàng (YYYY-MM-DD):',today());if(!date)return;try{await call('acceptTransfer',[state.token,{transferId:transfer.transferId,receivedAt:date}]);showMessage('Đã xác nhận nhận hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}}
+    function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${today()}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
+
+    function call(name,args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(err=>reject(new Error(err&&err.message||'Không thể xử lý yêu cầu.')))[name](...args))}
+    function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
+    function showLoginError(text){$('#loginMessage').innerHTML=`<div class="notice error">${esc(text)}</div>`}
+    function busy(btn,on){if(!btn)return;btn.disabled=on;btn.dataset.label=btn.dataset.label||btn.textContent;btn.textContent=on?'Đang xử lý…':btn.dataset.label}
+
+    function closeActionForm(button){const panel=button.closest('.case-form-panel');if(panel)panel.innerHTML=''}
+    function enhanceActionForm(form){
+      if(form.dataset.enhanced)return;
+      form.dataset.enhanced='true';
+      document.querySelectorAll('.case-form-panel').forEach(panel=>{if(panel!==form.parentElement)panel.innerHTML=''});
+      const close=document.createElement('button');close.type='button';close.className='form-close';close.setAttribute('aria-label','Đóng biểu mẫu');close.title='Đóng';close.textContent='×';close.onclick=()=>closeActionForm(close);form.prepend(close);
+      form.querySelectorAll('.row-list').forEach(list=>{const add=list.nextElementSibling;if(add&&add.classList.contains('secondary')){add.classList.add('inline-add');const first=list.querySelector('.repeat-row');if(first)first.append(add)}});
+      form.addEventListener('click',event=>{const remove=event.target.closest('.repeat-row > .danger');if(!remove)return;const row=remove.parentElement,add=row.querySelector('.inline-add');if(!add)return;const next=row.nextElementSibling;if(next)next.append(add);else{event.preventDefault();event.stopPropagation();row.querySelectorAll('input').forEach(input=>input.value=input.type==='number'?'1':input.type==='date'?today():'')}} ,true);
+    }
+
+    function normalizeSenderPresentation(root=document){
+      root.querySelectorAll('.detail-field span').forEach(label=>{
+        if(label.textContent.trim()==='Đơn vị gửi')label.textContent='Nơi gửi hàng';
+        if(label.textContent.trim()==='Dự án/Địa điểm'&&label.nextElementSibling&&label.nextElementSibling.textContent.trim()==='—')label.parentElement.hidden=true;
+      });
+      root.querySelectorAll('.case-info span').forEach(label=>{
+        if(label.textContent.trim()!=='Đơn vị gửi / Dự án')return;
+        const value=label.nextElementSibling;
+        if(value&&/\s·\s—$/.test(value.textContent)){label.textContent='Nơi gửi hàng';value.textContent=value.textContent.replace(/\s·\s—$/,'')}
+        else label.textContent='Nơi gửi hàng / Dự án';
+      });
+    }
+    const senderPresentationObserver=new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType!==1)return;normalizeSenderPresentation(node);if(node.matches&&node.matches('.case-form-panel form'))enhanceActionForm(node);node.querySelectorAll&&node.querySelectorAll('.case-form-panel form').forEach(enhanceActionForm)})));
+    senderPresentationObserver.observe(document.body,{childList:true,subtree:true});
+  </script>
+</body>
+</html>
