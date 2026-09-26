@@ -62,6 +62,7 @@ assert.match(html, /data\.actor\.isGlobalManager\?'dashboard':'cases'/, 'Điểm
 assert.match(dashboardSource, /assertManagerDashboardAccess_\(actor\)/, 'API dashboard phải có server-side guard.');
 const codeSource = read('Code.gs');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
+assert.match(codeSource, /1\.1\.1-final/, 'Code phải khai báo đúng version production hiện tại.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
