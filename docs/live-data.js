@@ -20,12 +20,23 @@
   const AUTO_SYNC_MS = 120000;
 
   const style = document.createElement('style');
-  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{min-height:32px}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
+  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
   document.head.appendChild(style);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
   host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" disabled>↻ Đồng bộ</button><span class="sg-login-slot" id="sg-login-slot"></span>';
   q('.sg-top').appendChild(host);
+
+  const platformButton = document.createElement('button');
+  platformButton.type = 'button';
+  platformButton.className = 'sg-platform-entry';
+  platformButton.innerHTML = '<i data-lucide="clipboard-pen-line" aria-hidden="true"></i>Platform nhập liệu';
+  platformButton.addEventListener('click',() => {
+    if (token) sessionStorage.setItem('sungrow_id_token', token);
+    window.location.href = cfg.dataEntryPage || 'entry.html';
+  });
+  q('.sg-nav').appendChild(platformButton);
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 
   function status(title, detail, type = '') {
     q('#sg-live-title').textContent = title;
@@ -76,6 +87,7 @@
       if (sequence !== loadSequence) return;
       live = currentData;
       root.dataset.liveData = 'true';
+      renderIdentity(live.actor);
       const refreshComparison = options.comparison !== false || !previousLive;
       if (refreshComparison) previousLive = null;
       const previousPeriod = /^\d{4}$/.test(periodKey)
@@ -657,9 +669,56 @@
       return;
     }
     if (!window.google?.accounts?.id) { setTimeout(initGoogle,250); return; }
-    google.accounts.id.initialize({client_id:cfg.googleClientId,callback:r => {token=r.credential;loadLive();}});
+    google.accounts.id.initialize({client_id:cfg.googleClientId,callback:handleCredential});
     google.accounts.id.renderButton(q('#sg-login-slot'),{theme:'outline',size:'small',text:'signin_with',locale:'vi'});
     status('Yêu cầu đăng nhập','Dữ liệu hiển thị sau khi xác thực');
+  }
+
+  async function handleCredential(response) {
+    token = response?.credential || '';
+    if (!token) return;
+    sessionStorage.setItem('sungrow_id_token', token);
+    try {
+      const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 1);
+      if (!bootstrap.actor?.isGlobalManager) {
+        window.location.href = cfg.dataEntryPage || 'entry.html';
+        return;
+      }
+      renderIdentity(bootstrap.actor);
+      loadLive();
+    } catch (error) {
+      sessionStorage.removeItem('sungrow_id_token');
+      status('Không thể đăng nhập', error.message || 'Tài khoản không được cấp quyền', 'error');
+      initGoogle();
+    }
+  }
+
+  function renderIdentity(actor) {
+    if (!actor) return;
+    const email = actor.email || '';
+    const initials = email ? email.slice(0,2).toUpperCase() : 'SC';
+    const loginSlot = q('#sg-login-slot');
+    loginSlot.replaceChildren();
+    const identity = document.createElement('span');
+    identity.className = 'sg-account-name';
+    identity.title = email;
+    identity.textContent = email;
+    loginSlot.appendChild(identity);
+    const footer = q('.sg-side-foot');
+    if (footer) {
+      footer.replaceChildren();
+      const line = document.createElement('div');
+      const avatar = document.createElement('span');
+      avatar.className = 'sg-avatar';
+      avatar.textContent = initials;
+      const name = document.createElement('span');
+      name.textContent = email;
+      line.append(avatar, name);
+      const role = document.createElement('div');
+      role.className = 'sg-account-role';
+      role.textContent = actor.role || 'Quản lý hệ thống';
+      footer.append(line, role);
+    }
   }
 
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';
@@ -689,5 +748,7 @@
   setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
   window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});
-  initGoogle();
+  const savedToken = sessionStorage.getItem('sungrow_id_token');
+  if (savedToken) handleCredential({credential:savedToken});
+  else initGoogle();
 })();

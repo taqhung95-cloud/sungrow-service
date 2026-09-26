@@ -3,6 +3,10 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sungrow Service Center - Nhập liệu</title>
+  <script src="config.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -10,7 +14,7 @@
     :root{--orange:#ff7900;--orange-dark:#b64e00;--orange-soft:#fff3e8;--ink:#222;--muted:#667085;--line:#e5e7eb;--soft:#f5f6f7;--green:#237a57;--green-soft:#eaf6f0;--blue:#3b68a0;--blue-soft:#edf3fb;--red:#b42318;--red-soft:#fff0ee;--sidebar:214px}
     *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--soft);color:var(--ink);font-family:'Montserrat',Arial,sans-serif;font-size:14px;line-height:1.55}.hidden{display:none!important}button,input,select,textarea{font:inherit}
     .login-page{min-height:100%;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#fff 0,#f7f7f7 58%,#fff1e4 100%)}.login-card{width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:12px;padding:34px;box-shadow:0 20px 55px rgba(24,32,40,.08);text-align:center}.login-card h1{font-size:20px;margin:24px 0 8px}.login-card .secondary{width:100%;margin-top:12px}
-    .app-shell{min-height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:#fff;border-right:1px solid var(--line);padding:32px 18px 24px;display:flex;flex-direction:column;z-index:20}.brand{padding:0 4px 26px;border-bottom:1px solid #f0f1f2}.brand svg{display:block;width:150px;height:auto}.brand small{display:block;margin-top:7px;color:#5f6872;font-size:11px;letter-spacing:1.25px}.tabs{display:grid;gap:8px;margin-top:32px}.tab{display:flex;align-items:center;width:100%;min-height:50px;border:0;border-radius:6px;background:transparent;color:#505050;padding:13px 12px;text-align:left;cursor:pointer;font-size:14px;font-weight:500;line-height:1.45}.tab:hover{background:#f7f7f7}.tab.active{background:var(--orange-soft);color:var(--orange-dark);box-shadow:inset 3px 0 var(--orange);font-weight:600}.sidebar-user{margin-top:auto;border-top:1px solid var(--line);padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5}.sidebar-user strong{display:block;color:#20252b;font-size:12px;margin-bottom:2px}.side-foot{padding:10px 4px 0;border-top:1px solid #f0f1f2;color:var(--muted);font-size:11px}.workspace{grid-column:2;min-width:0;min-height:100vh}
+    .app-shell{min-height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar);background:#fff;border-right:1px solid var(--line);padding:32px 18px 24px;display:flex;flex-direction:column;z-index:20}.brand{padding:0 4px 26px;border-bottom:1px solid #f0f1f2}.brand svg{display:block;width:150px;height:auto}.brand small{display:block;margin-top:7px;color:#5f6872;font-size:11px;letter-spacing:1.25px}.tabs{display:grid;gap:8px;margin-top:32px}.tab{display:flex;align-items:center;width:100%;min-height:50px;border:0;border-radius:6px;background:transparent;color:#505050;padding:13px 12px;text-align:left;cursor:pointer;font-size:14px;font-weight:500;line-height:1.45}.tab:hover{background:#f7f7f7}.tab.active{background:var(--orange-soft);color:var(--orange-dark);box-shadow:inset 3px 0 var(--orange);font-weight:600}.sidebar-user{margin-top:auto;border-top:1px solid var(--line);padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5}.sidebar-user strong{display:block;color:#20252b;font-size:12px;margin-bottom:2px}.user-identity{display:flex;align-items:center;gap:8px;min-width:0}.user-avatar{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:var(--orange-soft);color:var(--orange-dark);font-weight:700}.user-copy{min-width:0}.side-foot{padding:10px 4px 0;border-top:1px solid #f0f1f2;color:var(--muted);font-size:11px}.workspace{grid-column:2;min-width:0;min-height:100vh}
     #message{position:fixed;top:18px;right:26px;z-index:40;max-width:440px}.content{padding:22px 28px}.panel{background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.03);padding:20px;min-width:0}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.panel-title h2{font-size:18px;margin:0 0 3px}.panel-title p{margin:0;color:var(--muted);font-size:12px}h3{font-size:15px;margin:18px 0 10px}
     .filters{display:grid;grid-template-columns:minmax(240px,2fr) repeat(3,minmax(150px,1fr)) auto;gap:10px;padding:14px;background:#fafafa;border:1px solid #ededed;border-radius:8px;margin-bottom:14px}.search-field{position:relative}.search-field input{padding-right:38px}.search-field::after{content:'⌕';position:absolute;right:13px;top:7px;font-size:23px;color:#7d8790}.search{display:flex;gap:10px}
     label{display:block;font-size:12px;color:#475467;margin-bottom:6px;font-weight:500}input,select,textarea{width:100%;min-height:40px;border:1px solid #cfd4dc;border-radius:6px;padding:9px 11px;background:#fff;color:var(--ink)}textarea{min-height:82px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid #ffe0c4;border-color:var(--orange)}
@@ -60,7 +64,7 @@
           <button class="tab" data-view="transfer">Luân chuyển center</button>
         </nav>
         <div class="sidebar-user" id="userBox"></div>
-        <div class="side-foot">Ứng dụng nhập liệu · v<?= appVersion ?><br>Dữ liệu được lưu trên Google Sheets</div>
+        <div class="side-foot">Ứng dụng nhập liệu · v1.1.2-final<br>Dữ liệu được lưu trên Google Sheets</div>
       </aside>
       <div class="workspace">
       <div id="message"></div>
@@ -148,10 +152,8 @@
       </aside>
     </section>
   <script>
-    const AUTH_BROKER_URL = '<?= authBrokerUrl ?>';
-    const AUTH_BROKER_ORIGIN = new URL(AUTH_BROKER_URL).origin;
+    const CONFIG = window.SUNGROW_CONFIG || {};
     const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false };
-    let authPopup = null;
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -161,41 +163,30 @@
     window.onload = () => {
       $('[name=receivedAt]').value = today();
       bindEvents();
-      $('#googleButton').innerHTML='<button id="googleLoginTrigger" class="secondary" type="button">&#272;&#259;ng nh&#7853;p b&#7857;ng Google</button>';
-      $('#googleLoginTrigger').addEventListener('click',openGoogleLogin);
-      window.addEventListener('message',receiveGoogleCredential);
+      const savedToken=sessionStorage.getItem('sungrow_id_token');
+      if(savedToken)onCredential({credential:savedToken});
+      else initGoogle();
     };
 
-    function openGoogleLogin(){
-      const url = new URL(AUTH_BROKER_URL);
-      url.searchParams.set('opener_origin',window.location.origin);
-      authPopup=window.open(url.toString(),'sungrowGoogleLogin','popup=yes,width=520,height=650,resizable=yes,scrollbars=yes');
-      if(!authPopup)showLoginError('Tr\u00ecnh duy\u1ec7t \u0111\u00e3 ch\u1eb7n c\u1eeda s\u1ed5 \u0111\u0103ng nh\u1eadp. H\u00e3y cho ph\u00e9p popup r\u1ed3i th\u1eed l\u1ea1i.');
-      else $('#loginMessage').innerHTML='<div class="notice">&#272;ang ch&#7901; x&#225;c th&#7921;c t&#224;i kho&#7843;n Google&#8230;</div>';
-    }
-
-    function receiveGoogleCredential(event){
-      if(event.origin!==AUTH_BROKER_ORIGIN||event.source!==authPopup)return;
-      const data=event.data||{};
-      if(data.type==='sungrow-google-auth-error'){
-        showLoginError(data.message||'Kh\u00f4ng th\u1ec3 \u0111\u0103ng nh\u1eadp b\u1eb1ng Google.');
-        return;
-      }
-      if(data.type!=='sungrow-google-auth'||!data.credential)return;
-      authPopup=null;
-      onCredential({credential:data.credential});
+    function initGoogle(){
+      if(!CONFIG.googleClientId){showLoginError('Hệ thống chưa cấu hình Google Client ID.');return}
+      if(!window.google?.accounts?.id){setTimeout(initGoogle,250);return}
+      google.accounts.id.initialize({client_id:CONFIG.googleClientId,callback:onCredential});
+      google.accounts.id.renderButton($('#googleButton'),{theme:'outline',size:'large',text:'signin_with',locale:'vi',width:300});
     }
 
     function onCredential(response){
       state.token=response.credential;
+      sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
-        $('#userBox').innerHTML=`<strong title="${esc(data.actor.name||data.actor.email)}">${esc(data.actor.name||data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span>`;
+        const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+        $('#userBox').innerHTML=`<div class="user-identity"><span class="user-avatar">${esc(initials)}</span><span class="user-copy"><strong title="${esc(data.actor.email)}">${esc(data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span></span></div>`;
         fillCenters();
         setupDashboardAccess();
-        showView(data.actor.isGlobalManager?'dashboard':'cases');
-      }).catch(err=>showLoginError(err.message));
+        showView('cases');
+      }).catch(err=>{sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle()});
     }
 
     function bindEvents(){
@@ -214,7 +205,7 @@
       document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCaseDrawer()});
     }
 
-    function showView(id){if(id==='dashboard'&&(!state.actor||!state.actor.isGlobalManager))id='cases';state.currentView=id;$('#appView').classList.toggle('legacy-dashboard-active',id==='dashboard');$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='dashboard'&&state.token){const frame=$('#legacyDashboardFrame');if(!frame.src)frame.src=frame.dataset.src}else if(id==='cases'&&state.token)loadCases(false)}
+    function showView(id){if(id==='dashboard'){window.location.href='./';return}state.currentView=id;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
       if(!state.actor||!state.actor.isGlobalManager)return;
@@ -330,7 +321,16 @@
     async function acceptTransferUI(raw,caseId){const transfer=JSON.parse(raw),date=prompt('Ngày nhận hàng (YYYY-MM-DD):',today());if(!date)return;try{await call('acceptTransfer',[state.token,{transferId:transfer.transferId,receivedAt:date}]);showMessage('Đã xác nhận nhận hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}}
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${today()}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
-    function call(name,args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(err=>reject(new Error(err&&err.message||'Không thể xử lý yêu cầu.')))[name](...args))}
+    async function call(name,args){
+      if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
+      const payload={action:'portal.call',functionName:name,args:args||[]};
+      const body=new URLSearchParams({payload:JSON.stringify(payload)});
+      const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store'});
+      if(!response.ok)throw new Error('Không kết nối được hệ thống (HTTP '+response.status+').');
+      const result=await response.json();
+      if(!result.ok)throw new Error(result.error?.message||'Không thể xử lý yêu cầu.');
+      return result.data;
+    }
     function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
     function showLoginError(text){$('#loginMessage').innerHTML=`<div class="notice error">${esc(text)}</div>`}
     function busy(btn,on){if(!btn)return;btn.disabled=on;btn.dataset.label=btn.dataset.label||btn.textContent;btn.textContent=on?'Đang xử lý…':btn.dataset.label}

@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.1-final';
+const APP_VERSION = '1.1.2-final';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -44,6 +44,27 @@ function getBootstrap(idToken) {
     allCenters: CENTERS.slice(),
     version: APP_VERSION
   };
+}
+
+function handlePortalApi_(request) {
+  request = request || {};
+  const functionName = clean_(request.functionName);
+  const args = Array.isArray(request.args) ? request.args : [];
+  const allowed = {
+    getBootstrap: getBootstrap,
+    listCases: listCases,
+    searchCases: searchCases,
+    createCase: createCase,
+    confirmWarranty: confirmWarranty,
+    updateWorkOrder: updateWorkOrder,
+    createTransfer: createTransfer,
+    acceptTransfer: acceptTransfer,
+    returnToCustomer: returnToCustomer
+  };
+  if (!Object.prototype.hasOwnProperty.call(allowed, functionName)) {
+    throw publicError_('Thao tác không được phép.');
+  }
+  return allowed[functionName].apply(null, args);
 }
 
 function listCases(idToken, filters) {

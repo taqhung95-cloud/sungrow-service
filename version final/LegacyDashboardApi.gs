@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.2-unified';
+const APP_VERSION = '1.8.3-unified';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -18,6 +18,9 @@ function doGet() {
 function doPost(e) {
   try {
     const request = parseRequest_(e);
+    if (request.action === 'portal.call') {
+      return json_({ ok: true, data: handlePortalApi_(request) });
+    }
     const actor = authenticateDashboardManager_(request.idToken);
     let data;
     if (request.action === 'dashboard.read') data = getDashboard_(request, actor);
