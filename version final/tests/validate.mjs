@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
-for (const file of ['Code.gs', 'ManagerDashboard.gs']) {
+for (const file of ['Code.gs', 'ManagerDashboard.gs', 'LegacyDashboardApi.gs']) {
   new vm.Script(read(file), {filename:file});
 }
 
@@ -67,6 +67,9 @@ assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google su
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
 assert.match(codeSource, /'Tên khách hàng': customerName/, 'Backend phải ghi thông tin khách hàng.');
 assert.match(codeSource, /'Mã vận đơn': trackingCode/, 'Backend phải ghi thông tin vận chuyển.');
+assert.match(read('LegacyDashboardApi.gs'), /authenticateDashboardManager_\(request\.idToken\)/, 'Dashboard cũ phải dùng role manager của hệ thống hợp nhất.');
+assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
+assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail','senderCompany','senderCustomer','senderAddress','senderPhone','senderEmail','carrier','trackingCode']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }

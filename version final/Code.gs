@@ -467,6 +467,12 @@ function authenticate_(idToken) {
   return { email: email, googleSub: googleSub, name: clean_(user['Họ và tên']), role: user['Vai trò'], homeCenter: clean_(user['Trung tâm']), centers: all ? CENTERS.slice() : [user['Trung tâm']], isGlobalManager: isGlobalManager };
 }
 
+function authenticateDashboardManager_(idToken) {
+  const actor = authenticate_(idToken);
+  if (!actor.isGlobalManager) throw publicError_('Chỉ tài khoản quản lý Sungrow được xem dashboard.');
+  return { email: actor.email, role: 'service_manager', centers: actor.centers.slice() };
+}
+
 function canSeeCase_(actor, item, workOrders) {
   if (actor.isGlobalManager) return true;
   if (actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1) return true;

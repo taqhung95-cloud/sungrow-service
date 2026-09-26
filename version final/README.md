@@ -41,7 +41,8 @@ Form tiếp nhận ghi thêm thông tin khách hàng và gửi hàng: tên, đ�
 
 - `Code.gs`: toàn bộ nghiệp vụ nhập liệu và role hiện hữu.
 - `ManagerDashboard.gs`: API KPI quản lý chỉ đọc, dùng cùng database.
-- `Index.html`: giao diện hợp nhất, tự chọn dashboard hoặc nhập liệu theo account.
+- `LegacyDashboardApi.gs`: backend cách ly cho dashboard cũ, chỉ cho role quản lý và đọc database production.
+- `Index.html`: giao diện hợp nhất; quản lý thấy nguyên dashboard cũ, center thấy platform nhập liệu theo role.
 - `appsscript.json`: manifest Apps Script.
 - `tests/validate.mjs`: kiểm tra cú pháp và guard quan trọng trước deploy.
 
