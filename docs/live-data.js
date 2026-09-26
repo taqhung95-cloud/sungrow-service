@@ -21,22 +21,93 @@
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
+  style.textContent += '#sg-preview .sg-brand{padding:0 4px 26px!important;border-bottom:1px solid #f0f1f2}#sg-preview .sg-side{gap:0}#sg-preview .sg-nav{margin-top:32px}#sg-preview .sg-subnav{display:grid;gap:4px;padding:5px 0 6px 13px}#sg-preview .sg-subnav button{min-height:40px;padding:9px 10px;font-size:12px}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-portal-user{margin-top:auto;border-top:1px solid #e5e7eb;padding:15px 4px 11px;color:#4d5761;font-size:11px;line-height:1.5;min-width:0}#sg-preview .sg-portal-user>div:first-child{display:flex;align-items:center;min-width:0}#sg-preview .sg-portal-user>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#20252b}#sg-preview .sg-side-foot.sg-portal-meta{margin-top:0;padding:10px 4px 0;border-top:1px solid #f0f1f2;color:#667085;font-size:11px;line-height:1.5}#sg-preview .sg-portal-frame{display:block;width:100%;height:100%;min-height:100vh;border:0;background:#f5f6f7}';
   document.head.appendChild(style);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
   host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" disabled>↻ Đồng bộ</button><span class="sg-login-slot" id="sg-login-slot"></span>';
   q('.sg-top').appendChild(host);
 
-  const platformButton = document.createElement('button');
-  platformButton.type = 'button';
-  platformButton.className = 'sg-platform-entry';
-  platformButton.innerHTML = '<i data-lucide="clipboard-pen-line" aria-hidden="true"></i>Platform nhập liệu';
-  platformButton.addEventListener('click',() => {
+  installPortalSidebar();
+
+  function installPortalSidebar() {
+    const nav = q('.sg-nav');
+    nav.replaceChildren();
+    const dashboardButton = document.createElement('button');
+    dashboardButton.type = 'button';
+    dashboardButton.className = 'sg-dashboard-nav';
+    dashboardButton.textContent = 'Dashboard quản lý';
+    dashboardButton.setAttribute('aria-current','page');
+    dashboardButton.addEventListener('click',showDashboardView);
+    nav.appendChild(dashboardButton);
+    const platformButton = document.createElement('button');
+    platformButton.type = 'button';
+    platformButton.className = 'sg-platform-parent';
+    platformButton.textContent = 'Platform nhập liệu';
+    platformButton.setAttribute('aria-expanded','true');
+    nav.appendChild(platformButton);
+    const subnav = document.createElement('div');
+    subnav.className = 'sg-subnav';
+    [['cases','Danh sách hồ sơ'],['receive','Tiếp nhận mới'],['update','Cập nhật hồ sơ'],['transfer','Luân chuyển center']].forEach(([view,label]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.portalView = view;
+      button.textContent = label;
+      button.addEventListener('click',() => openEntryView(view));
+      subnav.appendChild(button);
+    });
+    nav.appendChild(subnav);
+    platformButton.addEventListener('click',() => {
+      const expanded = platformButton.getAttribute('aria-expanded') === 'true';
+      platformButton.setAttribute('aria-expanded',String(!expanded));
+      subnav.hidden = expanded;
+    });
+    const footer = q('.sg-side-foot');
+    const userBox = document.createElement('div');
+    userBox.className = 'sg-portal-user';
+    footer.before(userBox);
+    footer.classList.add('sg-portal-meta');
+    footer.replaceChildren();
+    const version = document.createElement('div');
+    version.textContent = 'Ứng dụng nhập liệu · v1.1.3-final';
+    const source = document.createElement('div');
+    source.textContent = 'Dữ liệu được lưu trên Google Sheets';
+    footer.append(version, source);
+  }
+
+  function openEntryView(view) {
     if (token) sessionStorage.setItem('sungrow_id_token', token);
-    window.location.href = cfg.dataEntryPage || 'entry.html';
-  });
-  q('.sg-nav').appendChild(platformButton);
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+    const main = q('.sg-main');
+    q('.sg-top').style.display = 'none';
+    q('.sg-content').style.display = 'none';
+    let frame = q('.sg-portal-frame');
+    if (!frame) {
+      frame = document.createElement('iframe');
+      frame.className = 'sg-portal-frame';
+      frame.title = 'Sungrow Service Center - Platform nhập liệu';
+      main.appendChild(frame);
+    }
+    frame.hidden = false;
+    frame.dataset.portalView = view;
+    if (!frame.getAttribute('src')) frame.src = (cfg.dataEntryPage || 'entry.html') + '#' + view;
+    else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
+    q('.sg-dashboard-nav').removeAttribute('aria-current');
+    q('.sg-platform-parent').setAttribute('aria-expanded','true');
+    q('.sg-subnav').hidden = false;
+    root.querySelectorAll('[data-portal-view]').forEach(button => {
+      if (button.dataset.portalView === view) button.setAttribute('aria-current','page');
+      else button.removeAttribute('aria-current');
+    });
+  }
+
+  function showDashboardView() {
+    const frame = q('.sg-portal-frame');
+    if (frame) frame.hidden = true;
+    q('.sg-top').style.display = '';
+    q('.sg-content').style.display = '';
+    q('.sg-dashboard-nav').setAttribute('aria-current','page');
+    root.querySelectorAll('[data-portal-view]').forEach(button => button.removeAttribute('aria-current'));
+  }
 
   function status(title, detail, type = '') {
     q('#sg-live-title').textContent = title;
@@ -680,8 +751,11 @@
     sessionStorage.setItem('sungrow_id_token', token);
     try {
       const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 1);
+      sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       if (!bootstrap.actor?.isGlobalManager) {
-        window.location.href = cfg.dataEntryPage || 'entry.html';
+        renderIdentity(bootstrap.actor);
+        q('.sg-dashboard-nav').hidden = true;
+        openEntryView('cases');
         return;
       }
       renderIdentity(bootstrap.actor);
@@ -704,7 +778,7 @@
     identity.title = email;
     identity.textContent = email;
     loginSlot.appendChild(identity);
-    const footer = q('.sg-side-foot');
+    const footer = q('.sg-portal-user');
     if (footer) {
       footer.replaceChildren();
       const line = document.createElement('div');
@@ -751,4 +825,14 @@
   const savedToken = sessionStorage.getItem('sungrow_id_token');
   if (savedToken) handleCredential({credential:savedToken});
   else initGoogle();
+  window.addEventListener('message',event => {
+    if (event.origin !== window.location.origin) return;
+    if (event.data?.type === 'sungrow-portal-dashboard') showDashboardView();
+    if (event.data?.type === 'sungrow-portal-ready') {
+      const frame = q('.sg-portal-frame');
+      if (!frame || event.source !== frame.contentWindow) return;
+      frame.dataset.ready = 'true';
+      frame.contentWindow.postMessage({type:'sungrow-portal-view',view:frame.dataset.portalView || 'cases'},window.location.origin);
+    }
+  });
 })();

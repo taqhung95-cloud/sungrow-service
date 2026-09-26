@@ -68,13 +68,13 @@ assert.match(html, /data\.actor\.isGlobalManager\?'dashboard':'cases'/, 'Điểm
 assert.match(dashboardSource, /assertManagerDashboardAccess_\(actor\)/, 'API dashboard phải có server-side guard.');
 const codeSource = read('Code.gs');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.1\.2-final/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.1\.3-final/, 'Code phải khai báo đúng version production hiện tại.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
 assert.match(codeSource, /'Tên khách hàng': customerName/, 'Backend phải ghi thông tin khách hàng.');
-assert.match(codeSource, /'Mã vận đơn': trackingCode/, 'Backend phải ghi thông tin vận chuyển.');
+assert.match(codeSource, /'Mã vận đơn': returnTrackingCode/, 'Backend phải ghi thông tin vận chuyển ở bước giao trả.');
 assert.match(read('LegacyDashboardApi.gs'), /authenticateDashboardManager_\(request\.idToken\)/, 'Dashboard cũ phải dùng role manager của hệ thống hợp nhất.');
 assert.match(read('LegacyDashboardApi.gs'), /request\.action === 'portal\.call'/, 'Apps Script phải định tuyến API cho platform GitHub Pages.');
 assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
@@ -82,9 +82,16 @@ assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ 
 assert.doesNotMatch(entryHtml, /google\.script\.run|<\?=/, 'GitHub Pages không được phụ thuộc runtime template của Apps Script.');
 assert.match(entryHtml, /action:'portal\.call'/, 'GitHub Pages phải gọi Apps Script dưới dạng API.');
 assert.match(entryHtml, /sessionStorage\.setItem\('sungrow_id_token'/, 'Phiên đăng nhập phải được giữ trên cùng origin GitHub Pages.');
+assert.match(entryHtml, /Thông tin giao trả/, 'Thông tin vận chuyển phải nằm ở bước giao trả khách hàng.');
+assert.match(entryHtml, /name="returnTrackingCode"/, 'Form giao trả phải có mã vận đơn.');
+const receiveForm = entryHtml.match(/<form id="receiveForm"[\s\S]*?<\/form>/i)?.[0] || '';
+assert.doesNotMatch(receiveForm, /Thông tin gửi hàng|senderCompany|trackingCode/, 'Form tiếp nhận không được yêu cầu thông tin gửi hàng.');
 assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard phải điều hướng tới trang nhập liệu GitHub Pages.');
-for (const field of ['customerName','customerAddress','customerPhone','customerEmail','senderCompany','senderCustomer','senderAddress','senderPhone','senderEmail','carrier','trackingCode']) {
+for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
+}
+for (const field of ['returnCompany','returnCustomer','returnAddress','returnPhone','returnEmail','returnCarrier','returnTrackingCode']) {
+  assert.match(html, new RegExp(`name="${field}"`), `Form giao trả thiếu trường ${field}.`);
 }
 
 console.log('Validation passed: syntax, HTML script, role guard and KPI smoke tests.');

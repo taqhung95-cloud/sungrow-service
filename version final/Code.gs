@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.2-final';
+const APP_VERSION = '1.1.3-final';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -127,14 +127,6 @@ function createCase(idToken, payload) {
   const customerAddress = required_(payload.customerAddress, 'Địa chỉ khách hàng');
   const customerPhone = required_(payload.customerPhone, 'Số điện thoại khách hàng');
   const customerEmail = emailOptional_(payload.customerEmail, 'Email khách hàng');
-  const senderCompany = clean_(payload.senderCompany);
-  const senderCustomer = required_(payload.senderCustomer, 'Tên người gửi hàng');
-  const senderAddress = required_(payload.senderAddress, 'Địa chỉ gửi hàng');
-  const senderPhone = required_(payload.senderPhone, 'Số điện thoại gửi hàng');
-  const senderEmail = emailOptional_(payload.senderEmail, 'Email gửi hàng');
-  const carrier = required_(payload.carrier, 'Đơn vị vận chuyển');
-  const trackingCode = required_(payload.trackingCode, 'Mã vận đơn');
-  const sender = senderCompany || senderCustomer;
   const project = clean_(payload.project);
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
   const evidenceLink = required_(payload.evidenceLink, 'Liên kết hồ sơ Drive');
@@ -159,8 +151,8 @@ function createCase(idToken, payload) {
       'Trung tâm đang giữ hàng': center,
       'Trạng thái hồ sơ': 'Mới tiếp nhận',
       'Tình trạng bảo hành': 'Chờ xác nhận',
-      'Nơi gửi hàng': sender,
-      'Đơn vị gửi hàng': sender,
+      'Nơi gửi hàng': customerName,
+      'Đơn vị gửi hàng': customerName,
       'Dự án/Địa điểm': project,
       'Ghi chú chung': clean_(payload.note),
       'Liên kết hồ sơ Drive': evidenceLink,
@@ -168,13 +160,13 @@ function createCase(idToken, payload) {
       'Địa chỉ khách hàng': customerAddress,
       'Số điện thoại khách hàng': customerPhone,
       'Email khách hàng': customerEmail,
-      'Tên công ty gửi hàng': senderCompany,
-      'Tên người gửi hàng': senderCustomer,
-      'Địa chỉ gửi hàng': senderAddress,
-      'Số điện thoại gửi hàng': senderPhone,
-      'Email gửi hàng': senderEmail,
-      'Đơn vị vận chuyển': carrier,
-      'Mã vận đơn': trackingCode,
+      'Tên công ty gửi hàng': '',
+      'Tên người gửi hàng': '',
+      'Địa chỉ gửi hàng': '',
+      'Số điện thoại gửi hàng': '',
+      'Email gửi hàng': '',
+      'Đơn vị vận chuyển': '',
+      'Mã vận đơn': '',
       'Nguồn dữ liệu': 'Quy trình mới',
       'Người tạo': actor.email,
       'Ngày tạo': now,
@@ -409,6 +401,13 @@ function returnToCustomer(idToken, payload) {
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
   const readyAt = parseDateOptional_(payload.readyAt);
   const returnedAt = parseDateRequired_(payload.returnedAt, 'Ngày trả khách');
+  const returnCompany = clean_(payload.returnCompany);
+  const returnCustomer = required_(payload.returnCustomer, 'Tên khách hàng nhận');
+  const returnAddress = required_(payload.returnAddress, 'Địa chỉ giao trả');
+  const returnPhone = required_(payload.returnPhone, 'Số điện thoại người nhận');
+  const returnEmail = emailOptional_(payload.returnEmail, 'Email người nhận');
+  const returnCarrier = required_(payload.returnCarrier, 'Đơn vị vận chuyển');
+  const returnTrackingCode = required_(payload.returnTrackingCode, 'Mã vận đơn');
   const table = readTableWithRows_(SHEETS.cases);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
@@ -422,6 +421,13 @@ function returnToCustomer(idToken, payload) {
   const changes = {
     'Ngày sẵn sàng trả khách': readyAt,
     'Ngày trả khách': returnedAt,
+    'Tên công ty gửi hàng': returnCompany,
+    'Tên người gửi hàng': returnCustomer,
+    'Địa chỉ gửi hàng': returnAddress,
+    'Số điện thoại gửi hàng': returnPhone,
+    'Email gửi hàng': returnEmail,
+    'Đơn vị vận chuyển': returnCarrier,
+    'Mã vận đơn': returnTrackingCode,
     'Trạng thái hồ sơ': 'Đã hoàn tất',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()

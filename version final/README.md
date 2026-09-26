@@ -5,7 +5,7 @@
 ## Nguồn đã đồng bộ
 
 - Baseline nhập liệu: `data-entry-app` v0.3.9-pilot.
-- Bản final: v1.1.2-final.
+- Bản final: v1.1.3-final.
 - Spreadsheet production duy nhất: `Sungrow Service Center - Database Production`.
 - Spreadsheet ID: `1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI`.
 - Vị trí Drive: `1B9khxWST5ba9tXTJFT3HUwpkt75QDVK5`.
@@ -41,7 +41,8 @@ Form tiếp nhận ghi thêm thông tin khách hàng và gửi hàng: tên, đ�
 
 - Tất cả quản lý và center truy cập `https://taqhung95-cloud.github.io/sungrow-service/`.
 - Người dùng đăng nhập Google ngay trên GitHub Pages. Backend kiểm tra account, role và center từ database trước khi trả dữ liệu.
-- Account quản lý ở lại dashboard cũ; account center tự chuyển sang `entry.html` trên cùng GitHub Pages.
+- Dashboard và platform dùng chung một portal, một sidebar và một phiên đăng nhập. Platform mở ngay trong vùng nội dung với các nhánh `Danh sách hồ sơ`, `Tiếp nhận mới`, `Cập nhật hồ sơ`, `Luân chuyển center`.
+- Account quản lý có cả dashboard và platform; account center tự mở nhánh platform theo role mà không tải sang URL đăng nhập khác.
 - Apps Script Web App chỉ là API phía sau, không phải link cung cấp cho người dùng.
 - Google ID token chỉ lưu trong `sessionStorage` của tab trình duyệt, không nằm trong URL.
 
@@ -52,7 +53,7 @@ Form tiếp nhận ghi thêm thông tin khách hàng và gửi hàng: tên, đ�
 - `LegacyDashboardApi.gs`: backend cách ly cho dashboard cũ, chỉ cho role quản lý và đọc database production.
 - `Index.html`: giao diện hợp nhất; quản lý thấy nguyên dashboard cũ, center thấy platform nhập liệu theo role.
 - `../docs/index.html`: dashboard cũ được giữ nguyên trên GitHub Pages.
-- `../docs/entry.html`: platform nhập liệu dành cho center và quản lý trên cùng GitHub Pages.
+- `../docs/entry.html`: view nhập liệu được nhúng trong portal; người dùng không điều hướng trực tiếp sang URL này.
 - `appsscript.json`: manifest Apps Script.
 - `tests/validate.mjs`: kiểm tra cú pháp và guard quan trọng trước deploy.
 

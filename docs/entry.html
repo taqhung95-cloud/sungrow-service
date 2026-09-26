@@ -34,6 +34,7 @@
     .work-edit,.case-form-panel .work{border:1px solid #e3e7eb;border-radius:7px;background:#fff;padding:13px;max-width:100%;overflow:hidden}.work-edit{font-size:12px}.work-edit h3,.case-form-panel .work h3{font-size:13px;margin:12px 36px 8px 0}.work-edit .grid{gap:9px 10px}.work-edit label,.case-form-panel .work label{font-size:11px;margin-bottom:4px}.work-edit input,.work-edit select,.work-edit textarea,.case-form-panel .work input,.case-form-panel .work select,.case-form-panel .work textarea{min-width:0;max-width:100%;min-height:36px;padding:7px 9px;font-size:12px}.work-edit textarea{min-height:58px}.work-edit .row-list{gap:6px;min-width:0}.work-edit .repeat-row{gap:6px;min-width:0}.issues .repeat-row{grid-template-columns:minmax(120px,1fr) minmax(180px,1.55fr) minmax(145px,.48fr) 56px 108px;align-items:center}.parts .repeat-row{grid-template-columns:minmax(120px,1fr) minmax(180px,1.55fr) minmax(100px,.48fr) 56px 138px;align-items:center}.holds .repeat-row{grid-template-columns:minmax(190px,1fr) minmax(145px,.45fr) minmax(145px,.45fr) 56px;align-items:center}.work-edit .danger{height:36px;padding:7px 10px}.inline-add{width:100%;height:36px;padding:7px 8px;font-size:11px}.work-edit .actions{margin-top:10px}.work-edit .actions button{min-height:36px;padding:8px 12px;font-size:12px}
     .warranty-confirm{padding:13px!important}.warranty-confirm h3{margin:0 36px 10px 0!important}.warranty-confirm .grid{grid-template-columns:minmax(180px,280px) minmax(0,1fr);gap:10px}.warranty-confirm .span2{grid-column:auto}.warranty-confirm textarea{width:100%;height:38px;min-height:38px;resize:vertical}.warranty-confirm .actions{margin-top:9px}.warranty-confirm .actions button{min-height:36px;padding:8px 12px;font-size:12px}.case-drawer .warranty-confirm .grid{grid-template-columns:1fr}.case-drawer .warranty-confirm textarea{height:54px;min-height:54px}
     @media(max-width:900px){.issues .repeat-row,.parts .repeat-row,.holds .repeat-row{grid-template-columns:1fr 1fr}.inline-add{width:100%}.warranty-confirm .grid{grid-template-columns:1fr}}
+    html.embedded .app-shell{display:block}html.embedded .sidebar{display:none!important}html.embedded .workspace{min-height:100vh}html.embedded .content{padding:22px 28px}html.embedded .login-page{min-height:100vh;background:#f5f6f7}html.embedded .login-card{box-shadow:none}
   </style>
 </head>
 <body>
@@ -64,7 +65,7 @@
           <button class="tab" data-view="transfer">Luân chuyển center</button>
         </nav>
         <div class="sidebar-user" id="userBox"></div>
-        <div class="side-foot">Ứng dụng nhập liệu · v1.1.2-final<br>Dữ liệu được lưu trên Google Sheets</div>
+        <div class="side-foot">Ứng dụng nhập liệu · v1.1.3-final<br>Dữ liệu được lưu trên Google Sheets</div>
       </aside>
       <div class="workspace">
       <div id="message"></div>
@@ -118,14 +119,6 @@
           <div><label>Số điện thoại khách hàng *</label><input name="customerPhone" type="tel" required></div>
           <div><label>Email khách hàng</label><input name="customerEmail" type="email" placeholder="Nếu có"></div>
           <div class="span3"><label>Địa chỉ khách hàng *</label><input name="customerAddress" required></div>
-          <div class="span3"><h3>Thông tin gửi hàng</h3></div>
-          <div><label>Tên công ty</label><input name="senderCompany" placeholder="Nếu có"></div>
-          <div><label>Tên người gửi hàng *</label><input name="senderCustomer" required></div>
-          <div><label>Số điện thoại gửi hàng *</label><input name="senderPhone" type="tel" required></div>
-          <div class="span2"><label>Địa chỉ gửi hàng *</label><input name="senderAddress" required></div>
-          <div><label>Email gửi hàng</label><input name="senderEmail" type="email" placeholder="Nếu có"></div>
-          <div><label>Đơn vị vận chuyển *</label><input name="carrier" required placeholder="Ví dụ: Viettel Post"></div>
-          <div><label>Mã vận đơn *</label><input name="trackingCode" required></div>
           <div class="span3"><label>Liên kết hồ sơ Google Drive *</label><input name="evidenceLink" type="url" required placeholder="https://drive.google.com/..."><div class="muted">Center cần cấp quyền xem liên kết này cho người quản lý.</div></div>
           <div class="span3"><label>Hiện tượng ban đầu *</label><textarea name="initialIssue" required></textarea></div>
           <div class="span3"><label>Ghi chú chung</label><textarea name="note"></textarea></div>
@@ -153,6 +146,8 @@
     </section>
   <script>
     const CONFIG = window.SUNGROW_CONFIG || {};
+    const EMBEDDED = window.self !== window.top;
+    if(EMBEDDED)document.documentElement.classList.add('embedded');
     const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false };
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
@@ -164,7 +159,7 @@
       $('[name=receivedAt]').value = today();
       bindEvents();
       const savedToken=sessionStorage.getItem('sungrow_id_token');
-      if(savedToken)onCredential({credential:savedToken});
+      if(savedToken){if(EMBEDDED)$('#loginView .login-card').innerHTML='<h1>Đang mở platform nhập liệu…</h1><p class="muted">Đang dùng phiên đăng nhập hiện tại.</p>';onCredential({credential:savedToken})}
       else initGoogle();
     };
 
@@ -185,8 +180,13 @@
         $('#userBox').innerHTML=`<div class="user-identity"><span class="user-avatar">${esc(initials)}</span><span class="user-copy"><strong title="${esc(data.actor.email)}">${esc(data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span></span></div>`;
         fillCenters();
         setupDashboardAccess();
-        showView('cases');
-      }).catch(err=>{sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle()});
+        const requestedView=(location.hash||'#cases').slice(1);
+        showView(['cases','receive','update','transfer'].includes(requestedView)?requestedView:'cases');
+        if(EMBEDDED)parent.postMessage({type:'sungrow-portal-ready'},location.origin);
+      }).catch(err=>{
+        if(isAuthError(err)){sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle();return}
+        showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.1.3-final. Hãy redeploy rồi tải lại trang.':err.message);
+      });
     }
 
     function bindEvents(){
@@ -205,7 +205,8 @@
       document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCaseDrawer()});
     }
 
-    function showView(id){if(id==='dashboard'){window.location.href='./';return}state.currentView=id;$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
+    function showView(id){if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
+    window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(['cases','receive','update','transfer'].includes(view))showView(view)});
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
       if(!state.actor||!state.actor.isGlobalManager)return;
@@ -319,7 +320,7 @@
 
     function openTransfer(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);const options=state.allCenters.filter(c=>c!==item.currentCenter).map(c=>`<option>${esc(c)}</option>`).join('');panel.innerHTML=`<form class="work"><h3>Chuyển ${esc(item.caseId)} sang center khác</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Trung tâm nhận *</label><select name="toCenter" required><option value="">Chọn trung tâm</option>${options}</select></div><div><label>Ngày gửi *</label><input type="date" name="dispatchedAt" value="${today()}" required></div><div><label>Mã vận chuyển</label><input name="trackingReference"></div><div class="span3"><label>Ghi chú bàn giao</label><textarea name="note"></textarea></div></div><div class="actions"><button class="primary" type="submit">Tạo luân chuyển</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{const out=await call('createTransfer',[state.token,formData(e.target)]);showMessage(`Đã tạo luân chuyển ${out.transferId}.`);refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
     async function acceptTransferUI(raw,caseId){const transfer=JSON.parse(raw),date=prompt('Ngày nhận hàng (YYYY-MM-DD):',today());if(!date)return;try{await call('acceptTransfer',[state.token,{transferId:transfer.transferId,receivedAt:date}]);showMessage('Đã xác nhận nhận hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}}
-    function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${today()}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
+    function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${today()}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args){
       if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
@@ -328,9 +329,10 @@
       const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store'});
       if(!response.ok)throw new Error('Không kết nối được hệ thống (HTTP '+response.status+').');
       const result=await response.json();
-      if(!result.ok)throw new Error(result.error?.message||'Không thể xử lý yêu cầu.');
+      if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
       return result.data;
     }
+    function isAuthError(error){return /AUTH|TOKEN|FORBIDDEN/i.test(error?.code||'')||/(đăng nhập|token|phiên đăng nhập|cấp quyền truy cập)/i.test(error?.message||'')}
     function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
     function showLoginError(text){$('#loginMessage').innerHTML=`<div class="notice error">${esc(text)}</div>`}
     function busy(btn,on){if(!btn)return;btn.disabled=on;btn.dataset.label=btn.dataset.label||btn.textContent;btn.textContent=on?'Đang xử lý…':btn.dataset.label}
