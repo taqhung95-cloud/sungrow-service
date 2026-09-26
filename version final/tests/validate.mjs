@@ -100,6 +100,9 @@ assert.match(liveDataSource, /id = 'sg-auth-page'/, 'Phải có trang đăng nh�
 assert.match(liveDataSource, /function revealApplication\(\)/, 'Chỉ hiển thị ứng dụng sau khi xác thực thành công.');
 assert.match(liveDataSource, /root\.hidden = false/, 'Ứng dụng phải được mở sau khi backend trả phân quyền.');
 assert.match(liveDataSource, /sg-auth-login-slot/, 'Nút Google phải nằm trên trang đăng nhập riêng.');
+assert.match(liveDataSource, /button\.sg-role-hidden\{display:none!important\}/, 'Menu dashboard của center phải bị ẩn bất kể CSS display mặc định.');
+assert.match(liveDataSource, /classList\.add\('sg-role-hidden'\)/, 'Account center phải được gắn lớp ẩn menu quản lý.');
+assert.match(liveDataSource, /tabIndex = -1/, 'Menu quản lý ẩn không được nhận focus bàn phím.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }
