@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.3\.1-realtime-hotfix/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.4\.0-unified-data/, 'Code phải khai báo đúng version production hiện tại.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
@@ -153,6 +153,13 @@ assert.match(read('LegacyDashboardApi.gs'), /authenticateDashboardManager_\(requ
 assert.doesNotMatch(read('LegacyDashboardApi.gs'), /USERS_JSON/, 'Không được duy trì nguồn phân quyền USERS_JSON song song với tab Người dùng.');
 assert.match(read('LegacyDashboardApi.gs'), /request\.action === 'portal\.call'/, 'Apps Script phải định tuyến API cho platform GitHub Pages.');
 assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
+assert.match(read('LegacyDashboardApi.gs'), /function readOperationalRecords_\(/, 'Dashboard phải đọc trực tiếp các tab nghiệp vụ hợp nhất.');
+assert.match(read('LegacyDashboardApi.gs'), /objects\('Hồ sơ thiết bị'\)/, 'Dashboard phải lấy hồ sơ từ cùng nguồn với platform nhập liệu.');
+assert.match(read('LegacyDashboardApi.gs'), /dataRevision/, 'Cache dashboard và tìm kiếm phải thay đổi theo revision dữ liệu.');
+assert.match(html, /navigateToCase\('update',item\.caseId\)/, 'Sau xác nhận bảo hành phải tải lại hồ sơ mới nhất trước khi cập nhật kỹ thuật.');
+assert.match(entryHtml, /navigateToCase\('update',item\.caseId\)/, 'GitHub Pages phải tải lại hồ sơ sau xác nhận bảo hành.');
+assert.match(entryHtml, /attempt<2/, 'Các request chỉ đọc phải tự retry khi Apps Script lỗi tạm thời.');
+assert.match(entryHtml, /state\.caseLoading/, 'Polling không được chạy chồng với request tải danh sách.');
 assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
 assert.doesNotMatch(entryHtml, /google\.script\.run|<\?=/, 'GitHub Pages không được phụ thuộc runtime template của Apps Script.');
 assert.match(entryHtml, /action:'portal\.call'/, 'GitHub Pages phải gọi Apps Script dưới dạng API.');
@@ -186,7 +193,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=42#/, 'Iframe nhập liệu phải dùng cache key mới cho bản real-time hotfix.');
+assert.match(liveDataSource, /v=43#/, 'Iframe nhập liệu phải dùng cache key mới cho bản unified data.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');

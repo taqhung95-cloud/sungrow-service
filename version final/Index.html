@@ -142,7 +142,7 @@
   <script>
     const AUTH_BROKER_URL = '<?= authBrokerUrl ?>';
     const AUTH_BROKER_ORIGIN = new URL(AUTH_BROKER_URL).origin;
-    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false };
+    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false };
     let authPopup = null;
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
@@ -266,7 +266,28 @@
     function openDashboardCase(query){showView('cases');$('#caseQuery').value=query||'';loadCases(true)}
     function formatNumber(value){return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(Number(value)||0)}
     function formatDateTime(value){const date=new Date(value);return isNaN(date.getTime())?'—':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(date)}
-    async function loadCases(resetPage=false){if(resetPage)state.casePage=1;const box=$('#caseResults');box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';try{const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};const response=await call('listCases',[state.token,filters]);const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;$('#casePageSize').value=String(data.pageSize);box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';const first=data.total?(data.page-1)*data.pageSize+1:0;const last=Math.min(data.page*data.pageSize,data.total);$('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager()}catch(err){box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)}</span></td></tr>`}}
+    async function loadCases(resetPage=false){
+      if(resetPage)state.casePage=1;
+      if(state.caseLoading){state.caseReloadPending=true;return}
+      state.caseLoading=true;
+      const box=$('#caseResults');
+      box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
+      try{
+        const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};
+        const response=await call('listCases',[state.token,filters]);
+        const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;
+        state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;
+        $('#casePageSize').value=String(data.pageSize);
+        box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';
+        const first=data.total?(data.page-1)*data.pageSize+1:0;const last=Math.min(data.page*data.pageSize,data.total);
+        $('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager();
+      }catch(err){
+        box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} <button type="button" class="secondary" onclick="loadCases(false)">Thử lại</button></span></td></tr>`;
+      }finally{
+        state.caseLoading=false;
+        if(state.caseReloadPending){state.caseReloadPending=false;window.setTimeout(()=>loadCases(false),100)}
+      }
+    }
     function renderPager(){const total=state.caseTotalPages,current=state.casePage,pages=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-current)<=2)pages.push(p)}let html=`<button class="page-button" ${current<=1?'disabled':''} onclick="goCasePage(${current-1})">‹</button>`,previous=0;pages.forEach(p=>{if(previous&&p-previous>1)html+='<span style="padding:8px 3px">…</span>';html+=`<button class="page-button ${p===current?'active':''}" onclick="goCasePage(${p})">${p}</button>`;previous=p});html+=`<button class="page-button" ${current>=total?'disabled':''} onclick="goCasePage(${current+1})">›</button>`;$('#casePager').innerHTML=html}
     function goCasePage(page){if(page<1||page>state.caseTotalPages||page===state.casePage)return;state.casePage=page;loadCases(false)}
     function refreshCurrent(){if(state.currentView==='cases')loadCases(false);else if(state.currentView==='transfer')$('#transferSearch').click();else $('#updateSearch').click()}
@@ -313,7 +334,7 @@
     }
     function toggleCase(btn){const body=btn.closest('.result').querySelector('.case-body');body.classList.toggle('hidden');btn.textContent=body.classList.contains('hidden')?'Xem chi tiết':'Thu gọn'}
 
-    function openWarranty(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work warranty-confirm"><h3>Xác nhận tình trạng bảo hành</h3><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div class="grid"><div><label>Tình trạng bảo hành *</label><select name="warrantyStatus" required><option value="">Chọn tình trạng</option>${['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].map(x=>`<option ${item.warrantyStatus===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="span2"><label>Ghi chú xác nhận</label><textarea name="note" placeholder="Bắt buộc khi thay đổi kết quả đã xác nhận">${esc(item.warrantyNote||'')}</textarea></div></div><div class="actions"><button class="primary" type="submit">Xác nhận bảo hành</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('confirmWarranty',[state.token,formData(e.target)]);showMessage('Đã xác nhận tình trạng bảo hành.');closeCaseDrawer();refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
+    function openWarranty(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work warranty-confirm"><h3>Xác nhận tình trạng bảo hành</h3><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div class="grid"><div><label>Tình trạng bảo hành *</label><select name="warrantyStatus" required><option value="">Chọn tình trạng</option>${['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].map(x=>`<option ${item.warrantyStatus===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="span2"><label>Ghi chú xác nhận</label><textarea name="note" placeholder="Bắt buộc khi thay đổi kết quả đã xác nhận">${esc(item.warrantyNote||'')}</textarea></div></div><div class="actions"><button class="primary" type="submit">Xác nhận bảo hành</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('confirmWarranty',[state.token,formData(e.target)]);showMessage('Đã xác nhận tình trạng bảo hành.');navigateToCase('update',item.caseId)}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
     function workStatuses(item){return item.warrantyStatus==='Chờ xác nhận'?['Đã nhận hàng','Đang kiểm tra']:['Đã nhận hàng','Đang kiểm tra','Chờ linh kiện','Đang sửa chữa','Đang kiểm tra sau sửa','Đang theo dõi','Hoàn tất kỹ thuật','Đã chuyển hàng đi','Đã đóng công việc']}
 
     function openWork(raw){const data=JSON.parse(raw),w=data.work,c=data.case;const panel=$(`#panel-${CSS.escape(c.caseId)}`);panel.innerHTML=`<form class="work-edit"><h3>Cập nhật ${esc(w.workOrderId)}</h3>${c.warrantyStatus==='Chờ xác nhận'?'<div class="notice error">Chỉ được tiếp nhận và kiểm tra ban đầu cho đến khi quản lý Sungrow xác nhận bảo hành.</div>':''}<div class="grid"><input type="hidden" name="workOrderId" value="${esc(w.workOrderId)}"><div><label>Trạng thái xử lý *</label><select name="workflowStatus">${workStatuses(c).map(x=>`<option ${x===w.workflowStatus?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Ngày hoàn tất chẩn đoán</label><input type="date" name="diagnosisCompletedAt" value="${esc(w.diagnosisCompletedAt)}"></div><div><label>Ngày hoàn tất kỹ thuật</label><input type="date" name="technicalCompletedAt" value="${esc(w.technicalCompletedAt)}"></div><div><label>Kết quả xử lý</label><select name="outcome"><option value="">Chưa có kết quả</option>${['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].map(x=>`<option ${x===w.outcome?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Loại thiết bị đổi</label><select name="replacementType"><option value="">Không áp dụng</option>${['Inverter','Battery','Logger','Meter','Khác'].map(x=>`<option ${x===w.replacementType?'selected':''}>${x}</option>`).join('')}</select></div><div class="span3"><label>Ghi chú nội bộ</label><textarea name="note">${esc(w.note)}</textarea></div></div><h3>Lỗi xác nhận</h3><div class="row-list issues"><div class="repeat-row"><input placeholder="Mã lỗi"><input placeholder="Tên lỗi"><input type="date" value="${today()}"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><button type="button" class="secondary" onclick="addIssueRow(this)">+ Thêm lỗi</button><h3>Linh kiện sử dụng</h3><div class="row-list parts"><div class="repeat-row"><input placeholder="Part Number"><input placeholder="Tên linh kiện"><input type="number" min="1" value="1"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><button type="button" class="secondary" onclick="addPartRow(this)">+ Thêm linh kiện</button><h3>Tạm dừng SLA</h3><div class="row-list holds"><div class="repeat-row"><select><option value="">Chọn lý do</option><option>Chờ khách hàng xác nhận</option><option>Khách hàng yêu cầu giữ hàng</option><option>Chờ linh kiện</option><option>Chờ phê duyệt bảo hành</option><option>Chờ vận chuyển</option><option>Yếu tố khách quan khác</option></select><input type="date"><input type="date"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div></div><div class="actions"><button class="primary" type="submit">Lưu cập nhật</button></div></form>`;panel.querySelector('form').onsubmit=e=>saveWork(e,c.caseId)}
@@ -325,7 +346,16 @@
     async function acceptTransferUI(raw,caseId){const transfer=JSON.parse(raw),date=prompt('Ngày nhận hàng (YYYY-MM-DD):',today());if(!date)return;try{await call('acceptTransfer',[state.token,{transferId:transfer.transferId,receivedAt:date}]);showMessage('Đã xác nhận nhận hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}}
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${today()}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
-    function call(name,args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(err=>reject(new Error(err&&err.message||'Không thể xử lý yêu cầu.')))[name](...args))}
+    function call(name,args,attempt=0){
+      const values=Array.isArray(args)?args:[];
+      const readOnly=['getBootstrap','getPortalSyncState','listCases','searchCases'].includes(name);
+      return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(err=>reject(new Error(err&&err.message||'Không thể xử lý yêu cầu.')))[name](...values)).catch(async error=>{
+        const authError=/(đăng nhập|token|phiên đăng nhập|cấp quyền truy cập)/i.test(error.message||'');
+        const retryable=readOnly&&!authError&&/Không thể xử lý yêu cầu|Service invoked too many times|timed out|server error/i.test(error.message||'');
+        if(retryable&&attempt<2){await new Promise(resolve=>setTimeout(resolve,[500,1400][attempt]));return call(name,values,attempt+1)}
+        throw error;
+      })
+    }
     function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
     function showLoginError(text){$('#loginMessage').innerHTML=`<div class="notice error">${esc(text)}</div>`}
     function busy(btn,on){if(!btn)return;btn.disabled=on;btn.dataset.label=btn.dataset.label||btn.textContent;btn.textContent=on?'Đang xử lý…':btn.dataset.label}
@@ -390,10 +420,10 @@
     }
 
     async function checkPortalRevision() {
-      if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token) return;
+      if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token || state.caseLoading) return;
       realtime.busy = true;
       try {
-        const sync = await call('getPortalSyncState', state.token);
+        const sync = await call('getPortalSyncState', [state.token]);
         if (!sync || !sync.revision) return;
         realtime.pollMs = Number(sync.pollMs) || realtime.pollMs;
         const nextRevision = String(sync.revision);

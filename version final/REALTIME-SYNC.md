@@ -1,6 +1,6 @@
 # Đồng bộ gần real-time và cache dữ liệu
 
-Phiên bản: `1.3.1-realtime-hotfix`
+Phiên bản: `1.4.0-unified-data`
 
 ## Cơ chế đồng bộ
 

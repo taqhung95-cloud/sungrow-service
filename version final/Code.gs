@@ -1,4 +1,4 @@
-const APP_VERSION = '1.3.1-realtime-hotfix';
+const APP_VERSION = '1.4.0-unified-data';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -270,7 +270,6 @@ function createCase(idToken, payload) {
       });
     }
     audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId });
-    refreshDashboardData_();
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
     lock.releaseLock();
@@ -312,7 +311,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   };
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
-  refreshDashboardData_();
+  SpreadsheetApp.flush();
   return { ok: true, warrantyStatus: warrantyStatus };
 }
 
@@ -420,7 +419,6 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   if (changes['Ngày hoàn tất kỹ thuật']) fillMissingPartUsageDates_(workOrderId, changes['Ngày hoàn tất kỹ thuật']);
   appendWorkOrderHolds_(actor, workOrderId, payload.holds || []);
   audit_(actor, 'Cập nhật xử lý', 'Công việc', workOrderId, record['Trung tâm xử lý'], record, changes);
-  refreshDashboardData_();
   return { ok: true };
 }
 
@@ -489,7 +487,6 @@ function createTransferUnlocked_(idToken, payload) {
       'Ngày cập nhật gần nhất': now
     });
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
-    refreshDashboardData_();
   return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
 }
 
@@ -539,7 +536,6 @@ function acceptTransferUnlocked_(idToken, payload) {
     'Ngày cập nhật gần nhất': now
   });
   audit_(actor, 'Xác nhận nhận luân chuyển', 'Luân chuyển', transferId, transfer['Trung tâm nhận'], transfer, { receivedAt: receivedAt });
-  refreshDashboardData_();
   return { ok: true };
 }
 
@@ -590,7 +586,6 @@ function returnToCustomerUnlocked_(idToken, payload) {
   };
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Trả khách hàng', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, changes);
-  refreshDashboardData_();
   return { ok: true };
 }
 

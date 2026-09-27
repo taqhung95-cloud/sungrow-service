@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.4-unified';
+const APP_VERSION = '1.8.5-operational-source';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -60,21 +60,29 @@ function getDashboard_(request, actor) {
 
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
-  const cacheKey = ['dash', APP_VERSION, annualMode, ticketMode, actor.role, scope.sort().join(','), period.key].join(':');
+  const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.role, scope.sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
   const cached = request.refresh === true ? null : cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const source = readSheetValuesAny_(spreadsheetId, period.year);
-  const values = source.values;
-  if (!values.length) throw apiError_('SOURCE_EMPTY', 'Tab dữ liệu không có nội dung.');
-  const schema = schemaForHeaders_(values[0]);
-
-  const records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers, schema); })
-    .filter(function (r) { return r.hasData && scope.includes(r.center); });
-  const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotals_(spreadsheetId, period.year, source, scope, centers, actor.role === 'service_manager' && requestedCenter === 'all');
-  const output = buildDashboard_(records, period, scope, source.sheetName, source.lastRow, spreadsheetId, actor, yearlyTotals);
+  const operational = readOperationalRecords_(spreadsheetId, centers);
+  let sourceName = operational.sheetName;
+  let sourceLastRow = operational.lastRow;
+  let records = operational.records.filter(function (r) { return r.hasData && scope.includes(r.center); });
+  if (!operational.records.length) {
+    const source = readSheetValuesAny_(spreadsheetId, period.year);
+    const values = source.values;
+    if (!values.length) throw apiError_('SOURCE_EMPTY', 'Tab dữ liệu không có nội dung.');
+    const schema = schemaForHeaders_(values[0]);
+    records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers, schema); })
+      .filter(function (r) { return r.hasData && scope.includes(r.center); });
+    sourceName = source.sheetName;
+    sourceLastRow = source.lastRow;
+  }
+  const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotalsFromRecords_(records, period.year);
+  const output = buildDashboard_(records, period, scope, sourceName, sourceLastRow, spreadsheetId, actor, yearlyTotals);
   if (request.includeTickets === false) output.tickets = [];
   safeCachePut_(cache, cacheKey, output, 300);
   return output;
@@ -99,7 +107,8 @@ function searchTickets_(request, actor) {
     ? [requestedYear]
     : Array.from({length:currentYear - FIRST_REPORT_YEAR + 1}, function (_, index) { return FIRST_REPORT_YEAR + index; });
   const cache = CacheService.getScriptCache();
-  const cacheKey = ['ticket-search', APP_VERSION, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
+  const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
@@ -107,20 +116,11 @@ function searchTickets_(request, actor) {
   const lowerQuery = query.toLowerCase();
   const compactQuery = normalizeDeviceKey_(query);
   const matches = [];
-  for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
-    const year = years[yearIndex];
-    let source;
-    try { source = readSheetValuesAny_(spreadsheetId, year); }
-    catch (error) {
-      if (error.code === 'SOURCE_TAB_NOT_FOUND') continue;
-      throw error;
-    }
-    const values = source.values;
-    if (!values.length) continue;
-    const schema = schemaForHeaders_(values[0]);
-    values.slice(1).forEach(function (row, index) {
-      const record = normalizeRow_(row, index + 2, String(year), centers, schema);
+  const operational = readOperationalRecords_(spreadsheetId, centers);
+  if (operational.records.length) {
+    operational.records.forEach(function (record) {
       if (!record.hasData || !scope.includes(record.center)) return;
+      if (record.receivedDate && years.indexOf(record.receivedDate.getFullYear()) === -1) return;
       const searchable = [record.serialNumber, record.model].join(' ');
       const textMatch = searchable.toLowerCase().includes(lowerQuery);
       const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
@@ -128,6 +128,28 @@ function searchTickets_(request, actor) {
       const ticket = publicTicket_(record);
       matches.push(ticket);
     });
+  } else {
+    for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
+      const year = years[yearIndex];
+      let source;
+      try { source = readSheetValuesAny_(spreadsheetId, year); }
+      catch (error) {
+        if (error.code === 'SOURCE_TAB_NOT_FOUND') continue;
+        throw error;
+      }
+      const values = source.values;
+      if (!values.length) continue;
+      const schema = schemaForHeaders_(values[0]);
+      values.slice(1).forEach(function (row, index) {
+        const record = normalizeRow_(row, index + 2, String(year), centers, schema);
+        if (!record.hasData || !scope.includes(record.center)) return;
+        const searchable = [record.serialNumber, record.model].join(' ');
+        const textMatch = searchable.toLowerCase().includes(lowerQuery);
+        const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
+        if (!textMatch && !compactMatch) return;
+        matches.push(publicTicket_(record));
+      });
+    }
   }
 
   matches.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
@@ -135,6 +157,119 @@ function searchTickets_(request, actor) {
   const output = { tickets: matches.slice(0, limit), total: matches.length, truncated: matches.length > limit, fromYear: years[0], toYear: years[years.length - 1] };
   safeCachePut_(cache, cacheKey, output, 120);
   return output;
+}
+
+function readOperationalRecords_(spreadsheetId, centers) {
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  function objects(sheetName) {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0].map(clean_);
+    return values.slice(1).map(function (row, index) {
+      const item = { __rowNumber: index + 2 };
+      headers.forEach(function (header, column) { if (header) item[header] = row[column]; });
+      return item;
+    }).filter(function (item) {
+      return Object.keys(item).some(function (key) { return key !== '__rowNumber' && item[key] !== '' && item[key] !== null; });
+    });
+  }
+  function grouped(rows, key) {
+    return rows.reduce(function (map, row) {
+      const value = clean_(row[key]);
+      if (!map[value]) map[value] = [];
+      map[value].push(row);
+      return map;
+    }, {});
+  }
+
+  const cases = objects('Hồ sơ thiết bị');
+  if (!cases.length) return { records: [], sheetName: 'Hồ sơ thiết bị', lastRow: 0 };
+  const worksByCase = grouped(objects('Công việc trung tâm'), 'Mã hồ sơ');
+  const issuesByWork = grouped(objects('Lỗi thiết bị'), 'Mã công việc');
+  const partsByWork = grouped(objects('Linh kiện sử dụng'), 'Mã công việc');
+  const records = cases.map(function (item) {
+    const caseId = clean_(item['Mã hồ sơ']);
+    const works = worksByCase[caseId] || [];
+    const latest = works.length ? works[works.length - 1] : {};
+    const issues = [];
+    const parts = [];
+    works.forEach(function (work) {
+      (issuesByWork[clean_(work['Mã công việc'])] || []).forEach(function (issue) { issues.push(issue); });
+      (partsByWork[clean_(work['Mã công việc'])] || []).forEach(function (part) { parts.push(part); });
+    });
+    const issueNames = issues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
+    const errorCode = issues.map(function (issue) { return clean_(issue['Mã lỗi']); }).filter(Boolean)[0] || '';
+    const caseStatus = clean_(item['Trạng thái hồ sơ']);
+    const deliveryStatus = caseStatus === 'Đã hoàn tất' ? 'Đã giao máy' : (caseStatus === 'Sẵn sàng trả khách' ? 'Chờ giao máy' : 'Chưa giao máy');
+    const note = [clean_(item['Ghi chú chung']), clean_(latest['Ghi chú nội bộ'])].filter(Boolean).join(' ');
+    return {
+      hasData: Boolean(caseId || clean_(item['Số sê-ri (S/N)']) || clean_(item.Model)),
+      rowNumber: item.__rowNumber,
+      id: caseId || ('operational-' + item.__rowNumber),
+      sourceNo: caseId,
+      deviceType: clean_(item['Loại thiết bị']),
+      serialNumber: clean_(item['Số sê-ri (S/N)']),
+      model: clean_(item.Model),
+      receivedDate: date_(item['Ngày nhận từ khách']),
+      distributor: clean_(item['Tên khách hàng']) || clean_(item['Đơn vị gửi hàng']) || clean_(item['Nơi gửi hàng']),
+      workshop: clean_(item['Trung tâm đang giữ hàng']),
+      errorCode: errorCode,
+      issues: issueNames,
+      warrantyConfirmation: clean_(item['Người xác nhận bảo hành']),
+      warrantyStatus: clean_(item['Tình trạng bảo hành']),
+      center: resolveCenter_(latest['Trung tâm xử lý'] || item['Trung tâm đang giữ hàng'] || item['Trung tâm tiếp nhận khách'], centers),
+      checkDate: date_(latest['Ngày hoàn tất kỹ thuật'] || latest['Ngày hoàn tất chẩn đoán']),
+      deliveryStatus: deliveryStatus,
+      status: clean_(latest['Trạng thái xử lý']) || caseStatus,
+      sparePartDate: parts.map(function (part) { return date_(part['Ngày nhận linh kiện']); }).filter(Boolean)[0] || null,
+      parts: parts.map(function (part) {
+        return { pn: clean_(part['Mã linh kiện (Part Number)']), qty: number_(part['Số lượng']) };
+      }).filter(function (part) { return part.pn; }),
+      returnDate: date_(item['Ngày trả khách']),
+      waitingParts: /chờ|thiếu.+(?:board|part)|đề xuất.+board/i.test(note + ' ' + clean_(item['Tình trạng bảo hành']) + ' ' + clean_(latest['Trạng thái xử lý'])),
+      unnamedAD: '',
+      unnamedAE: ''
+    };
+  });
+  return { records: records, sheetName: 'Hồ sơ thiết bị + dữ liệu nghiệp vụ', lastRow: cases.length + 1 };
+}
+
+function buildYearlyTotalsFromRecords_(records, selectedYear) {
+  const lastYear = Math.max(new Date().getFullYear(), selectedYear);
+  const totals = [];
+  for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
+    let received = 0, returned = 0, slaEligible = 0, slaMet = 0;
+    const monthlyReceived = Array(12).fill(0);
+    records.forEach(function (record) {
+      if (inYear_(record.receivedDate, year)) {
+        received++;
+        monthlyReceived[record.receivedDate.getMonth()]++;
+      }
+      if (inYear_(record.returnDate, year)) returned++;
+      if (record.receivedDate && record.returnDate && record.returnDate >= record.receivedDate && inYear_(record.returnDate, year)) {
+        slaEligible++;
+        if (ageDays_(record.receivedDate, record.returnDate) <= SLA_DAYS) slaMet++;
+      }
+    });
+    const monthlyCumulative = [];
+    monthlyReceived.reduce(function (sum, value, index) {
+      monthlyCumulative[index] = sum + value;
+      return monthlyCumulative[index];
+    }, 0);
+    totals.push({
+      year: year,
+      received: received,
+      returned: returned,
+      monthlyReceived: monthlyReceived,
+      monthlyCumulative: monthlyCumulative,
+      throughMonth: year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12,
+      slaEligible: slaEligible,
+      slaMet: slaMet,
+      slaRate: slaEligible ? slaMet / slaEligible : null
+    });
+  }
+  return totals;
 }
 
 function readSheetValuesAny_(spreadsheetId, year) {
