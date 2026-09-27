@@ -1,4 +1,4 @@
-const APP_VERSION = '1.2.0-production-auth';
+const APP_VERSION = '1.2.2-transfer-routing';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -33,7 +33,7 @@ const ROLE_CODES = Object.freeze({
 const ROLE_CAPABILITIES = Object.freeze({
   service_manager: Object.freeze({ viewDashboard: true, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: true, acceptTransfer: true, returnToCustomer: true, approveWarranty: true }),
   center_manager: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: true, acceptTransfer: true, returnToCustomer: true, approveWarranty: false }),
-  center_staff: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: false, acceptTransfer: true, returnToCustomer: false, approveWarranty: false })
+  center_staff: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: false, acceptTransfer: true, returnToCustomer: true, approveWarranty: false })
 });
 
 function doGet() {
@@ -217,7 +217,14 @@ function createCase(idToken, payload) {
   }
 }
 
-function confirmWarranty(idToken, payload) {
+function confirmWarranty() {
+  var args = Array.prototype.slice.call(arguments);
+  return withSerializedWrite_('xác nhận bảo hành', function () {
+    return confirmWarrantyUnlocked_.apply(null, args);
+  });
+}
+
+function confirmWarrantyUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   payload = payload || {};
   if (!canApproveWarranty_(actor)) {
@@ -249,7 +256,62 @@ function confirmWarranty(idToken, payload) {
   return { ok: true, warrantyStatus: warrantyStatus };
 }
 
-function updateWorkOrder(idToken, payload) {
+/**
+ * Serialize every state-changing transaction across all signed-in users.
+ *
+ * Google Sheets does not provide row-level transactions. ScriptLock ensures
+ * that a second employee cannot read/write the database while another write
+ * is still in progress. The lock is acquired before the original mutation
+ * re-reads its target rows, so all permission and state checks run against
+ * the latest committed data.
+ */
+/**
+ * Transfer routing rule:
+ * - Sungrow/global management may send to any center.
+ * - Every other center may send only to Sungrow.
+ * This backend rule also blocks direct API calls that bypass the form.
+ */
+function assertTransferDestinationPolicy_(sourceCenter, destination) {
+  if (sourceCenter === SUNGROW_CENTER) return;
+  if (destination !== SUNGROW_CENTER) {
+    throw publicError_('Center của bạn chỉ được phép luân chuyển thiết bị về Sungrow.');
+  }
+}
+
+function transferDestinationsForSource_(sourceCenter) {
+  if (sourceCenter === SUNGROW_CENTER) {
+    return CENTERS.filter(function (center) { return center !== sourceCenter; });
+  }
+  return [SUNGROW_CENTER];
+}
+
+function withSerializedWrite_(operationName, callback) {
+  var lock = LockService.getScriptLock();
+  // Existing-record mutations must never wait and then overwrite a newer
+  // value submitted by another employee. Reject the overlapping request so
+  // the second user is forced to reload the latest record first.
+  if (!lock.tryLock(1)) {
+    throw publicError_(
+      'Dữ liệu đang được một nhân viên khác cập nhật. ' +
+      'Vui lòng chờ vài giây, tải lại hồ sơ rồi thử lại thao tác “' + operationName + '”.'
+    );
+  }
+
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateWorkOrder() {
+  var args = Array.prototype.slice.call(arguments);
+  return withSerializedWrite_('cập nhật hồ sơ', function () {
+    return updateWorkOrderUnlocked_.apply(null, args);
+  });
+}
+
+function updateWorkOrderUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'updateWorkOrder');
   payload = payload || {};
@@ -302,7 +364,14 @@ function updateWorkOrder(idToken, payload) {
   return { ok: true };
 }
 
-function createTransfer(idToken, payload) {
+function createTransfer() {
+  var args = Array.prototype.slice.call(arguments);
+  return withSerializedWrite_('luân chuyển center', function () {
+    return createTransferUnlocked_.apply(null, args);
+  });
+}
+
+function createTransferUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'createTransfer');
   payload = payload || {};
@@ -317,17 +386,15 @@ function createTransfer(idToken, payload) {
   assertCaseEditable_(actor, caseRecord);
   const source = caseRecord['Trung tâm đang giữ hàng'];
   assertCenterAllowed_(actor, source);
+  assertTransferDestinationPolicy_(source, destination);
   if (source === destination) throw publicError_('Trung tâm nhận phải khác trung tâm gửi.');
 
   const sourceWork = latestWorkOrder_(caseId, source);
   if (!sourceWork) throw publicError_('Không tìm thấy công việc của trung tâm gửi.');
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const transferId = makeId_('LC');
-    const destinationWorkId = makeId_('CV');
-    const now = new Date();
-    appendObject_(SHEETS.workOrders, {
+  const transferId = makeId_('LC');
+  const destinationWorkId = makeId_('CV');
+  const now = new Date();
+  appendObject_(SHEETS.workOrders, {
       'Mã công việc': destinationWorkId,
       'Mã hồ sơ': caseId,
       'Trung tâm xử lý': destination,
@@ -363,13 +430,17 @@ function createTransfer(idToken, payload) {
     });
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
     refreshDashboardData_();
-    return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
-  } finally {
-    lock.releaseLock();
-  }
+  return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
 }
 
-function acceptTransfer(idToken, payload) {
+function acceptTransfer() {
+  var args = Array.prototype.slice.call(arguments);
+  return withSerializedWrite_('xác nhận nhận máy', function () {
+    return acceptTransferUnlocked_.apply(null, args);
+  });
+}
+
+function acceptTransferUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'acceptTransfer');
   payload = payload || {};
@@ -412,7 +483,14 @@ function acceptTransfer(idToken, payload) {
   return { ok: true };
 }
 
-function returnToCustomer(idToken, payload) {
+function returnToCustomer() {
+  var args = Array.prototype.slice.call(arguments);
+  return withSerializedWrite_('trả máy cho khách hàng', function () {
+    return returnToCustomerUnlocked_.apply(null, args);
+  });
+}
+
+function returnToCustomerUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'returnToCustomer');
   payload = payload || {};
@@ -579,6 +657,7 @@ function publicCase_(actor, item, workOrders, transfers) {
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
     workOrders: ownWorks.map(function (work) { const value = publicWorkOrder_(work); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
+    transferDestinations: transferDestinationsForSource_(item['Trung tâm đang giữ hàng']),
     canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && item['Tình trạng bảo hành'] !== 'Chờ xác nhận'
   };
 }

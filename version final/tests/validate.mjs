@@ -86,7 +86,8 @@ const roleSandbox = {
   Object,
   clean_:value => value == null ? '' : String(value).trim(),
   publicError_:message => new Error(message),
-  SUNGROW_CENTER:'Sungrow Service Center'
+  SUNGROW_CENTER:'Sungrow Service Center',
+  CENTERS:['Sungrow Service Center','XBSolar Center','DAT Center','BKE Center','JGP Center']
 };
 vm.createContext(roleSandbox);
 vm.runInContext(`${roleConstants}\n${extractFunction(codeSource,'resolveRole_')}\n${extractFunction(codeSource,'hasCapability_')}\n${extractFunction(codeSource,'assertCapability_')}\nthis.resolveRole_=resolveRole_;this.hasCapability_=hasCapability_;this.assertCapability_=assertCapability_;`, roleSandbox);
@@ -104,10 +105,11 @@ assert.equal(staffRole.capabilities.createCase,true,'Nhân viên center phải t
 assert.equal(staffRole.capabilities.updateWorkOrder,true,'Nhân viên center phải cập nhật được công việc.');
 assert.equal(staffRole.capabilities.acceptTransfer,true,'Nhân viên center phải xác nhận được hàng đến.');
 assert.equal(staffRole.capabilities.createTransfer,false,'Nhân viên center không được chủ động luân chuyển.');
-assert.equal(staffRole.capabilities.returnToCustomer,false,'Nhân viên center không được giao trả khách.');
+assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center phải cập nhật được giao trả khách.');
+assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.2\.0-production-auth/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.2\.2-transfer-routing/, 'Code phải khai báo đúng version production hiện tại.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
@@ -115,12 +117,23 @@ assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_
 assert.match(codeSource, /function resolveRole_\(/, 'Backend phải chuẩn hóa role từ tab Người dùng.');
 assert.match(codeSource, /function assertCapability_\(/, 'Backend phải kiểm capability cho từng thao tác.');
 for (const [action, capability] of Object.entries({
-  createCase:'createCase', updateWorkOrder:'updateWorkOrder', createTransfer:'createTransfer',
-  acceptTransfer:'acceptTransfer', returnToCustomer:'returnToCustomer'
+  createCase:'createCase', updateWorkOrderUnlocked_:'updateWorkOrder', createTransferUnlocked_:'createTransfer',
+  acceptTransferUnlocked_:'acceptTransfer', returnToCustomerUnlocked_:'returnToCustomer'
 })) {
-  const body = codeSource.match(new RegExp(`function ${action}\\([\\s\\S]*?\\n}`))?.[0] || '';
+  const body = extractFunction(codeSource, action);
   assert.match(body, new RegExp(`assertCapability_\\(actor, '${capability}'\\)`), `${action} phải kiểm quyền ${capability} ở backend.`);
 }
+assert.match(extractFunction(codeSource,'updateWorkOrder'), /withSerializedWrite_/, 'Cập nhật hồ sơ phải được khóa giao dịch.');
+assert.match(extractFunction(codeSource,'confirmWarranty'), /withSerializedWrite_/, 'Xác nhận bảo hành phải được khóa giao dịch.');
+assert.match(extractFunction(codeSource,'createTransfer'), /withSerializedWrite_/, 'Tạo luân chuyển phải được khóa giao dịch.');
+assert.match(extractFunction(codeSource,'acceptTransfer'), /withSerializedWrite_/, 'Nhận luân chuyển phải được khóa giao dịch.');
+assert.match(extractFunction(codeSource,'returnToCustomer'), /withSerializedWrite_/, 'Giao trả khách phải được khóa giao dịch.');
+vm.runInContext(`${extractFunction(codeSource,'assertTransferDestinationPolicy_')}\n${extractFunction(codeSource,'transferDestinationsForSource_')}\nthis.assertTransferDestinationPolicy_=assertTransferDestinationPolicy_;this.transferDestinationsForSource_=transferDestinationsForSource_;`, roleSandbox);
+assert.deepEqual(Array.from(roleSandbox.transferDestinationsForSource_('DAT Center')),['Sungrow Service Center'],'Center ngoài Sungrow chỉ được chuyển về Sungrow.');
+assert.deepEqual(Array.from(roleSandbox.transferDestinationsForSource_('Sungrow Service Center')),['XBSolar Center','DAT Center','BKE Center','JGP Center'],'Sungrow phải chuyển được đến mọi center còn lại.');
+assert.throws(() => roleSandbox.assertTransferDestinationPolicy_('DAT Center','BKE Center'),/chỉ được phép.*Sungrow/i,'Backend phải chặn luân chuyển giữa hai center ngoài Sungrow.');
+assert.doesNotThrow(() => roleSandbox.assertTransferDestinationPolicy_('DAT Center','Sungrow Service Center'));
+assert.doesNotThrow(() => roleSandbox.assertTransferDestinationPolicy_('Sungrow Service Center','DAT Center'));
 assert.match(codeSource, /hasPrivateAccess \? item\['Số điện thoại khách hàng'\] : ''/, 'Center lịch sử không được nhận PII khách hàng khi không còn liên quan vận hành.');
 assert.match(codeSource, /Cấu hình người dùng bị trùng GoogleSub/, 'Cấu hình trùng GoogleSub phải bị từ chối.');
 assert.match(codeSource, /function auditUserAccessConfiguration\(\)/, 'Phải có hàm audit cấu hình user trước production.');
@@ -136,6 +149,7 @@ assert.match(entryHtml, /action:'portal\.call'/, 'GitHub Pages phải gọi Apps
 assert.match(entryHtml, /sessionStorage\.setItem\('sungrow_id_token'/, 'Phiên đăng nhập phải được giữ trên cùng origin GitHub Pages.');
 assert.match(entryHtml, /Thông tin giao trả/, 'Thông tin vận chuyển phải nằm ở bước giao trả khách hàng.');
 assert.match(entryHtml, /name="returnTrackingCode"/, 'Form giao trả phải có mã vận đơn.');
+assert.match(entryHtml, /item\.transferDestinations\|\|\[\]/, 'Dropdown luân chuyển phải dùng danh sách đích do backend cấp.');
 const receiveForm = entryHtml.match(/<form id="receiveForm"[\s\S]*?<\/form>/i)?.[0] || '';
 assert.doesNotMatch(receiveForm, /Thông tin gửi hàng|senderCompany|trackingCode/, 'Form tiếp nhận không được yêu cầu thông tin gửi hàng.');
 assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard phải điều hướng tới trang nhập liệu GitHub Pages.');
@@ -162,7 +176,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=39#/, 'Iframe nhập liệu phải dùng cache key mới cho giao diện sidebar.');
+assert.match(liveDataSource, /v=40#/, 'Iframe nhập liệu phải dùng cache key mới cho bản luân chuyển production.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');
