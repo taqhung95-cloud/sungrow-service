@@ -244,8 +244,10 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=46#/, 'Iframe nhập liệu phải dùng cache key mới cho bản đồng bộ trạng thái form.');
+assert.match(liveDataSource, /v=47#/, 'Iframe nhập liệu phải dùng cache key mới cho bản bộ lọc năm linh hoạt.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
+assert.match(liveDataSource, /yearSelect\.type = 'number'/, 'Năm báo cáo phải cho phép nhập trực tiếp năm tương lai, không dùng dropdown cố định.');
+assert.match(liveDataSource, /legacyLabel\.style\.display = 'none'/, 'Bộ chọn kỳ YYYY-MM cũ phải được ẩn hoàn toàn.');
 assert.match(liveDataSource, /monthSelect\.id = 'sg-period-month'/, 'Dashboard phải có bộ chọn tháng độc lập.');
 assert.match(liveDataSource, /for \(let month = 1; month <= 12; month\+\+\)/, 'Bộ lọc tháng phải luôn có đủ 12 tháng.');
 assert.doesNotMatch(liveDataSource, /const lastMonth = year === maxYear \? maxMonth : 12/, 'Không được giới hạn tháng theo danh sách cố định hoặc tháng mặc định cũ.');
