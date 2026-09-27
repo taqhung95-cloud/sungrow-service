@@ -1,6 +1,6 @@
 # Đồng bộ gần real-time và cache dữ liệu
 
-Phiên bản: `1.4.2-projection-sync`
+Phiên bản: `1.4.3-form-state-sync`
 
 Dashboard giữ các tab năm 2024/2025/2026 làm dữ liệu nền. Các bản ghi nghiệp vụ khớp S/N + ngày nhận được dùng để cập nhật trạng thái của hồ sơ cũ; chỉ hồ sơ có `Nguồn dữ liệu = Quy trình mới` mới được bổ sung vào tổng số. Dữ liệu migrate không ghép được được báo trong `dataQuality.hybridMerge`, không tự cộng để tránh đếm trùng.
 

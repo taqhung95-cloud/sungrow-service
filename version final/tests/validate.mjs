@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.4\.2-projection-sync/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.4\.3-form-state-sync/, 'Code phải khai báo đúng version production hiện tại.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
@@ -197,6 +197,18 @@ assert.equal(hybridResult.stats.unmatchedHistorical,1,'Phải cảnh báo dữ l
 assert.match(read('LegacyDashboardApi.gs'), /dataRevision/, 'Cache dashboard và tìm kiếm phải thay đổi theo revision dữ liệu.');
 assert.match(html, /navigateToCase\('update',item\.caseId\)/, 'Sau xác nhận bảo hành phải tải lại hồ sơ mới nhất trước khi cập nhật kỹ thuật.');
 assert.match(entryHtml, /navigateToCase\('update',item\.caseId\)/, 'GitHub Pages phải tải lại hồ sơ sau xác nhận bảo hành.');
+for (const field of ['issues','parts','holds']) {
+  assert.match(extractFunction(codeSource,'publicWorkOrder_'), new RegExp(`${field}:`), `Payload công việc phải trả lại ${field} đã lưu.`);
+}
+assert.match(extractFunction(codeSource,'replaceWorkOrderChildren_'), /updateObjectRow_/, 'Lỗi và linh kiện đã có ID phải được cập nhật tại chỗ.');
+assert.match(extractFunction(codeSource,'replaceWorkOrderChildren_'), /deleteRowsDescending_/, 'Lỗi và linh kiện bị xóa trên form phải được xóa khỏi database.');
+assert.match(extractFunction(codeSource,'appendWorkOrderHolds_'), /updateObjectRow_/, 'Tạm dừng SLA đã có ID phải được cập nhật tại chỗ.');
+assert.match(entryHtml, /data-part-usage-id/, 'Form cập nhật phải giữ ID linh kiện để không tạo dòng trùng.');
+assert.match(entryHtml, /rowsOrBlank\(w\.parts,partRow\)/, 'Form cập nhật phải nạp các linh kiện đã lưu.');
+assert.match(entryHtml, /rowsOrBlank\(w\.issues,issueRow\)/, 'Form cập nhật phải nạp các lỗi đã lưu.');
+assert.match(entryHtml, /rowsOrBlank\(w\.holds,holdRow\)/, 'Form cập nhật phải nạp các khoảng tạm dừng SLA đã lưu.');
+assert.match(entryHtml, /item\.returnedAt\|\|today\(\)/, 'Form giao trả phải nạp ngày trả đã lưu.');
+assert.match(entryHtml, /item\.carrier\|\|''/, 'Form giao trả phải nạp đơn vị vận chuyển đã lưu.');
 assert.match(entryHtml, /attempt<2/, 'Các request chỉ đọc phải tự retry khi Apps Script lỗi tạm thời.');
 assert.match(entryHtml, /state\.caseLoading/, 'Polling không được chạy chồng với request tải danh sách.');
 assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
@@ -232,7 +244,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=45#/, 'Iframe nhập liệu phải dùng cache key mới cho bản projection sync.');
+assert.match(liveDataSource, /v=46#/, 'Iframe nhập liệu phải dùng cache key mới cho bản đồng bộ trạng thái form.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
 assert.match(liveDataSource, /monthSelect\.id = 'sg-period-month'/, 'Dashboard phải có bộ chọn tháng độc lập.');
 assert.match(liveDataSource, /for \(let month = 1; month <= 12; month\+\+\)/, 'Bộ lọc tháng phải luôn có đủ 12 tháng.');

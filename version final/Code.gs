@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.2-projection-sync';
+const APP_VERSION = '1.4.3-form-state-sync';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -153,8 +153,14 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const cases = readTable_(SHEETS.cases);
   const workOrders = readTable_(SHEETS.workOrders);
   const transfers = readTable_(SHEETS.transfers);
+  const issues = readTable_(SHEETS.issues);
+  const parts = readTable_(SHEETS.parts);
+  const holds = readTable_(SHEETS.holds);
   const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
   const transferByCase = groupBy_(transfers, 'Mã hồ sơ');
+  const issuesByWork = groupBy_(issues, 'Mã công việc');
+  const partsByWork = groupBy_(parts, 'Mã công việc');
+  const holdsByWork = groupBy_(holds, 'Mã công việc');
 
   const filtered = cases.filter(function (item) {
     const ownWorks = workByCase[item['Mã hồ sơ']] || [];
@@ -176,7 +182,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
   const items = filtered.slice(start, start + pageSize).map(function (item) {
-    return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || []);
+    return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || [], issuesByWork, partsByWork, holdsByWork);
   });
   return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages };
 }
@@ -698,7 +704,7 @@ function canSeeCase_(actor, item, workOrders) {
   return workOrders.some(function (work) { return actor.centers.indexOf(work['Trung tâm xử lý']) !== -1; });
 }
 
-function publicCase_(actor, item, workOrders, transfers) {
+function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWork, holdsByWork) {
   const isManager = actor.isGlobalManager;
   const isClosed = clean_(item['Trạng thái hồ sơ']) === 'Đã hoàn tất';
   const hasPrivateAccess = isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1 || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1;
@@ -716,6 +722,8 @@ function publicCase_(actor, item, workOrders, transfers) {
       dispatchedAt: iso_(transfer['Ngày gửi']),
       receivedAt: iso_(transfer['Ngày xác nhận nhận']),
       status: transfer['Trạng thái luân chuyển'],
+      trackingReference: transfer['Mã vận chuyển'],
+      note: transfer['Ghi chú bàn giao'],
       canAccept: !isClosed && hasCapability_(actor, 'acceptTransfer') && actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1 && transfer['Trạng thái luân chuyển'] === 'Đang vận chuyển'
     };
   });
@@ -731,40 +739,73 @@ function publicCase_(actor, item, workOrders, transfers) {
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
     isClosed: isClosed, canEditCase: canEditCase, canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
-    workOrders: ownWorks.map(function (work) { const value = publicWorkOrder_(work); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
+    workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
     transferDestinations: transferDestinationsForSource_(item['Trung tâm đang giữ hàng']),
     canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && item['Tình trạng bảo hành'] !== 'Chờ xác nhận'
   };
 }
 
-function publicWorkOrder_(work) {
+function publicWorkOrder_(work, issues, parts, holds) {
+  const relatedIssues = (issues || []).filter(function (row) { return clean_(row['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
+  const relatedParts = parts || [];
+  const relatedHolds = holds || [];
   return {
     workOrderId: work['Mã công việc'], center: work['Trung tâm xử lý'], receivedAt: iso_(work['Ngày trung tâm nhận hàng']),
     workflowStatus: work['Trạng thái xử lý'], diagnosisCompletedAt: iso_(work['Ngày hoàn tất chẩn đoán']),
     technicalCompletedAt: iso_(work['Ngày hoàn tất kỹ thuật']), outcome: work['Kết quả xử lý'], replacementType: work['Loại thiết bị đổi'],
-    releasedAt: iso_(work['Ngày chuyển hàng đi']), note: work['Ghi chú nội bộ']
+    releasedAt: iso_(work['Ngày chuyển hàng đi']), note: work['Ghi chú nội bộ'],
+    issues: relatedIssues.map(function (row) { return { issueId: row['Mã ghi nhận lỗi'], type: row['Loại ghi nhận'], code: row['Mã lỗi'], name: row['Tên lỗi'], confirmedAt: iso_(row['Ngày xác nhận lỗi']), note: row['Ghi chú lỗi'] }; }),
+    parts: relatedParts.map(function (row) { return { partUsageId: row['Mã sử dụng linh kiện'], partNumber: row['Mã linh kiện (Part Number)'], name: row['Tên linh kiện'], quantity: Number(row['Số lượng'] || 0), receivedAt: iso_(row['Ngày nhận linh kiện']), usedAt: iso_(row['Ngày sử dụng']), note: row['Ghi chú'] }; }),
+    holds: relatedHolds.map(function (row) { return { holdId: row['Mã tạm dừng'], reason: row['Lý do tạm dừng'], startAt: iso_(row['Ngày bắt đầu']), endAt: iso_(row['Ngày kết thúc']), note: row['Ghi chú/Xác nhận'] }; })
   };
 }
 
 function replaceWorkOrderChildren_(actor, workOrderId, issues, parts) {
-  issues.filter(function (item) { return clean_(item.name); }).forEach(function (item) {
-    appendObject_(SHEETS.issues, {
-      'Mã ghi nhận lỗi': makeId_('LOI'), 'Mã công việc': workOrderId, 'Loại ghi nhận': clean_(item.type) || 'Lỗi xác nhận',
+  const issueTable = readTableWithRows_(SHEETS.issues);
+  const currentIssues = issueTable.rows.filter(function (row) { return row['Mã công việc'] === workOrderId && clean_(row['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
+  const currentIssueById = currentIssues.reduce(function (map, row) { map[clean_(row['Mã ghi nhận lỗi'])] = row; return map; }, {});
+  const keptIssueIds = {};
+  (issues || []).filter(function (item) { return clean_(item.name); }).forEach(function (item) {
+    const issueId = clean_(item.issueId);
+    const values = {
+      'Mã công việc': workOrderId, 'Loại ghi nhận': clean_(item.type) || 'Lỗi xác nhận',
       'Mã lỗi': clean_(item.code), 'Tên lỗi': clean_(item.name), 'Ngày xác nhận lỗi': parseDateOptional_(item.confirmedAt) || new Date(), 'Ghi chú lỗi': clean_(item.note)
-    });
+    };
+    if (issueId && currentIssueById[issueId]) {
+      updateObjectRow_(SHEETS.issues, issueTable.headers, currentIssueById[issueId].__rowNumber, values);
+      keptIssueIds[issueId] = true;
+    } else {
+      values['Mã ghi nhận lỗi'] = makeId_('LOI');
+      appendObject_(SHEETS.issues, values);
+    }
   });
-  parts.filter(function (item) { return clean_(item.partNumber); }).forEach(function (item) {
+  deleteRowsDescending_(SHEETS.issues, currentIssues.filter(function (row) { return !keptIssueIds[clean_(row['Mã ghi nhận lỗi'])]; }).map(function (row) { return row.__rowNumber; }));
+
+  const partTable = readTableWithRows_(SHEETS.parts);
+  const currentParts = partTable.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
+  const currentPartById = currentParts.reduce(function (map, row) { map[clean_(row['Mã sử dụng linh kiện'])] = row; return map; }, {});
+  const keptPartIds = {};
+  (parts || []).filter(function (item) { return clean_(item.partNumber); }).forEach(function (item) {
     const partNumber = required_(item.partNumber, 'Mã linh kiện');
     const partName = required_(item.name, 'Tên linh kiện');
     const quantity = Number(item.quantity || 0);
     if (!Number.isFinite(quantity) || quantity <= 0) throw publicError_('Số lượng linh kiện phải lớn hơn 0.');
-    appendObject_(SHEETS.parts, {
-      'Mã sử dụng linh kiện': makeId_('LK'), 'Mã công việc': workOrderId, 'Mã linh kiện (Part Number)': partNumber,
+    const partUsageId = clean_(item.partUsageId);
+    const values = {
+      'Mã công việc': workOrderId, 'Mã linh kiện (Part Number)': partNumber,
       'Tên linh kiện': partName, 'Số lượng': quantity, 'Ngày nhận linh kiện': parseDateOptional_(item.receivedAt),
       'Ngày sử dụng': parseDateOptional_(item.usedAt), 'Ghi chú': clean_(item.note)
-    });
+    };
+    if (partUsageId && currentPartById[partUsageId]) {
+      updateObjectRow_(SHEETS.parts, partTable.headers, currentPartById[partUsageId].__rowNumber, values);
+      keptPartIds[partUsageId] = true;
+    } else {
+      values['Mã sử dụng linh kiện'] = makeId_('LK');
+      appendObject_(SHEETS.parts, values);
+    }
   });
+  deleteRowsDescending_(SHEETS.parts, currentParts.filter(function (row) { return !keptPartIds[clean_(row['Mã sử dụng linh kiện'])]; }).map(function (row) { return row.__rowNumber; }));
 }
 
 function fillMissingPartUsageDates_(workOrderId, usedAt) {
@@ -775,14 +816,36 @@ function fillMissingPartUsageDates_(workOrderId, usedAt) {
 }
 
 function appendWorkOrderHolds_(actor, workOrderId, holds) {
-  holds.filter(function (item) { return clean_(item.reason) && item.startAt; }).forEach(function (item) {
+  const table = readTableWithRows_(SHEETS.holds);
+  const current = table.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
+  const currentById = current.reduce(function (map, row) { map[clean_(row['Mã tạm dừng'])] = row; return map; }, {});
+  const keptIds = {};
+  (holds || []).filter(function (item) { return clean_(item.reason) && item.startAt; }).forEach(function (item) {
     const startAt = parseDateRequired_(item.startAt, 'Ngày bắt đầu tạm dừng');
     const endAt = parseDateOptional_(item.endAt);
     if (endAt && endAt < startAt) throw publicError_('Ngày kết thúc tạm dừng không được trước ngày bắt đầu.');
-    appendObject_(SHEETS.holds, {
-      'Mã tạm dừng': makeId_('TD'), 'Mã công việc': workOrderId, 'Lý do tạm dừng': clean_(item.reason),
+    const holdId = clean_(item.holdId);
+    const values = {
+      'Mã công việc': workOrderId, 'Lý do tạm dừng': clean_(item.reason),
       'Ngày bắt đầu': startAt, 'Ngày kết thúc': endAt, 'Ghi chú/Xác nhận': clean_(item.note), 'Người cập nhật': actor.email
-    });
+    };
+    if (holdId && currentById[holdId]) {
+      updateObjectRow_(SHEETS.holds, table.headers, currentById[holdId].__rowNumber, values);
+      keptIds[holdId] = true;
+    } else {
+      values['Mã tạm dừng'] = makeId_('TD');
+      appendObject_(SHEETS.holds, values);
+    }
+  });
+  deleteRowsDescending_(SHEETS.holds, current.filter(function (row) { return !keptIds[clean_(row['Mã tạm dừng'])]; }).map(function (row) { return row.__rowNumber; }));
+}
+
+function deleteRowsDescending_(sheetName, rowNumbers) {
+  if (!rowNumbers || !rowNumbers.length) return;
+  const sheet = spreadsheet_().getSheetByName(sheetName);
+  if (!sheet) throw new Error('Không tìm thấy sheet ' + sheetName);
+  rowNumbers.slice().sort(function (a, b) { return b - a; }).forEach(function (rowNumber) {
+    if (rowNumber > 1 && rowNumber <= sheet.getLastRow()) sheet.deleteRow(rowNumber);
   });
 }
 function updateCaseAfterWork_(caseId, actor, changes) {
