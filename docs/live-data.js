@@ -20,6 +20,9 @@
   let ticketSearchSequence = 0;
   let ticketSearchState = {term:'',rows:null,total:0,truncated:false,loading:false,error:'',fromYear:null,toYear:null};
   const AUTO_SYNC_MS = 120000;
+  const REVISION_SYNC_MS = 15000;
+  let portalRevision = '';
+  let revisionCheckBusy = false;
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
@@ -127,7 +130,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=40#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=41#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -180,6 +183,35 @@
       }
     }
     throw lastError || new Error('Không nhận được phản hồi từ Apps Script');
+  }
+
+  async function checkDashboardRevision() {
+    if (!token || document.hidden || revisionCheckBusy || activeController) return;
+    const main = q('.sg-main');
+    if (main && main.classList.contains('sg-portal-mode')) return;
+    revisionCheckBusy = true;
+    const controller = new AbortController();
+    try {
+      const sync = await fetchDashboard({
+        action:'portal.call',
+        functionName:'getPortalSyncState',
+        args:[token]
+      }, controller.signal, 1);
+      if (!sync || !sync.revision) return;
+      const nextRevision = String(sync.revision);
+      if (!portalRevision) {
+        portalRevision = nextRevision;
+        return;
+      }
+      if (nextRevision !== portalRevision) {
+        portalRevision = nextRevision;
+        await loadLive({force:true,comparison:false});
+      }
+    } catch (_) {
+      // The regular dashboard refresh remains the fallback after a transient check failure.
+    } finally {
+      revisionCheckBusy = false;
+    }
   }
 
   async function loadLive(options = {}) {
@@ -921,8 +953,11 @@
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
   setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
+  setInterval(checkDashboardRevision,REVISION_SYNC_MS);
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
+  document.addEventListener('visibilitychange',() => {if(!document.hidden)checkDashboardRevision();});
   window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});
+  window.addEventListener('focus',checkDashboardRevision);
   const savedToken = sessionStorage.getItem('sungrow_id_token');
   if (savedToken) {
     setAuthMessage('Đang khôi phục phiên đăng nhập…');

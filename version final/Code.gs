@@ -1,4 +1,4 @@
-const APP_VERSION = '1.2.2-transfer-routing';
+const APP_VERSION = '1.3.0-realtime-sync';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -46,6 +46,30 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
+function getPortalDatabaseRevision_() {
+  const appRevision = Number(
+    PropertiesService.getScriptProperties().getProperty('PORTAL_DATA_REVISION') || 0
+  );
+  const cache = CacheService.getScriptCache();
+  const driveRevisionKey = 'portal-drive-revision-v1';
+  let driveRevision = Number(cache.get(driveRevisionKey) || 0);
+  if (!driveRevision) {
+    driveRevision = DriveApp.getFileById(DATABASE_SPREADSHEET_ID).getLastUpdated().getTime();
+    cache.put(driveRevisionKey, String(driveRevision), 15);
+  }
+  return String(Math.max(appRevision, driveRevision));
+}
+
+function getPortalSyncState(idToken) {
+  authenticate_(idToken);
+  const revision = getPortalDatabaseRevision_();
+  return {
+    revision: revision,
+    changedAt: new Date(Number(revision)).toISOString(),
+    pollMs: 15000
+  };
+}
+
 function getBootstrap(idToken) {
   const actor = authenticate_(idToken);
   return {
@@ -62,6 +86,7 @@ function handlePortalApi_(request) {
   const args = Array.isArray(request.args) ? request.args : [];
   const allowed = {
     getBootstrap: getBootstrap,
+    getPortalSyncState: getPortalSyncState,
     listCases: listCases,
     searchCases: searchCases,
     createCase: createCase,
@@ -79,6 +104,32 @@ function handlePortalApi_(request) {
 
 function listCases(idToken, filters) {
   const actor = authenticate_(idToken);
+  const revision = getPortalDatabaseRevision_();
+  const cacheSeed = JSON.stringify({
+    user: actor.googleSub || actor.email,
+    revision: revision,
+    filters: filters || {}
+  });
+  const digest = Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, cacheSeed)
+  ).replace(/=+$/g, '');
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'portal-cases-v1-' + digest;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  const result = listCasesUncached_(idToken, filters, actor);
+  result.revision = revision;
+  const serialized = JSON.stringify(result);
+  if (Utilities.newBlob(serialized).getBytes().length < 90000) {
+    cache.put(cacheKey, serialized, 90);
+  }
+  return result;
+}
+
+function listCasesUncached_(idToken, filters, authenticatedActor) {
+  const actor = authenticatedActor || authenticate_(idToken);
   assertCapability_(actor, 'viewCases');
   filters = filters || {};
   const query = clean_(filters.query).toLowerCase();
@@ -535,6 +586,21 @@ function returnToCustomerUnlocked_(idToken, payload) {
 }
 
 function authenticate_(idToken) {
+  const tokenDigest = Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(idToken || ''))
+  ).replace(/=+$/g, '');
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'portal-actor-v1-' + tokenDigest;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+  const actor = authenticateUncached_(idToken);
+  cache.put(cacheKey, JSON.stringify(actor), 30);
+  return actor;
+}
+
+function authenticateUncached_(idToken) {
   if (!idToken || typeof idToken !== 'string' || idToken.length > 5000) throw publicError_('Vui lòng đăng nhập bằng tài khoản Google được cấp quyền.');
   const cache = CacheService.getScriptCache();
   const key = 'entry-token:' + digest_(idToken);
@@ -803,6 +869,9 @@ function tableHeaders_(sheetName) {
 }
 
 function audit_(actor, action, type, id, center, before, after) {
+  const revisionStore = PropertiesService.getScriptProperties();
+  const previousRevision = Number(revisionStore.getProperty('PORTAL_DATA_REVISION') || 0);
+  revisionStore.setProperty('PORTAL_DATA_REVISION', String(Math.max(Date.now(), previousRevision + 1)));
   appendObject_(SHEETS.audit, {
     'Thời gian': new Date(), 'Email người dùng': actor.email, 'Hành động': action, 'Loại đối tượng': type,
     'Mã đối tượng': id, 'Trung tâm': center, 'Dữ liệu trước': before ? JSON.stringify(stripInternal_(before)) : '', 'Dữ liệu sau': after ? JSON.stringify(after) : ''

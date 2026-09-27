@@ -355,5 +355,86 @@
     const senderPresentationObserver=new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType!==1)return;normalizeSenderPresentation(node);if(node.matches&&node.matches('.case-form-panel form'))enhanceActionForm(node);node.querySelectorAll&&node.querySelectorAll('.case-form-panel form').forEach(enhanceActionForm)})));
     senderPresentationObserver.observe(document.body,{childList:true,subtree:true});
   </script>
+<script>
+  // Near-real-time synchronization for the operational database.  Apps Script
+  // cannot keep a WebSocket open, so the client checks only the spreadsheet
+  // revision and reloads the current list when that revision changes.
+  (() => {
+    const realtime = {
+      revision: '',
+      busy: false,
+      timer: null,
+      pollMs: 15000
+    };
+
+    function hasOpenCaseEditor() {
+      const drawer = document.getElementById('caseDrawer');
+      const drawerOpen = drawer && !drawer.classList.contains('hidden');
+      return Boolean(drawerOpen || document.querySelector('.case-form-panel form'));
+    }
+
+    function showRealtimeNotice() {
+      let notice = document.getElementById('portalRealtimeNotice');
+      if (!notice) {
+        notice = document.createElement('button');
+        notice.id = 'portalRealtimeNotice';
+        notice.type = 'button';
+        notice.textContent = 'Có dữ liệu mới · Bấm để tải lại';
+        notice.style.cssText = 'position:fixed;right:22px;top:76px;z-index:10000;border:0;border-radius:10px;padding:10px 14px;background:#fff4e8;color:#9a4a0a;box-shadow:0 4px 18px rgba(0,0,0,.14);font:600 14px inherit;cursor:pointer';
+        notice.addEventListener('click', () => {
+          notice.remove();
+          if (typeof loadCases === 'function') loadCases(false);
+        });
+        document.body.appendChild(notice);
+      }
+    }
+
+    async function checkPortalRevision() {
+      if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token) return;
+      realtime.busy = true;
+      try {
+        const sync = await call('getPortalSyncState', state.token);
+        if (!sync || !sync.revision) return;
+        realtime.pollMs = Number(sync.pollMs) || realtime.pollMs;
+        const nextRevision = String(sync.revision);
+        if (!realtime.revision) {
+          realtime.revision = nextRevision;
+          return;
+        }
+        if (nextRevision === realtime.revision) return;
+        realtime.revision = nextRevision;
+
+        // Never close a drawer or replace a form that the user is working on.
+        if (state.currentView === 'cases' && hasOpenCaseEditor()) {
+          showRealtimeNotice();
+          return;
+        }
+        const notice = document.getElementById('portalRealtimeNotice');
+        if (notice) notice.remove();
+        if (state.currentView === 'cases' && typeof loadCases === 'function') {
+          await loadCases(false);
+        }
+      } catch (error) {
+        // A temporary sync-check failure must not interrupt data entry.
+      } finally {
+        realtime.busy = false;
+      }
+    }
+
+    function startPortalRealtime() {
+      if (realtime.timer) return;
+      realtime.timer = window.setInterval(checkPortalRevision, realtime.pollMs);
+      window.setTimeout(checkPortalRevision, 800);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) checkPortalRevision();
+    });
+    window.addEventListener('focus', checkPortalRevision);
+    window.addEventListener('online', checkPortalRevision);
+    document.addEventListener('DOMContentLoaded', startPortalRealtime);
+    if (document.readyState !== 'loading') startPortalRealtime();
+  })();
+</script>
 </body>
 </html>

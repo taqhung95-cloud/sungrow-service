@@ -109,8 +109,17 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.2\.2-transfer-routing/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.3\.0-realtime-sync/, 'Code phải khai báo đúng version production hiện tại.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
+assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
+assert.match(codeSource, /function getPortalDatabaseRevision_\(/, 'Backend phải tạo revision nhẹ để đồng bộ gần real-time.');
+assert.match(codeSource, /portal-cases-v1-/, 'Danh sách hồ sơ phải có cache theo user, revision và bộ lọc.');
+assert.match(codeSource, /portal-actor-v1-/, 'Actor đã xác thực phải có cache ngắn hạn để giảm đọc tab Người dùng.');
+assert.match(codeSource, /PORTAL_DATA_REVISION/, 'Các thao tác ghi phải cập nhật revision của database.');
+assert.match(html, /checkPortalRevision/, 'Apps Script UI phải tự kiểm tra dữ liệu mới.');
+assert.match(entryHtml, /checkPortalRevision/, 'GitHub Pages UI phải tự kiểm tra dữ liệu mới.');
+assert.match(entryHtml, /Có dữ liệu mới · Bấm để tải lại/, 'UI phải bảo vệ form đang mở trước khi làm mới dữ liệu.');
+assert.match(readDocs('live-data.js'), /checkDashboardRevision/, 'Dashboard quản lý phải kiểm tra revision nhẹ trước khi tải lại dữ liệu.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
@@ -176,7 +185,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=40#/, 'Iframe nhập liệu phải dùng cache key mới cho bản luân chuyển production.');
+assert.match(liveDataSource, /v=41#/, 'Iframe nhập liệu phải dùng cache key mới cho bản real-time production.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');
