@@ -517,7 +517,7 @@
       ['Ngày tiếp nhận',formatDate(ticket.receivedDate)],
       ['Ngày trả',formatDate(ticket.returnDate)],
       ['Trung tâm',ticket.center || '—'],
-      ['Bảo hành',ticket.warranty || ticket.warrantyStatus || '—'],
+      ['Tình trạng bảo hành',ticket.warrantyStatus || 'Chưa có thông tin'],
       ['Lỗi ghi nhận',ticket.error || '—'],
       ['Trạng thái',status],
       ['Thời gian xử lý',duration.text]

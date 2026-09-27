@@ -121,6 +121,8 @@ assert.match(html, /checkPortalRevision/, 'Apps Script UI phải tự kiểm tra
 assert.match(entryHtml, /checkPortalRevision/, 'GitHub Pages UI phải tự kiểm tra dữ liệu mới.');
 assert.match(entryHtml, /Có dữ liệu mới · Bấm để tải lại/, 'UI phải bảo vệ form đang mở trước khi làm mới dữ liệu.');
 assert.match(readDocs('live-data.js'), /checkDashboardRevision/, 'Dashboard quản lý phải kiểm tra revision nhẹ trước khi tải lại dữ liệu.');
+assert.match(readDocs('live-data.js'), /\['Tình trạng bảo hành',ticket\.warrantyStatus \|\| 'Chưa có thông tin'\]/, 'Chi tiết dashboard phải hiển thị tình trạng bảo hành, không hiển thị nguồn dữ liệu hoặc email xác nhận.');
+assert.doesNotMatch(readDocs('live-data.js'), /\['Bảo hành',ticket\.warranty \|\| ticket\.warrantyStatus/, 'Không được ưu tiên người xác nhận hoặc nguồn dữ liệu dưới nhãn bảo hành.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
