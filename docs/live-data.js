@@ -25,7 +25,7 @@
   let revisionCheckBusy = false;
 
   const style = document.createElement('style');
-  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
+  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}#sg-preview .sg-period-year{min-width:94px}#sg-preview .sg-period-month{min-width:122px}';
   style.textContent += '#sg-preview .sg-role-hidden{display:none!important}#sg-preview .sg-nav-parent{position:relative;padding-left:6px!important;padding-right:30px!important;color:#9a4708;font-size:13.5px!important;font-weight:700;letter-spacing:-.1px;white-space:nowrap}#sg-preview .sg-nav-parent::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-65%) rotate(-45deg);transform-origin:50% 50%;transition:transform .16s ease}#sg-preview .sg-nav-parent[aria-expanded="true"]::after{transform:translateY(-75%) rotate(45deg)}#sg-preview .sg-nav-children{display:grid;gap:3px;margin:0 0 5px 9px;padding:2px 0 3px 10px;border-left:1px solid #e7e8ea}#sg-preview .sg-nav-children[hidden]{display:none!important}#sg-preview .sg-nav-children button{min-height:38px;padding:8px 10px;font-size:12px;font-weight:400}#sg-preview .sg-platform-parent{margin-top:5px;border-top:1px solid #f0f1f2;padding-top:15px!important;border-radius:0}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}@media(min-width:581px){#sg-preview .sg-side{padding-left:14px!important;padding-right:14px!important}#sg-preview .sg-brand{display:block!important;width:100%;min-height:72px;padding:0 4px 24px!important}#sg-preview .sg-official-logo{width:150px;height:32px;padding:2px 0 10px!important}#sg-preview .sg-official-logo svg{display:block;width:150px!important;height:20px!important;max-width:none!important}#sg-preview .sg-brand small{display:block;margin:0;padding:0!important;font-size:12px;line-height:18px;letter-spacing:1.25px}}';
   style.textContent += '#sg-auth-page{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#f8f9fa 0%,#f1f3f5 55%,#fff4e8 100%);font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif;color:#262626}#sg-auth-page[hidden]{display:none!important}#sg-auth-page .sg-auth-card{width:min(100%,430px);padding:44px 42px 38px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;box-shadow:0 22px 65px rgba(25,35,45,.12);text-align:center}#sg-auth-page .sg-auth-brand{display:flex;justify-content:center;padding-bottom:28px;border-bottom:1px solid #ededed}#sg-auth-page .sg-auth-brand .sg-brand{padding:0!important}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:210px;height:auto}#sg-auth-page .sg-auth-brand small{display:block;margin-top:9px;color:#606060;font-size:13px;letter-spacing:2px}#sg-auth-page h1{margin:28px 0 10px;font-size:24px;font-weight:600;line-height:1.35}#sg-auth-page .sg-auth-copy{margin:0 auto 26px;max-width:315px;color:#667085;font-size:13px;line-height:1.65}#sg-auth-login-slot{display:flex;justify-content:center;min-height:44px}#sg-auth-message{min-height:20px;margin:18px 0 0;color:#667085;font-size:12px;line-height:1.5}#sg-auth-message.sg-auth-error{color:#b42318}#sg-auth-page .sg-auth-note{margin:25px 0 0;padding-top:20px;border-top:1px solid #ededed;color:#8a8f98;font-size:11px;line-height:1.6}@media(max-width:520px){#sg-auth-page{padding:16px}#sg-auth-page .sg-auth-card{padding:34px 24px 30px}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:180px}}';
   document.head.appendChild(style);
@@ -161,6 +161,9 @@
   }
 
   function selectedPeriod() {
+    const year = q('#sg-period-year')?.value;
+    const month = q('#sg-period-month')?.value;
+    if (year) return month && month !== 'all' ? year + '-' + month : year;
     return q('#sg-period').selectedOptions[0]?.dataset.livePeriod || cfg.defaultPeriod || new Date().toISOString().slice(0, 7);
   }
 
@@ -780,32 +783,65 @@
   }
 
   function setPeriodLabels() {
-    const current = cfg.defaultPeriod || new Date().toISOString().slice(0,7);
-    const maxYear = Number(current.slice(0,4));
-    const maxMonth = Number(current.slice(5,7));
+    const now = new Date();
+    const current = String(now.getFullYear()) + '-' + String(now.getMonth() + 1).padStart(2,'0');
+    const legacySelect = q('#sg-period');
+    const legacyLabel = legacySelect.closest('label');
+    const controls = legacyLabel.parentElement;
+    const yearLabel = document.createElement('label');
+    yearLabel.className = 'sg-control-label';
+    yearLabel.textContent = 'Năm';
+    const yearSelect = document.createElement('select');
+    yearSelect.id = 'sg-period-year';
+    yearSelect.className = 'sg-control sg-period-year';
+    yearSelect.setAttribute('aria-label','Năm báo cáo');
+    const maxYear = Math.max(now.getFullYear(), Number((cfg.defaultPeriod || '').slice(0,4)) || 0);
+    for (let year = maxYear; year >= 2024; year--) {
+      const option = document.createElement('option');
+      option.value = String(year);
+      option.textContent = String(year);
+      option.selected = year === now.getFullYear();
+      yearSelect.appendChild(option);
+    }
+    yearLabel.appendChild(yearSelect);
+    const monthLabel = document.createElement('label');
+    monthLabel.className = 'sg-control-label';
+    monthLabel.textContent = 'Tháng';
+    const monthSelect = document.createElement('select');
+    monthSelect.id = 'sg-period-month';
+    monthSelect.className = 'sg-control sg-period-month';
+    monthSelect.setAttribute('aria-label','Tháng báo cáo');
+    const annual = document.createElement('option');
+    annual.value = 'all';
+    annual.textContent = 'Cả năm';
+    monthSelect.appendChild(annual);
+    for (let month = 1; month <= 12; month++) {
+      const value = String(month).padStart(2,'0');
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = 'Tháng ' + value;
+      option.selected = month === now.getMonth() + 1;
+      monthSelect.appendChild(option);
+    }
+    monthLabel.appendChild(monthSelect);
+    controls.insertBefore(yearLabel,legacyLabel);
+    controls.insertBefore(monthLabel,legacyLabel);
+    legacyLabel.hidden = true;
+    legacySelect.innerHTML = '<option data-live-period="' + current + '">' + current + '</option>';
+  }
+
+  function syncLegacyPeriodControl() {
+    const period = selectedPeriod();
     const select = q('#sg-period');
     select.innerHTML = '';
-    for (let year = maxYear; year >= 2024; year -= 1) {
-      const group = document.createElement('optgroup');
-      group.label = String(year);
-      const yearOption = document.createElement('option');
-      yearOption.value = String(year);
-      yearOption.dataset.livePeriod = String(year);
-      yearOption.textContent = 'Cả năm ' + year;
-      yearOption.selected = String(year) === current;
-      group.appendChild(yearOption);
-      const lastMonth = year === maxYear ? maxMonth : 12;
-      for (let month = lastMonth; month >= 1; month -= 1) {
-        const key = String(year) + '-' + String(month).padStart(2,'0');
-        const option = document.createElement('option');
-        option.value = key;
-        option.dataset.livePeriod = key;
-        option.textContent = 'Tháng ' + String(month).padStart(2,'0') + '/' + year;
-        option.selected = key === current;
-        group.appendChild(option);
-      }
-      select.appendChild(group);
-    }
+    const option = document.createElement('option');
+    option.value = period;
+    option.dataset.livePeriod = period;
+    option.textContent = period;
+    select.appendChild(option);
+    const compare = q('#sg-compare-mode option');
+    if (compare) compare.textContent = /^\d{4}$/.test(period) ? 'Năm trước' : 'Tháng trước';
+    select.dispatchEvent(new Event('change'));
   }
 
   function initGoogle() {
@@ -930,11 +966,8 @@
 
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';
   setPeriodLabels();
-  ['#sg-center','#sg-period'].forEach(s => q(s).addEventListener('change',() => {
-    if (s === '#sg-period') {
-      const compare = q('#sg-compare-mode option');
-      if (compare) compare.textContent = /^\d{4}$/.test(selectedPeriod()) ? 'Năm trước' : 'Tháng trước';
-    }
+  ['#sg-center','#sg-period-year','#sg-period-month'].forEach(s => q(s).addEventListener('change',() => {
+    if (s !== '#sg-center') syncLegacyPeriodControl();
     setTimeout(loadLive,0);
     if (s === '#sg-center' && (q('#sg-search').value || '').trim()) setTimeout(scheduleTicketSearch,0);
   }));

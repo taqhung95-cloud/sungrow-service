@@ -233,6 +233,10 @@ assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-5
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
 assert.match(liveDataSource, /v=45#/, 'Iframe nhập liệu phải dùng cache key mới cho bản projection sync.');
+assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
+assert.match(liveDataSource, /monthSelect\.id = 'sg-period-month'/, 'Dashboard phải có bộ chọn tháng độc lập.');
+assert.match(liveDataSource, /for \(let month = 1; month <= 12; month\+\+\)/, 'Bộ lọc tháng phải luôn có đủ 12 tháng.');
+assert.doesNotMatch(liveDataSource, /const lastMonth = year === maxYear \? maxMonth : 12/, 'Không được giới hạn tháng theo danh sách cố định hoặc tháng mặc định cũ.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');
