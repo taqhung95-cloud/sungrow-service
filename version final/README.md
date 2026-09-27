@@ -17,7 +17,7 @@ File Google Sheets trên chứa nguyên các tab lịch sử `2024`, `2025`, `20
 - Dashboard chỉ xuất hiện với account được backend xác định là `isGlobalManager`.
 - Tab `Người dùng` là nguồn phân quyền duy nhất. Không còn dùng `USERS_JSON` trong Script Properties.
 - Role được chuẩn hóa về ba mã: `service_manager`, `center_manager`, `center_staff` (vẫn chấp nhận nhãn tiếng Việt tương ứng).
-- `Quản lý dịch vụ`, hoặc `Quản lý trung tâm` thuộc `Sungrow Service Center`, có quyền quản lý toàn bộ center.
+- Chỉ `Quản lý dịch vụ` có quyền quản lý toàn bộ center và xem dashboard tổng thể.
 - Account center không thấy tab dashboard và tiếp tục thao tác theo role/center hiện hữu.
 - API `getManagerDashboard` kiểm tra quyền ở server; ẩn menu không phải lớp bảo mật duy nhất.
 - Token Google được kiểm tra `aud`, `iss`, `exp`, `email_verified` và `sub`. Ở lần đăng nhập hợp lệ đầu tiên, `sub` được khóa vào cột `GoogleSub`; các lần sau ưu tiên định danh này thay vì chỉ dựa vào email.
@@ -28,7 +28,7 @@ File Google Sheets trên chứa nguyên các tab lịch sử `2024`, `2025`, `20
 | `Quản lý trung tâm` / `center_manager` | Center được gán | Tiếp nhận, cập nhật, nhận/chuyển center, giao trả |
 | `Nhân viên trung tâm` / `center_staff` / `center_editor` | Center được gán | Tiếp nhận, cập nhật, xác nhận nhận luân chuyển; không chủ động chuyển center hoặc giao trả |
 
-Riêng `Quản lý trung tâm` có `Trung tâm = Sungrow Service Center` được nâng thành quản lý dịch vụ để giữ đúng mô hình vận hành hiện tại. Mọi quyền ghi đều được kiểm ở Apps Script; việc ẩn menu chỉ phục vụ giao diện.
+`Quản lý trung tâm` luôn chỉ có phạm vi center được gán, kể cả `Sungrow Service Center`. Mọi quyền ghi đều được kiểm ở Apps Script; việc ẩn menu chỉ phục vụ giao diện.
 
 Account đã khởi tạo trong tab `Người dùng`:
 

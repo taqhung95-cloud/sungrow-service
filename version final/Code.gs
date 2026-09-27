@@ -221,7 +221,7 @@ function confirmWarranty(idToken, payload) {
   const actor = authenticate_(idToken);
   payload = payload || {};
   if (!canApproveWarranty_(actor)) {
-    throw publicError_('Chỉ Quản lý dịch vụ hoặc Quản lý Sungrow Service Center được xác nhận bảo hành.');
+    throw publicError_('Chỉ Quản lý dịch vụ được xác nhận bảo hành.');
   }
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
   const warrantyStatus = required_(payload.warrantyStatus, 'Tình trạng bảo hành');
@@ -269,7 +269,7 @@ function updateWorkOrder(idToken, payload) {
   const warrantyPending = clean_(caseRecord['Tình trạng bảo hành']) === 'Chờ xác nhận';
   const hasParts = (payload.parts || []).some(function (item) { return clean_(item.partNumber); });
   if (warrantyPending && (PRE_WARRANTY_WORKFLOW_STATUSES.indexOf(requestedStatus) === -1 || payload.technicalCompletedAt || payload.outcome || hasParts)) {
-    throw publicError_('Quản lý dịch vụ hoặc Quản lý Sungrow phải xác nhận tình trạng bảo hành trước khi sửa chữa, sử dụng linh kiện hoặc hoàn tất kỹ thuật.');
+    throw publicError_('Quản lý dịch vụ phải xác nhận tình trạng bảo hành trước khi sửa chữa, sử dụng linh kiện hoặc hoàn tất kỹ thuật.');
   }
 
   const changes = {
@@ -670,9 +670,7 @@ function resolveRole_(rawRole, homeCenter) {
   ['center_staff', 'center_editor', 'nhân viên trung tâm', 'nhan vien trung tam', 'nhân viên', 'nhan vien'].forEach(function (value) { aliases[value] = ROLE_CODES.centerStaff; });
   let code = aliases[raw];
   if (!code) throw publicError_('Vai trò trong tab Người dùng không hợp lệ: ' + clean_(rawRole) + '.');
-  const sungrowGlobalManager = code === ROLE_CODES.centerManager && homeCenter === SUNGROW_CENTER;
-  const isGlobalManager = code === ROLE_CODES.serviceManager || sungrowGlobalManager;
-  if (sungrowGlobalManager) code = ROLE_CODES.serviceManager;
+  const isGlobalManager = code === ROLE_CODES.serviceManager;
   const labels = {};
   labels[ROLE_CODES.serviceManager] = 'Quản lý dịch vụ';
   labels[ROLE_CODES.centerManager] = 'Quản lý trung tâm';

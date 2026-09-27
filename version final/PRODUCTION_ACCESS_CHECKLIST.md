@@ -25,7 +25,7 @@ Không tự sửa `GoogleSub` sau khi đã khóa. Nếu cần chuyển tài kho�
 | Tình huống | Kết quả mong đợi |
 |---|---|
 | Quản lý dịch vụ đăng nhập | Thấy dashboard và toàn bộ platform |
-| Quản lý Sungrow đăng nhập | Thấy dashboard và toàn bộ platform |
+| Quản lý Sungrow đăng nhập | Chỉ thấy platform và dữ liệu Sungrow Service Center |
 | Quản lý center khác | Chỉ thấy dữ liệu center; được chuyển center/giao trả trong phạm vi |
 | Nhân viên center | Không thấy dashboard; không được chủ động chuyển center/giao trả |
 | Center A sửa request thành Center B | Backend trả từ chối |
