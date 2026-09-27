@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.5-operational-source';
+const APP_VERSION = '1.8.6-hybrid-source';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -68,21 +68,11 @@ function getDashboard_(request, actor) {
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
   const operational = readOperationalRecords_(spreadsheetId, centers);
-  let sourceName = operational.sheetName;
-  let sourceLastRow = operational.lastRow;
-  let records = operational.records.filter(function (r) { return r.hasData && scope.includes(r.center); });
-  if (!operational.records.length) {
-    const source = readSheetValuesAny_(spreadsheetId, period.year);
-    const values = source.values;
-    if (!values.length) throw apiError_('SOURCE_EMPTY', 'Tab dữ liệu không có nội dung.');
-    const schema = schemaForHeaders_(values[0]);
-    records = values.slice(1).map(function (row, index) { return normalizeRow_(row, index + 2, String(period.year), centers, schema); })
-      .filter(function (r) { return r.hasData && scope.includes(r.center); });
-    sourceName = source.sheetName;
-    sourceLastRow = source.lastRow;
-  }
-  const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotalsFromRecords_(records, period.year);
-  const output = buildDashboard_(records, period, scope, sourceName, sourceLastRow, spreadsheetId, actor, yearlyTotals);
+  const hybrid = readHybridRecordsForYear_(spreadsheetId, period.year, centers, operational.records);
+  const records = hybrid.records.filter(function (r) { return r.hasData && scope.includes(r.center); });
+  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records);
+  const output = buildDashboard_(records, period, scope, hybrid.sheetName, hybrid.lastRow, spreadsheetId, actor, yearlyTotals);
+  output.dataQuality.hybridMerge = hybrid.stats;
   if (request.includeTickets === false) output.tickets = [];
   safeCachePut_(cache, cacheKey, output, 300);
   return output;
@@ -117,39 +107,16 @@ function searchTickets_(request, actor) {
   const compactQuery = normalizeDeviceKey_(query);
   const matches = [];
   const operational = readOperationalRecords_(spreadsheetId, centers);
-  if (operational.records.length) {
-    operational.records.forEach(function (record) {
+  for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
+    const hybrid = readHybridRecordsForYear_(spreadsheetId, years[yearIndex], centers, operational.records);
+    hybrid.records.forEach(function (record) {
       if (!record.hasData || !scope.includes(record.center)) return;
-      if (record.receivedDate && years.indexOf(record.receivedDate.getFullYear()) === -1) return;
       const searchable = [record.serialNumber, record.model].join(' ');
       const textMatch = searchable.toLowerCase().includes(lowerQuery);
       const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
       if (!textMatch && !compactMatch) return;
-      const ticket = publicTicket_(record);
-      matches.push(ticket);
+      matches.push(publicTicket_(record));
     });
-  } else {
-    for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
-      const year = years[yearIndex];
-      let source;
-      try { source = readSheetValuesAny_(spreadsheetId, year); }
-      catch (error) {
-        if (error.code === 'SOURCE_TAB_NOT_FOUND') continue;
-        throw error;
-      }
-      const values = source.values;
-      if (!values.length) continue;
-      const schema = schemaForHeaders_(values[0]);
-      values.slice(1).forEach(function (row, index) {
-        const record = normalizeRow_(row, index + 2, String(year), centers, schema);
-        if (!record.hasData || !scope.includes(record.center)) return;
-        const searchable = [record.serialNumber, record.model].join(' ');
-        const textMatch = searchable.toLowerCase().includes(lowerQuery);
-        const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
-        if (!textMatch && !compactMatch) return;
-        matches.push(publicTicket_(record));
-      });
-    }
   }
 
   matches.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
@@ -208,6 +175,7 @@ function readOperationalRecords_(spreadsheetId, centers) {
       rowNumber: item.__rowNumber,
       id: caseId || ('operational-' + item.__rowNumber),
       sourceNo: caseId,
+      sourceType: clean_(item['Nguồn dữ liệu']),
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
@@ -233,6 +201,143 @@ function readOperationalRecords_(spreadsheetId, centers) {
     };
   });
   return { records: records, sheetName: 'Hồ sơ thiết bị + dữ liệu nghiệp vụ', lastRow: cases.length + 1 };
+}
+
+function readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords) {
+  let source = { values: [], sheetName: String(year), lastRow: 0 };
+  try { source = readSheetValuesAny_(spreadsheetId, year); }
+  catch (error) {
+    if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
+  }
+  let legacyRecords = [];
+  if (source.values.length) {
+    const schema = schemaForHeaders_(source.values[0]);
+    legacyRecords = source.values.slice(1).map(function (row, index) {
+      return normalizeRow_(row, index + 2, String(year), centers, schema);
+    }).filter(function (record) { return record.hasData; });
+  }
+  const merged = mergeLegacyAndOperational_(legacyRecords, operationalRecords || [], year);
+  return {
+    records: merged.records,
+    stats: merged.stats,
+    sheetName: source.sheetName + ' + cập nhật nhập liệu',
+    lastRow: source.lastRow + merged.stats.appendedNew
+  };
+}
+
+function hybridDateKey_(value) {
+  return value ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+}
+
+function strongHybridKey_(record) {
+  const serial = normalizeDeviceKey_(record.serialNumber);
+  const received = hybridDateKey_(record.receivedDate);
+  return serial && received ? 'SN|' + serial + '|' + received : '';
+}
+
+function fallbackHybridKey_(record) {
+  const model = normalizeDeviceKey_(record.model);
+  const received = hybridDateKey_(record.receivedDate);
+  const center = clean_(record.center).toLowerCase();
+  return model && received && center ? 'MODEL|' + model + '|' + received + '|' + center : '';
+}
+
+function overlayOperationalRecord_(legacy, operational) {
+  const merged = Object.assign({}, legacy);
+  ['warrantyConfirmation', 'warrantyStatus', 'center', 'checkDate', 'status', 'sparePartDate', 'returnDate', 'errorCode'].forEach(function (field) {
+    if (operational[field] !== '' && operational[field] !== null && operational[field] !== undefined) merged[field] = operational[field];
+  });
+  if (operational.deliveryStatus && (!merged.deliveryStatus || !/^chưa\s+giao/i.test(operational.deliveryStatus))) {
+    merged.deliveryStatus = operational.deliveryStatus;
+  }
+  if (operational.issues && operational.issues.length) merged.issues = operational.issues.slice();
+  if (operational.parts && operational.parts.length) merged.parts = operational.parts.slice();
+  merged.waitingParts = Boolean(operational.waitingParts || merged.waitingParts);
+  merged.operationalCaseId = operational.id;
+  merged.sourceType = legacy.sourceType || 'Dữ liệu lịch sử';
+  return merged;
+}
+
+function mergeLegacyAndOperational_(legacyRecords, operationalRecords, year) {
+  const records = legacyRecords.slice();
+  const strong = {};
+  const fallback = {};
+  function addIndex(map, key, index) {
+    if (!key) return;
+    if (!map[key]) map[key] = [];
+    map[key].push(index);
+  }
+  records.forEach(function (record, index) {
+    addIndex(strong, strongHybridKey_(record), index);
+    addIndex(fallback, fallbackHybridKey_(record), index);
+  });
+  const stats = { legacyRows: records.length, matchedOverlay: 0, appendedNew: 0, duplicateNew: 0, unmatchedHistorical: 0 };
+  operationalRecords.forEach(function (operational) {
+    if (!operational.hasData || !operational.receivedDate || operational.receivedDate.getFullYear() !== Number(year)) return;
+    const strongMatches = strong[strongHybridKey_(operational)] || [];
+    const fallbackMatches = fallback[fallbackHybridKey_(operational)] || [];
+    const matches = strongMatches.length === 1 ? strongMatches : (fallbackMatches.length === 1 ? fallbackMatches : []);
+    const isNew = /^quy\s*trình\s*mới$/i.test(clean_(operational.sourceType));
+    if (matches.length === 1) {
+      records[matches[0]] = overlayOperationalRecord_(records[matches[0]], operational);
+      stats.matchedOverlay++;
+      if (isNew) stats.duplicateNew++;
+      return;
+    }
+    if (isNew) {
+      const index = records.length;
+      records.push(operational);
+      addIndex(strong, strongHybridKey_(operational), index);
+      addIndex(fallback, fallbackHybridKey_(operational), index);
+      stats.appendedNew++;
+    } else {
+      stats.unmatchedHistorical++;
+    }
+  });
+  return { records: records, stats: stats };
+}
+
+function yearlyTotalFromRecords_(records, year) {
+  let received = 0, returned = 0, slaEligible = 0, slaMet = 0;
+  const monthlyReceived = Array(12).fill(0);
+  records.forEach(function (record) {
+    if (inYear_(record.receivedDate, year)) {
+      received++;
+      monthlyReceived[record.receivedDate.getMonth()]++;
+    }
+    if (inYear_(record.returnDate, year)) returned++;
+    if (record.receivedDate && record.returnDate && record.returnDate >= record.receivedDate && inYear_(record.returnDate, year)) {
+      slaEligible++;
+      if (ageDays_(record.receivedDate, record.returnDate) <= SLA_DAYS) slaMet++;
+    }
+  });
+  const monthlyCumulative = [];
+  monthlyReceived.reduce(function (sum, value, index) {
+    monthlyCumulative[index] = sum + value;
+    return monthlyCumulative[index];
+  }, 0);
+  return {
+    year: year,
+    received: received,
+    returned: returned,
+    monthlyReceived: monthlyReceived,
+    monthlyCumulative: monthlyCumulative,
+    throughMonth: year === new Date().getFullYear() ? new Date().getMonth() + 1 : 12,
+    slaEligible: slaEligible,
+    slaMet: slaMet,
+    slaRate: slaEligible ? slaMet / slaEligible : null
+  };
+}
+
+function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, operationalRecords) {
+  const lastYear = Math.max(new Date().getFullYear(), selectedYear);
+  const totals = [];
+  for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
+    const hybrid = readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords);
+    const scoped = hybrid.records.filter(function (record) { return record.hasData && scope.includes(record.center); });
+    totals.push(yearlyTotalFromRecords_(scoped, year));
+  }
+  return totals;
 }
 
 function buildYearlyTotalsFromRecords_(records, selectedYear) {
@@ -489,6 +594,7 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
     rowNumber: rowNumber,
     id: year + '-' + rowNumber,
     sourceNo: clean_(row[schema.sourceNo]),
+    sourceType: 'Dữ liệu lịch sử',
     deviceType: clean_(row[schema.deviceType]),
     serialNumber: clean_(row[schema.serialNumber]),
     model: clean_(row[schema.model]),

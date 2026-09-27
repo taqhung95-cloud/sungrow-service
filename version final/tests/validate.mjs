@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.4\.0-unified-data/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.4\.1-hybrid-data/, 'Code phải khai báo đúng version production hiện tại.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
@@ -153,8 +153,39 @@ assert.match(read('LegacyDashboardApi.gs'), /authenticateDashboardManager_\(requ
 assert.doesNotMatch(read('LegacyDashboardApi.gs'), /USERS_JSON/, 'Không được duy trì nguồn phân quyền USERS_JSON song song với tab Người dùng.');
 assert.match(read('LegacyDashboardApi.gs'), /request\.action === 'portal\.call'/, 'Apps Script phải định tuyến API cho platform GitHub Pages.');
 assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
-assert.match(read('LegacyDashboardApi.gs'), /function readOperationalRecords_\(/, 'Dashboard phải đọc trực tiếp các tab nghiệp vụ hợp nhất.');
-assert.match(read('LegacyDashboardApi.gs'), /objects\('Hồ sơ thiết bị'\)/, 'Dashboard phải lấy hồ sơ từ cùng nguồn với platform nhập liệu.');
+const legacyApiSource = read('LegacyDashboardApi.gs');
+assert.match(legacyApiSource, /function readOperationalRecords_\(/, 'Dashboard phải đọc trực tiếp các tab nghiệp vụ hợp nhất.');
+assert.match(legacyApiSource, /objects\('Hồ sơ thiết bị'\)/, 'Dashboard phải lấy hồ sơ từ cùng nguồn với platform nhập liệu.');
+assert.match(legacyApiSource, /function readHybridRecordsForYear_\(/, 'Dashboard phải giữ tab lịch sử làm nền và ghép dữ liệu nhập liệu.');
+assert.match(legacyApiSource, /sourceType:\s*clean_\(item\['Nguồn dữ liệu'\]\)/, 'Dashboard phải phân biệt hồ sơ quy trình mới với dữ liệu migrate.');
+assert.match(legacyApiSource, /output\.dataQuality\.hybridMerge/, 'Dashboard phải công bố thống kê đối soát dữ liệu lai.');
+const hybridSandbox = {
+  Object,
+  Session:{getScriptTimeZone:() => 'Asia/Ho_Chi_Minh'},
+  Utilities:{formatDate:date => date.toISOString().slice(0,10)},
+  clean_:value => value == null ? '' : String(value).trim(),
+  normalizeDeviceKey_:value => (value == null ? '' : String(value)).toUpperCase().replace(/[^A-Z0-9]/g,'')
+};
+vm.createContext(hybridSandbox);
+vm.runInContext([
+  extractFunction(legacyApiSource,'hybridDateKey_'),
+  extractFunction(legacyApiSource,'strongHybridKey_'),
+  extractFunction(legacyApiSource,'fallbackHybridKey_'),
+  extractFunction(legacyApiSource,'overlayOperationalRecord_'),
+  extractFunction(legacyApiSource,'mergeLegacyAndOperational_'),
+  'this.mergeLegacyAndOperational_=mergeLegacyAndOperational_;'
+].join('\n'), hybridSandbox);
+const legacyRow = {hasData:true,id:'2026-2',serialNumber:'SN-OLD',model:'SG110CX',receivedDate:new Date('2026-09-01T00:00:00Z'),center:'Sungrow Service Center',status:'Đang kiểm tra',deliveryStatus:'Chưa giao máy',issues:[],parts:[]};
+const operationalOverlay = {hasData:true,id:'HS-MIGRATED',sourceType:'Dữ liệu migrate',serialNumber:'SN-OLD',model:'SG110CX',receivedDate:new Date('2026-09-01T00:00:00Z'),center:'Sungrow Service Center',status:'Hoàn tất kỹ thuật',deliveryStatus:'Chờ giao máy',issues:['Hỏng IGBT'],parts:[]};
+const operationalNew = {hasData:true,id:'HS-NEW',sourceType:'Quy trình mới',serialNumber:'SN-NEW',model:'SG50CX',receivedDate:new Date('2026-09-02T00:00:00Z'),center:'DAT Center',status:'Đã nhận hàng',deliveryStatus:'Chưa giao máy',issues:[],parts:[]};
+const unmatchedHistorical = {hasData:true,id:'HS-UNMATCHED',sourceType:'Dữ liệu migrate',serialNumber:'SN-NOT-IN-LEGACY',model:'SG33CX',receivedDate:new Date('2026-09-03T00:00:00Z'),center:'DAT Center',status:'Đang xử lý',deliveryStatus:'Chưa giao máy',issues:[],parts:[]};
+const hybridResult = hybridSandbox.mergeLegacyAndOperational_([legacyRow],[operationalOverlay,operationalNew,unmatchedHistorical],2026);
+assert.equal(hybridResult.records.length,2,'Dữ liệu lai chỉ được cộng hồ sơ quy trình mới, không cộng lại dữ liệu migrate chưa ghép được.');
+assert.equal(hybridResult.records[0].id,'2026-2','Overlay phải giữ ID và hàng dữ liệu lịch sử làm nền.');
+assert.equal(hybridResult.records[0].status,'Hoàn tất kỹ thuật','Cập nhật nghiệp vụ phải ghi đè trạng thái lên hồ sơ lịch sử khớp khóa.');
+assert.equal(hybridResult.stats.matchedOverlay,1,'Phải đếm được hồ sơ lịch sử đã ghép cập nhật.');
+assert.equal(hybridResult.stats.appendedNew,1,'Phải đếm được hồ sơ quy trình mới được bổ sung.');
+assert.equal(hybridResult.stats.unmatchedHistorical,1,'Phải cảnh báo dữ liệu migrate chưa ghép thay vì đếm trùng.');
 assert.match(read('LegacyDashboardApi.gs'), /dataRevision/, 'Cache dashboard và tìm kiếm phải thay đổi theo revision dữ liệu.');
 assert.match(html, /navigateToCase\('update',item\.caseId\)/, 'Sau xác nhận bảo hành phải tải lại hồ sơ mới nhất trước khi cập nhật kỹ thuật.');
 assert.match(entryHtml, /navigateToCase\('update',item\.caseId\)/, 'GitHub Pages phải tải lại hồ sơ sau xác nhận bảo hành.');
@@ -193,7 +224,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=43#/, 'Iframe nhập liệu phải dùng cache key mới cho bản unified data.');
+assert.match(liveDataSource, /v=44#/, 'Iframe nhập liệu phải dùng cache key mới cho bản hybrid data.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');

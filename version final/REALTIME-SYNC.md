@@ -1,6 +1,8 @@
 # Đồng bộ gần real-time và cache dữ liệu
 
-Phiên bản: `1.4.0-unified-data`
+Phiên bản: `1.4.1-hybrid-data`
+
+Dashboard giữ các tab năm 2024/2025/2026 làm dữ liệu nền. Các bản ghi nghiệp vụ khớp S/N + ngày nhận được dùng để cập nhật trạng thái của hồ sơ cũ; chỉ hồ sơ có `Nguồn dữ liệu = Quy trình mới` mới được bổ sung vào tổng số. Dữ liệu migrate không ghép được được báo trong `dataQuality.hybridMerge`, không tự cộng để tránh đếm trùng.
 
 ## Cơ chế đồng bộ
 
@@ -33,6 +35,7 @@ Phiên bản: `1.4.0-unified-data`
 ## File cần triển khai lại
 
 1. `Code.gs`
-2. `Index.html`
+2. `LegacyDashboardApi.gs`
+3. `Index.html`
 
-Sau khi copy hai file vào Apps Script, tạo **New version** và deploy lại Web App. GitHub Pages dùng `docs/entry.html` mới sau khi push repository.
+Sau khi copy ba file vào Apps Script, tạo **New version** và deploy lại Web App. GitHub Pages dùng `docs/entry.html` mới sau khi push repository.
