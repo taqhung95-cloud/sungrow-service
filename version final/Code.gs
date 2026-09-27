@@ -1,4 +1,4 @@
-const APP_VERSION = '1.3.0-realtime-sync';
+const APP_VERSION = '1.3.1-realtime-hotfix';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -47,17 +47,13 @@ function doGet() {
 }
 
 function getPortalDatabaseRevision_() {
-  const appRevision = Number(
-    PropertiesService.getScriptProperties().getProperty('PORTAL_DATA_REVISION') || 0
-  );
-  const cache = CacheService.getScriptCache();
-  const driveRevisionKey = 'portal-drive-revision-v1';
-  let driveRevision = Number(cache.get(driveRevisionKey) || 0);
-  if (!driveRevision) {
-    driveRevision = DriveApp.getFileById(DATABASE_SPREADSHEET_ID).getLastUpdated().getTime();
-    cache.put(driveRevisionKey, String(driveRevision), 15);
+  const store = PropertiesService.getScriptProperties();
+  let revision = Number(store.getProperty('PORTAL_DATA_REVISION') || 0);
+  if (!revision) {
+    revision = Date.now();
+    store.setProperty('PORTAL_DATA_REVISION', String(revision));
   }
-  return String(Math.max(appRevision, driveRevision));
+  return String(revision);
 }
 
 function getPortalSyncState(idToken) {
@@ -104,26 +100,39 @@ function handlePortalApi_(request) {
 
 function listCases(idToken, filters) {
   const actor = authenticate_(idToken);
-  const revision = getPortalDatabaseRevision_();
-  const cacheSeed = JSON.stringify({
-    user: actor.googleSub || actor.email,
-    revision: revision,
-    filters: filters || {}
-  });
-  const digest = Utilities.base64EncodeWebSafe(
-    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, cacheSeed)
-  ).replace(/=+$/g, '');
-  const cache = CacheService.getScriptCache();
-  const cacheKey = 'portal-cases-v1-' + digest;
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
+  let revision = '';
+  let cache = null;
+  let cacheKey = '';
+  try {
+    revision = getPortalDatabaseRevision_();
+    const cacheSeed = JSON.stringify({
+      user: actor.googleSub || actor.email,
+      revision: revision,
+      filters: filters || {}
+    });
+    const digest = Utilities.base64EncodeWebSafe(
+      Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, cacheSeed)
+    ).replace(/=+$/g, '');
+    cache = CacheService.getScriptCache();
+    cacheKey = 'portal-cases-v1-' + digest;
+    const cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (cacheError) {
+    console.warn('Portal list cache read skipped: ' + String(cacheError && cacheError.message || cacheError));
+    cache = null;
+    cacheKey = '';
   }
   const result = listCasesUncached_(idToken, filters, actor);
-  result.revision = revision;
-  const serialized = JSON.stringify(result);
-  if (Utilities.newBlob(serialized).getBytes().length < 90000) {
-    cache.put(cacheKey, serialized, 90);
+  if (revision) result.revision = revision;
+  if (cache && cacheKey) {
+    try {
+      const serialized = JSON.stringify(result);
+      if (Utilities.newBlob(serialized).getBytes().length < 90000) {
+        cache.put(cacheKey, serialized, 90);
+      }
+    } catch (cacheError) {
+      console.warn('Portal list cache write skipped: ' + String(cacheError && cacheError.message || cacheError));
+    }
   }
   return result;
 }

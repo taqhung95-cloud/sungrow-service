@@ -1,6 +1,6 @@
 # Đồng bộ gần real-time và cache dữ liệu
 
-Phiên bản: `1.3.0-realtime-sync`
+Phiên bản: `1.3.1-realtime-hotfix`
 
 ## Cơ chế đồng bộ
 
@@ -10,7 +10,7 @@ Phiên bản: `1.3.0-realtime-sync`
 - Chỉ khi revision thay đổi, trang `Danh sách hồ sơ` mới tải lại dữ liệu.
 - Khi tab được mở lại, trình duyệt có mạng trở lại hoặc cửa sổ được focus, hệ thống kiểm tra ngay.
 - Nếu người dùng đang mở drawer/form xử lý hồ sơ, hệ thống không ghi đè màn hình. Một nút `Có dữ liệu mới · Bấm để tải lại` sẽ xuất hiện.
-- Thay đổi do ứng dụng ghi được đánh revision ngay trong AuditLog. Thay đổi thủ công trực tiếp trên Google Sheet được phát hiện qua thời gian cập nhật của file Drive.
+- Thay đổi do ứng dụng ghi được đánh revision ngay trong AuditLog. Luồng tải không dùng `DriveApp`, vì vậy deployment không phát sinh thêm OAuth scope Google Drive.
 
 Đây là near-real-time, không phải WebSocket. Google Apps Script không cung cấp kết nối WebSocket lâu dài phù hợp cho kiến trúc hiện tại.
 
