@@ -65,7 +65,7 @@
           <button class="tab" data-view="transfer">Luân chuyển center</button>
         </nav>
         <div class="sidebar-user" id="userBox"></div>
-        <div class="side-foot">Ứng dụng nhập liệu · v1.4.1-hybrid-data<br>Dữ liệu được lưu trên Google Sheets</div>
+        <div class="side-foot">Ứng dụng nhập liệu · v1.4.2-projection-sync<br>Dữ liệu được lưu trên Google Sheets</div>
       </aside>
       <div class="workspace">
       <div id="message"></div>
@@ -182,7 +182,7 @@
         if(EMBEDDED)parent.postMessage({type:'sungrow-portal-ready',actor:state.actor},location.origin);
       }).catch(err=>{
         if(isAuthError(err)){sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle();return}
-        showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.4.1-hybrid-data. Hãy redeploy rồi tải lại trang.':err.message);
+        showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.4.2-projection-sync. Hãy redeploy rồi tải lại trang.':err.message);
       });
     }
 

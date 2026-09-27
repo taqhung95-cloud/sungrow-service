@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.4\.1-hybrid-data/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.4\.2-projection-sync/, 'Code phải khai báo đúng version production hiện tại.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
@@ -117,6 +117,11 @@ assert.match(codeSource, /function getPortalDatabaseRevision_\(/, 'Backend phả
 assert.match(codeSource, /portal-cases-v1-/, 'Danh sách hồ sơ phải có cache theo user, revision và bộ lọc.');
 assert.match(codeSource, /portal-actor-v1-/, 'Actor đã xác thực phải có cache ngắn hạn để giảm đọc tab Người dùng.');
 assert.match(codeSource, /PORTAL_DATA_REVISION/, 'Các thao tác ghi phải cập nhật revision của database.');
+assert.match(codeSource, /function syncDashboardProjectionCase_\(/, 'Mỗi case phải có cơ chế upsert tăng dần sang Dữ liệu dashboard.');
+assert.match(codeSource, /function reconcileDashboardProjection\(\)/, 'Phải có hàm đối soát và bù các case mới còn thiếu trong projection.');
+for (const mutation of ['createCase','confirmWarrantyUnlocked_','updateWorkOrderUnlocked_','createTransferUnlocked_','acceptTransferUnlocked_','returnToCustomerUnlocked_']) {
+  assert.match(extractFunction(codeSource, mutation), /syncDashboardProjectionCase_\(/, `${mutation} phải đồng bộ case sang Dữ liệu dashboard.`);
+}
 assert.match(html, /checkPortalRevision/, 'Apps Script UI phải tự kiểm tra dữ liệu mới.');
 assert.match(entryHtml, /checkPortalRevision/, 'GitHub Pages UI phải tự kiểm tra dữ liệu mới.');
 assert.match(entryHtml, /Có dữ liệu mới · Bấm để tải lại/, 'UI phải bảo vệ form đang mở trước khi làm mới dữ liệu.');
@@ -159,6 +164,7 @@ const legacyApiSource = read('LegacyDashboardApi.gs');
 assert.match(legacyApiSource, /function readOperationalRecords_\(/, 'Dashboard phải đọc trực tiếp các tab nghiệp vụ hợp nhất.');
 assert.match(legacyApiSource, /objects\('Hồ sơ thiết bị'\)/, 'Dashboard phải lấy hồ sơ từ cùng nguồn với platform nhập liệu.');
 assert.match(legacyApiSource, /function readHybridRecordsForYear_\(/, 'Dashboard phải giữ tab lịch sử làm nền và ghép dữ liệu nhập liệu.');
+assert.match(legacyApiSource, /readSheetValues_\(spreadsheetId, 'Dữ liệu dashboard'\)/, 'Dashboard phải dùng Dữ liệu dashboard làm nguồn lịch sử dự phòng khi không có tab năm.');
 assert.match(legacyApiSource, /sourceType:\s*clean_\(item\['Nguồn dữ liệu'\]\)/, 'Dashboard phải phân biệt hồ sơ quy trình mới với dữ liệu migrate.');
 assert.match(legacyApiSource, /output\.dataQuality\.hybridMerge/, 'Dashboard phải công bố thống kê đối soát dữ liệu lai.');
 const hybridSandbox = {
@@ -226,7 +232,7 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=44#/, 'Iframe nhập liệu phải dùng cache key mới cho bản hybrid data.');
+assert.match(liveDataSource, /v=45#/, 'Iframe nhập liệu phải dùng cache key mới cho bản projection sync.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');

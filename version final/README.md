@@ -42,7 +42,7 @@ Các account trên phải là Google Account thật. Không lưu mật khẩu tr
 
 Dashboard đọc trực tiếp các tab chuẩn hóa trong cùng Spreadsheet: `Hồ sơ thiết bị`, `Công việc trung tâm`, `Luân chuyển thiết bị`, `Lỗi thiết bị`, `Linh kiện sử dụng`, `Tạm dừng SLA`, `Người dùng`, `Nhật ký thay đổi` và `Dữ liệu dashboard`.
 
-Mọi thao tác ghi của center tiếp tục gọi API gốc. Sau khi ghi thành công, `refreshDashboardData_()` làm mới tab `Dữ liệu dashboard` trong chính file này.
+Mọi thao tác ghi của center tiếp tục gọi API gốc. Sau khi ghi thành công, `syncDashboardProjectionCase_()` thêm hoặc cập nhật đúng một dòng trong tab `Dữ liệu dashboard` theo `Mã hồ sơ`, không xóa và dựng lại toàn bộ dữ liệu cũ. Các bảng nghiệp vụ vẫn là nguồn chính; tab này là projection để đối soát và tương thích dashboard.
 
 Form tiếp nhận ghi thêm thông tin khách hàng và gửi hàng: tên, địa chỉ, số điện thoại, email tùy chọn, công ty gửi, người gửi, đơn vị vận chuyển và mã vận đơn. Các cột cũ vẫn được ghi song song để bảo toàn dashboard và dữ liệu lịch sử.
 

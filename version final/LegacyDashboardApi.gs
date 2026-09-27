@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.6-hybrid-source';
+const APP_VERSION = '1.8.7-hybrid-projection';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -205,16 +205,23 @@ function readOperationalRecords_(spreadsheetId, centers) {
 
 function readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords) {
   let source = { values: [], sheetName: String(year), lastRow: 0 };
+  let combinedDashboardSource = false;
   try { source = readSheetValuesAny_(spreadsheetId, year); }
   catch (error) {
     if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
+    try {
+      source = readSheetValues_(spreadsheetId, 'Dữ liệu dashboard');
+      combinedDashboardSource = true;
+    } catch (dashboardError) {
+      if (dashboardError.code !== 'SOURCE_TAB_NOT_FOUND') throw dashboardError;
+    }
   }
   let legacyRecords = [];
   if (source.values.length) {
     const schema = schemaForHeaders_(source.values[0]);
     legacyRecords = source.values.slice(1).map(function (row, index) {
       return normalizeRow_(row, index + 2, String(year), centers, schema);
-    }).filter(function (record) { return record.hasData; });
+    }).filter(function (record) { return record.hasData && (!combinedDashboardSource || inYear_(record.receivedDate, year)); });
   }
   const merged = mergeLegacyAndOperational_(legacyRecords, operationalRecords || [], year);
   return {

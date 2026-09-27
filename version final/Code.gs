@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.1-hybrid-data';
+const APP_VERSION = '1.4.2-projection-sync';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -270,6 +270,7 @@ function createCase(idToken, payload) {
       });
     }
     audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId });
+    syncDashboardProjectionCase_(caseId);
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
     lock.releaseLock();
@@ -311,6 +312,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   };
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
+  syncDashboardProjectionCase_(caseId);
   SpreadsheetApp.flush();
   return { ok: true, warrantyStatus: warrantyStatus };
 }
@@ -419,6 +421,7 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   if (changes['Ngày hoàn tất kỹ thuật']) fillMissingPartUsageDates_(workOrderId, changes['Ngày hoàn tất kỹ thuật']);
   appendWorkOrderHolds_(actor, workOrderId, payload.holds || []);
   audit_(actor, 'Cập nhật xử lý', 'Công việc', workOrderId, record['Trung tâm xử lý'], record, changes);
+  syncDashboardProjectionCase_(record['Mã hồ sơ']);
   return { ok: true };
 }
 
@@ -487,6 +490,7 @@ function createTransferUnlocked_(idToken, payload) {
       'Ngày cập nhật gần nhất': now
     });
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
+  syncDashboardProjectionCase_(caseId);
   return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
 }
 
@@ -536,6 +540,7 @@ function acceptTransferUnlocked_(idToken, payload) {
     'Ngày cập nhật gần nhất': now
   });
   audit_(actor, 'Xác nhận nhận luân chuyển', 'Luân chuyển', transferId, transfer['Trung tâm nhận'], transfer, { receivedAt: receivedAt });
+  syncDashboardProjectionCase_(transfer['Mã hồ sơ']);
   return { ok: true };
 }
 
@@ -586,6 +591,7 @@ function returnToCustomerUnlocked_(idToken, payload) {
   };
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Trả khách hàng', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, changes);
+  syncDashboardProjectionCase_(caseId);
   return { ok: true };
 }
 
@@ -880,6 +886,130 @@ function audit_(actor, action, type, id, center, before, after) {
     'Thời gian': new Date(), 'Email người dùng': actor.email, 'Hành động': action, 'Loại đối tượng': type,
     'Mã đối tượng': id, 'Trung tâm': center, 'Dữ liệu trước': before ? JSON.stringify(stripInternal_(before)) : '', 'Dữ liệu sau': after ? JSON.stringify(after) : ''
   });
+}
+
+/**
+ * Keep the legacy dashboard table as an auditable projection without using it
+ * as the transaction source. New workflow tables remain authoritative.
+ * A stable case-id column prevents duplicate projection rows; older projected
+ * rows are adopted once by their unique S/N + received-date key.
+ */
+function syncDashboardProjectionCase_(caseId) {
+  try {
+    caseId = clean_(caseId);
+    if (!caseId) return { ok: false, reason: 'missing_case_id' };
+    SpreadsheetApp.flush();
+    const spreadsheet = spreadsheet_();
+    const sheet = spreadsheet.getSheetByName(SHEETS.dashboard);
+    if (!sheet) return { ok: false, reason: 'missing_dashboard_sheet' };
+    const caseRecord = readTable_(SHEETS.cases).find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    if (!caseRecord) return { ok: false, reason: 'missing_case' };
+
+    const works = readTable_(SHEETS.workOrders).filter(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    const latest = works.length ? works[works.length - 1] : {};
+    const workIds = works.reduce(function (map, item) { map[clean_(item['Mã công việc'])] = true; return map; }, {});
+    const issues = readTable_(SHEETS.issues).filter(function (item) { return workIds[clean_(item['Mã công việc'])]; });
+    const parts = readTable_(SHEETS.parts).filter(function (item) { return workIds[clean_(item['Mã công việc'])]; });
+    const issueNames = issues.map(function (item) { return clean_(item['Tên lỗi']); }).filter(Boolean);
+    const errorCode = issues.map(function (item) { return clean_(item['Mã lỗi']); }).filter(Boolean)[0] || '';
+    const caseStatus = clean_(caseRecord['Trạng thái hồ sơ']);
+    const deliveryStatus = caseStatus === 'Đã hoàn tất' ? 'Đã giao máy' : (caseStatus === 'Sẵn sàng trả khách' ? 'Chờ giao máy' : 'Chưa giao máy');
+
+    if (sheet.getMaxColumns() < 31) sheet.insertColumnsAfter(sheet.getMaxColumns(), 31 - sheet.getMaxColumns());
+    let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
+    let caseIdColumn = headers.indexOf('Mã hồ sơ') + 1;
+    if (!caseIdColumn) {
+      caseIdColumn = sheet.getLastColumn() + 1;
+      sheet.insertColumnAfter(sheet.getLastColumn());
+      sheet.getRange(1, caseIdColumn).setValue('Mã hồ sơ');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
+    }
+    if (sheet.getRange(1, 30).getValue() !== 'Drive Link') sheet.getRange(1, 30).setValue('Drive Link');
+
+    let targetRow = 0;
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const ids = sheet.getRange(2, caseIdColumn, lastRow - 1, 1).getDisplayValues();
+      for (let index = 0; index < ids.length; index++) {
+        if (clean_(ids[index][0]) === caseId) { targetRow = index + 2; break; }
+      }
+      if (!targetRow) {
+        const serial = normalizeProjectionKey_(caseRecord['Số sê-ri (S/N)']);
+        const received = iso_(caseRecord['Ngày nhận từ khách']);
+        if (serial && received) {
+          const serials = sheet.getRange(2, 3, lastRow - 1, 1).getDisplayValues();
+          const dates = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+          const candidates = [];
+          for (let index = 0; index < serials.length; index++) {
+            if (normalizeProjectionKey_(serials[index][0]) === serial && iso_(dates[index][0]) === received) candidates.push(index + 2);
+          }
+          if (candidates.length === 1) targetRow = candidates[0];
+        }
+      }
+    }
+
+    const isNewRow = !targetRow;
+    if (!targetRow) targetRow = Math.max(2, lastRow + 1);
+    if (targetRow > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), targetRow - sheet.getMaxRows());
+    let sequence = Number(sheet.getRange(targetRow, 1).getValue()) || 0;
+    if (!sequence) {
+      const existing = lastRow >= 2 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues() : [];
+      sequence = existing.reduce(function (max, row) { const value = Number(row[0]); return isFinite(value) ? Math.max(max, value) : max; }, 0) + 1;
+    }
+    const row = [
+      sequence, caseRecord['Loại thiết bị'] || '', caseRecord['Số sê-ri (S/N)'] || '', caseRecord.Model || '',
+      caseRecord['Ngày nhận từ khách'] || '', '', senderFromCase_(caseRecord), errorCode,
+      issueNames[0] || '', issueNames[1] || '', issueNames[2] || '', issueNames[3] || '',
+      caseRecord['Tình trạng bảo hành'] || '', latest['Kết quả xử lý'] || '',
+      latest['Trung tâm xử lý'] || caseRecord['Trung tâm đang giữ hàng'] || '',
+      latest['Ngày hoàn tất kỹ thuật'] || latest['Ngày hoàn tất chẩn đoán'] || '',
+      deliveryStatus, latest['Trạng thái xử lý'] || '',
+      parts.map(function (part) { return part['Ngày nhận linh kiện']; }).filter(Boolean)[0] || ''
+    ];
+    for (let partIndex = 0; partIndex < 4; partIndex++) {
+      const part = parts[partIndex] || {};
+      row.push(part['Mã linh kiện (Part Number)'] || '', part['Số lượng'] || '');
+    }
+    row.push(
+      caseRecord['Ngày trả khách'] || '',
+      [projectFromCase_(caseRecord) ? 'Dự án/Địa điểm: ' + projectFromCase_(caseRecord) : '', clean_(caseRecord['Ghi chú chung']), clean_(latest['Ghi chú nội bộ'])].filter(Boolean).join(' | '),
+      safeDriveLink_(caseRecord['Liên kết hồ sơ Drive'])
+    );
+    sheet.getRange(targetRow, 1, 1, 30).setValues([row]);
+    sheet.getRange(targetRow, caseIdColumn).setValue(caseId);
+    [5, 16, 19, 28].forEach(function (column) { sheet.getRange(targetRow, column).setNumberFormat('dd/MM/yyyy'); });
+    return { ok: true, row: targetRow, inserted: isNewRow };
+  } catch (error) {
+    console.error('Không thể đồng bộ hồ sơ ' + clean_(caseId) + ' sang Dữ liệu dashboard: ' + String(error && error.message || error));
+    return { ok: false, reason: String(error && error.message || error) };
+  }
+}
+
+function normalizeProjectionKey_(value) {
+  return clean_(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/** Run once after deploying to backfill new-workflow cases missing in the projection. */
+function reconcileDashboardProjection() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const cases = readTable_(SHEETS.cases).filter(function (item) { return clean_(item['Nguồn dữ liệu']) === 'Quy trình mới'; });
+    const result = { total: cases.length, synced: 0, inserted: 0, errors: [] };
+    cases.forEach(function (item) {
+      const caseId = clean_(item['Mã hồ sơ']);
+      const sync = syncDashboardProjectionCase_(caseId);
+      if (sync.ok) {
+        result.synced++;
+        if (sync.inserted) result.inserted++;
+      } else result.errors.push({ caseId: caseId, reason: sync.reason });
+    });
+    SpreadsheetApp.flush();
+    console.log(JSON.stringify(result));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function refreshDashboardData_() {

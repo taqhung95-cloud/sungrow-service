@@ -1,8 +1,10 @@
 # Đồng bộ gần real-time và cache dữ liệu
 
-Phiên bản: `1.4.1-hybrid-data`
+Phiên bản: `1.4.2-projection-sync`
 
 Dashboard giữ các tab năm 2024/2025/2026 làm dữ liệu nền. Các bản ghi nghiệp vụ khớp S/N + ngày nhận được dùng để cập nhật trạng thái của hồ sơ cũ; chỉ hồ sơ có `Nguồn dữ liệu = Quy trình mới` mới được bổ sung vào tổng số. Dữ liệu migrate không ghép được được báo trong `dataQuality.hybridMerge`, không tự cộng để tránh đếm trùng.
+
+Mỗi thao tác tạo hoặc cập nhật hồ sơ đồng thời upsert đúng một dòng trong tab `Dữ liệu dashboard` theo `Mã hồ sơ`. Tab này là projection để đối soát; các bảng nghiệp vụ vẫn là nguồn giao dịch chính. Chạy `reconcileDashboardProjection()` một lần sau khi deploy để bổ sung các case quy trình mới đã tạo trước phiên bản này.
 
 ## Cơ chế đồng bộ
 
