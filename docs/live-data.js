@@ -23,7 +23,7 @@
 
   const style = document.createElement('style');
   style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}';
-  style.textContent += '#sg-preview .sg-nav button.sg-role-hidden{display:none!important}#sg-preview .sg-platform-parent{margin-top:12px;border-top:1px solid #f0f1f2;padding-top:18px!important;border-radius:0}#sg-preview .sg-platform-parent[aria-expanded="true"]{color:#a44800;font-weight:600}#sg-preview .sg-subnav{display:grid;gap:3px;padding:3px 0 2px 14px}#sg-preview .sg-subnav button{min-height:38px;padding:8px 10px;font-size:12px}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}';
+  style.textContent += '#sg-preview .sg-role-hidden{display:none!important}#sg-preview .sg-nav-parent{position:relative;color:#9a4708;font-weight:700}#sg-preview .sg-nav-parent::after{content:"⌄";position:absolute;right:12px;top:50%;transform:translateY(-54%) rotate(-90deg);font-size:16px;line-height:1;transition:transform .16s ease}#sg-preview .sg-nav-parent[aria-expanded="true"]::after{transform:translateY(-54%) rotate(0deg)}#sg-preview .sg-nav-children{display:grid;gap:3px;margin:0 0 5px 9px;padding:2px 0 3px 10px;border-left:1px solid #e7e8ea}#sg-preview .sg-nav-children[hidden]{display:none!important}#sg-preview .sg-nav-children button{min-height:38px;padding:8px 10px;font-size:12px;font-weight:400}#sg-preview .sg-platform-parent{margin-top:5px;border-top:1px solid #f0f1f2;padding-top:15px!important;border-radius:0}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}@media(min-width:581px){#sg-preview .sg-brand{display:block!important;width:100%;min-height:72px;padding:0 4px 24px!important}#sg-preview .sg-official-logo{width:150px;height:32px;padding:2px 0 10px!important}#sg-preview .sg-official-logo svg{display:block;width:150px!important;height:20px!important;max-width:none!important}#sg-preview .sg-brand small{display:block;margin:0;padding:0!important;font-size:12px;line-height:18px;letter-spacing:1.25px}}';
   style.textContent += '#sg-auth-page{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#f8f9fa 0%,#f1f3f5 55%,#fff4e8 100%);font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif;color:#262626}#sg-auth-page[hidden]{display:none!important}#sg-auth-page .sg-auth-card{width:min(100%,430px);padding:44px 42px 38px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;box-shadow:0 22px 65px rgba(25,35,45,.12);text-align:center}#sg-auth-page .sg-auth-brand{display:flex;justify-content:center;padding-bottom:28px;border-bottom:1px solid #ededed}#sg-auth-page .sg-auth-brand .sg-brand{padding:0!important}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:210px;height:auto}#sg-auth-page .sg-auth-brand small{display:block;margin-top:9px;color:#606060;font-size:13px;letter-spacing:2px}#sg-auth-page h1{margin:28px 0 10px;font-size:24px;font-weight:600;line-height:1.35}#sg-auth-page .sg-auth-copy{margin:0 auto 26px;max-width:315px;color:#667085;font-size:13px;line-height:1.65}#sg-auth-login-slot{display:flex;justify-content:center;min-height:44px}#sg-auth-message{min-height:20px;margin:18px 0 0;color:#667085;font-size:12px;line-height:1.5}#sg-auth-message.sg-auth-error{color:#b42318}#sg-auth-page .sg-auth-note{margin:25px 0 0;padding-top:20px;border-top:1px solid #ededed;color:#8a8f98;font-size:11px;line-height:1.6}@media(max-width:520px){#sg-auth-page{padding:16px}#sg-auth-page .sg-auth-card{padding:34px 24px 30px}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:180px}}';
   document.head.appendChild(style);
   const authPage = document.createElement('main');
@@ -43,15 +43,32 @@
   function installPortalSidebar() {
     const nav = q('.sg-nav');
     const dashboardButtons = Array.from(nav.querySelectorAll('button[data-page]'));
-    dashboardButtons.forEach(button => button.addEventListener('click',closePortalView));
+    const dashboardButton = document.createElement('button');
+    dashboardButton.type = 'button';
+    dashboardButton.className = 'sg-nav-parent sg-dashboard-parent';
+    dashboardButton.textContent = 'Dashboard quản lý';
+    dashboardButton.setAttribute('aria-expanded','true');
+    const dashboardSubnav = document.createElement('div');
+    dashboardSubnav.className = 'sg-nav-children sg-dashboard-subnav';
+    nav.insertBefore(dashboardButton, dashboardButtons[0] || null);
+    nav.insertBefore(dashboardSubnav, dashboardButtons[0] || null);
+    dashboardButtons.forEach(button => {
+      dashboardSubnav.appendChild(button);
+      button.addEventListener('click',() => {
+        closePortalView();
+        setNavGroup(dashboardButton,dashboardSubnav,true);
+        setNavGroup(platformButton,subnav,false);
+      });
+    });
     const platformButton = document.createElement('button');
     platformButton.type = 'button';
-    platformButton.className = 'sg-platform-parent';
+    platformButton.className = 'sg-nav-parent sg-platform-parent';
     platformButton.textContent = 'Platform nhập liệu';
-    platformButton.setAttribute('aria-expanded','true');
+    platformButton.setAttribute('aria-expanded','false');
     nav.appendChild(platformButton);
     const subnav = document.createElement('div');
-    subnav.className = 'sg-subnav';
+    subnav.className = 'sg-nav-children sg-subnav';
+    subnav.hidden = true;
     [['cases','Danh sách hồ sơ'],['receive','Tiếp nhận mới'],['update','Cập nhật hồ sơ'],['transfer','Luân chuyển center']].forEach(([view,label]) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -61,11 +78,22 @@
       subnav.appendChild(button);
     });
     nav.appendChild(subnav);
+    dashboardButton.addEventListener('click',() => {
+      const expanded = dashboardButton.getAttribute('aria-expanded') === 'true';
+      setNavGroup(dashboardButton,dashboardSubnav,!expanded);
+      if (!expanded) setNavGroup(platformButton,subnav,false);
+    });
     platformButton.addEventListener('click',() => {
       const expanded = platformButton.getAttribute('aria-expanded') === 'true';
-      platformButton.setAttribute('aria-expanded',String(!expanded));
-      subnav.hidden = expanded;
+      setNavGroup(platformButton,subnav,!expanded);
+      if (!expanded) setNavGroup(dashboardButton,dashboardSubnav,false);
     });
+  }
+
+  function setNavGroup(button, group, expanded) {
+    if (!button || !group) return;
+    button.setAttribute('aria-expanded',String(expanded));
+    group.hidden = !expanded;
   }
 
   function openEntryView(view) {
@@ -82,12 +110,12 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=35#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=36#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
-    q('.sg-platform-parent').setAttribute('aria-expanded','true');
-    q('.sg-subnav').hidden = false;
+    setNavGroup(q('.sg-dashboard-parent'),q('.sg-dashboard-subnav'),false);
+    setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),true);
     root.querySelectorAll('[data-portal-view]').forEach(button => {
       if (button.dataset.portalView === view) button.setAttribute('aria-current','page');
       else button.removeAttribute('aria-current');
@@ -774,6 +802,12 @@
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
+        [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {
+          if (!element) return;
+          element.hidden = true;
+          element.classList.add('sg-role-hidden');
+          element.setAttribute('aria-hidden','true');
+        });
         root.querySelectorAll('.sg-nav button[data-page]').forEach(button => {
           button.hidden = true;
           button.classList.add('sg-role-hidden');

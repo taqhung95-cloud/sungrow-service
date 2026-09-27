@@ -100,7 +100,7 @@ assert.match(liveDataSource, /id = 'sg-auth-page'/, 'Phải có trang đăng nh�
 assert.match(liveDataSource, /function revealApplication\(\)/, 'Chỉ hiển thị ứng dụng sau khi xác thực thành công.');
 assert.match(liveDataSource, /root\.hidden = false/, 'Ứng dụng phải được mở sau khi backend trả phân quyền.');
 assert.match(liveDataSource, /sg-auth-login-slot/, 'Nút Google phải nằm trên trang đăng nhập riêng.');
-assert.match(liveDataSource, /button\.sg-role-hidden\{display:none!important\}/, 'Menu dashboard của center phải bị ẩn bất kể CSS display mặc định.');
+assert.match(liveDataSource, /\.sg-role-hidden\{display:none!important\}/, 'Menu dashboard của center phải bị ẩn bất kể CSS display mặc định.');
 assert.match(liveDataSource, /classList\.add\('sg-role-hidden'\)/, 'Account center phải được gắn lớp ẩn menu quản lý.');
 assert.match(liveDataSource, /tabIndex = -1/, 'Menu quản lý ẩn không được nhận focus bàn phím.');
 const casesView = entryHtml.match(/<section id="cases"[\s\S]*?<\/section>/i)?.[0] || '';
@@ -108,7 +108,12 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=35#/, 'Iframe nhập liệu phải dùng cache key mới cho bố cục danh sách.');
+assert.match(liveDataSource, /v=36#/, 'Iframe nhập liệu phải dùng cache key mới cho bố cục danh sách.');
+assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
+assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
+assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');
+assert.match(liveDataSource, /sg-nav-parent\[aria-expanded="true"\]/, 'Trạng thái mở của nhóm sidebar phải được thể hiện trực quan.');
+assert.match(liveDataSource, /\.sg-official-logo svg\{[^}]*width:150px!important;[^}]*height:20px!important/, 'Logo sidebar phải có cùng kích thước cố định cho mọi role.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
 }
