@@ -5,7 +5,7 @@
 ## Nguồn đã đồng bộ
 
 - Baseline nhập liệu: `data-entry-app` v0.3.9-pilot.
-- Bản final: v1.1.3-final.
+- Bản production auth: v1.2.0-production-auth.
 - Spreadsheet production duy nhất: `Sungrow Service Center - Database Production`.
 - Spreadsheet ID: `1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI`.
 - Vị trí Drive: `1B9khxWST5ba9tXTJFT3HUwpkt75QDVK5`.
@@ -15,11 +15,20 @@ File Google Sheets trên chứa nguyên các tab lịch sử `2024`, `2025`, `20
 ## Phân quyền
 
 - Dashboard chỉ xuất hiện với account được backend xác định là `isGlobalManager`.
-- Role hiện tại được giữ nguyên từ tab `Người dùng`.
+- Tab `Người dùng` là nguồn phân quyền duy nhất. Không còn dùng `USERS_JSON` trong Script Properties.
+- Role được chuẩn hóa về ba mã: `service_manager`, `center_manager`, `center_staff` (vẫn chấp nhận nhãn tiếng Việt tương ứng).
 - `Quản lý dịch vụ`, hoặc `Quản lý trung tâm` thuộc `Sungrow Service Center`, có quyền quản lý toàn bộ center.
 - Account center không thấy tab dashboard và tiếp tục thao tác theo role/center hiện hữu.
 - API `getManagerDashboard` kiểm tra quyền ở server; ẩn menu không phải lớp bảo mật duy nhất.
 - Token Google được kiểm tra `aud`, `iss`, `exp`, `email_verified` và `sub`. Ở lần đăng nhập hợp lệ đầu tiên, `sub` được khóa vào cột `GoogleSub`; các lần sau ưu tiên định danh này thay vì chỉ dựa vào email.
+
+| Role trong Sheet | Phạm vi đọc | Quyền ghi |
+|---|---|---|
+| `Quản lý dịch vụ` / `service_manager` | Tất cả center, dashboard | Toàn bộ nghiệp vụ, xác nhận bảo hành |
+| `Quản lý trung tâm` / `center_manager` | Center được gán | Tiếp nhận, cập nhật, nhận/chuyển center, giao trả |
+| `Nhân viên trung tâm` / `center_staff` / `center_editor` | Center được gán | Tiếp nhận, cập nhật, xác nhận nhận luân chuyển; không chủ động chuyển center hoặc giao trả |
+
+Riêng `Quản lý trung tâm` có `Trung tâm = Sungrow Service Center` được nâng thành quản lý dịch vụ để giữ đúng mô hình vận hành hiện tại. Mọi quyền ghi đều được kiểm ở Apps Script; việc ẩn menu chỉ phục vụ giao diện.
 
 Account đã khởi tạo trong tab `Người dùng`:
 
@@ -72,8 +81,10 @@ Số lượng KPI dùng trường `Số lượng`; không mặc định mỗi h�
 2. Chép `Code.gs`, `ManagerDashboard.gs`, `LegacyDashboardApi.gs`, `Index.html` và `appsscript.json` từ thư mục này.
 3. Không chạy hàm migration, không đổi Spreadsheet ID production và không xóa các tab lịch sử.
 4. Trong Google Cloud OAuth client, bảo đảm Authorized JavaScript origin có `https://taqhung95-cloud.github.io`.
-5. Deploy > Manage deployments > Edit > New version; Execute as `Me`, access theo chính sách account Google của tổ chức.
-6. Kiểm tra lần lượt account quản lý, quản lý Sungrow, nhân viên Sungrow và ít nhất một account center. Sau lần login đầu, xác nhận cột `GoogleSub` đã có giá trị.
-7. Thử account không có trong tab `Người dùng`, account inactive và account có `GoogleSub` sai; cả ba phải bị từ chối.
+5. Chạy `auditUserAccessConfiguration()` trong Apps Script. Chỉ deploy khi báo cáo trả `ok: true`.
+6. Deploy > Manage deployments > Edit > New version; Execute as `Me`, access theo chính sách account Google của tổ chức.
+7. Nếu OAuth consent đang ở `Testing`, thêm mọi tài khoản thử nghiệm vào Google Auth Platform > Audience > Test users. Khi phát hành chính thức, chuyển publishing status theo chính sách Google Cloud của dự án.
+8. Kiểm tra lần lượt account quản lý, quản lý Sungrow, nhân viên Sungrow và ít nhất một account center. Sau lần login đầu, xác nhận cột `GoogleSub` đã có giá trị.
+9. Thử account không có trong tab `Người dùng`, account inactive, account trùng email/GoogleSub và account có `GoogleSub` sai; tất cả phải bị từ chối.
 
 Việc cập nhật code local hoặc push GitHub không tự deploy Google Apps Script.

@@ -96,6 +96,23 @@
     group.hidden = !expanded;
   }
 
+  function applyPortalCapabilities(actor) {
+    const capabilities = actor?.capabilities || {};
+    const allowed = {
+      cases: capabilities.viewCases !== false,
+      receive: !!capabilities.createCase,
+      update: !!capabilities.updateWorkOrder,
+      transfer: !!capabilities.createTransfer
+    };
+    root.querySelectorAll('[data-portal-view]').forEach(button => {
+      const visible = !!allowed[button.dataset.portalView];
+      button.hidden = !visible;
+      button.classList.toggle('sg-role-hidden',!visible);
+      button.setAttribute('aria-hidden',String(!visible));
+      button.tabIndex = visible ? 0 : -1;
+    });
+  }
+
   function openEntryView(view) {
     if (token) sessionStorage.setItem('sungrow_id_token', token);
     const main = q('.sg-main');
@@ -110,7 +127,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=36#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=37#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -800,6 +817,7 @@
     try {
       const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 1);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
+      applyPortalCapabilities(bootstrap.actor);
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {

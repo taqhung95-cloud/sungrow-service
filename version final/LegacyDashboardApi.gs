@@ -46,47 +46,6 @@ function parseRequest_(e) {
   try { return JSON.parse(raw); } catch (_) { throw apiError_('BAD_REQUEST', 'Request JSON không hợp lệ.'); }
 }
 
-function authenticate_(idToken) {
-  if (!idToken || typeof idToken !== 'string' || idToken.length > 5000) {
-    throw apiError_('AUTH_REQUIRED', 'Vui lòng đăng nhập bằng tài khoản Google được cấp quyền.');
-  }
-
-  const props = PropertiesService.getScriptProperties();
-  const clientId = props.getProperty('GOOGLE_WEB_CLIENT_ID');
-  const users = parseJsonProperty_(props, 'USERS_JSON', []);
-  if (!clientId || !users.length) throw apiError_('AUTH_NOT_CONFIGURED', 'Hệ thống chưa cấu hình tài khoản truy cập.');
-
-  const cache = CacheService.getScriptCache();
-  const tokenKey = 'token:' + digest_(idToken);
-  let claims = parseJson_(cache.get(tokenKey));
-  if (!claims) {
-    const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), {
-      muteHttpExceptions: true,
-      followRedirects: true
-    });
-    if (response.getResponseCode() !== 200) throw apiError_('INVALID_TOKEN', 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
-    claims = JSON.parse(response.getContentText());
-    if (claims.aud !== clientId) throw apiError_('INVALID_TOKEN', 'Token không thuộc ứng dụng này.');
-    if (!['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)) throw apiError_('INVALID_TOKEN', 'Nguồn token không hợp lệ.');
-    if (Number(claims.exp || 0) * 1000 <= Date.now()) throw apiError_('INVALID_TOKEN', 'Phiên đăng nhập đã hết hạn.');
-    if (!(claims.email_verified === true || claims.email_verified === 'true')) throw apiError_('INVALID_TOKEN', 'Email Google chưa được xác minh.');
-    const ttl = Math.max(1, Math.min(300, Math.floor(Number(claims.exp) - Date.now() / 1000)));
-    cache.put(tokenKey, JSON.stringify(claims), ttl);
-  }
-
-  const email = String(claims.email || '').toLowerCase();
-  const user = users.find(function (u) {
-    return u && u.active !== false && ((u.sub && String(u.sub) === String(claims.sub)) || (!u.sub && String(u.email || '').toLowerCase() === email));
-  });
-  if (!user) throw apiError_('FORBIDDEN', 'Tài khoản chưa được cấp quyền truy cập dashboard.');
-  return {
-    sub: String(claims.sub),
-    email: email,
-    role: String(user.role || 'center_manager'),
-    centers: Array.isArray(user.centers) ? user.centers.map(String) : []
-  };
-}
-
 function getDashboard_(request, actor) {
   const period = normalizePeriod_(request.period);
   const centers = centerRegistry_();

@@ -182,6 +182,7 @@
       state.token=response.credential;
       call('getBootstrap',[state.token]).then(data=>{
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;
+        applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
         $('#userBox').innerHTML=`<strong title="${esc(data.actor.name||data.actor.email)}">${esc(data.actor.name||data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span>`;
         fillCenters();
@@ -206,7 +207,9 @@
       document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCaseDrawer()});
     }
 
-    function showView(id){if(id==='dashboard'&&(!state.actor||!state.actor.isGlobalManager))id='cases';state.currentView=id;$('#appView').classList.toggle('legacy-dashboard-active',id==='dashboard');$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='dashboard'&&state.token){const frame=$('#legacyDashboardFrame');if(!frame.src)frame.src=frame.dataset.src}else if(id==='cases'&&state.token)loadCases(false)}
+    function viewAllowed(id){const c=state.actor?.capabilities||{};return id==='cases'?c.viewCases!==false:id==='receive'?!!c.createCase:id==='update'?!!c.updateWorkOrder:id==='transfer'?!!c.createTransfer:id==='dashboard'?!!c.viewDashboard:false}
+    function applyActorCapabilities(){$$('.tab[data-view]').forEach(button=>button.classList.toggle('hidden',!viewAllowed(button.dataset.view)))}
+    function showView(id){if(!viewAllowed(id))id='cases';state.currentView=id;$('#appView').classList.toggle('legacy-dashboard-active',id==='dashboard');$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='dashboard'&&state.token){const frame=$('#legacyDashboardFrame');if(!frame.src)frame.src=frame.dataset.src}else if(id==='cases'&&state.token)loadCases(false)}
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
       if(!state.actor||!state.actor.isGlobalManager)return;

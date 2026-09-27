@@ -67,15 +67,66 @@ assert.match(html, /id="dashboardTab" class="tab hidden"/, 'Dashboard phải ẩ
 assert.match(html, /data\.actor\.isGlobalManager\?'dashboard':'cases'/, 'Điểm vào phải phụ thuộc role.');
 assert.match(dashboardSource, /assertManagerDashboardAccess_\(actor\)/, 'API dashboard phải có server-side guard.');
 const codeSource = read('Code.gs');
+const extractFunction = (source, name) => {
+  const start = source.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `Không tìm thấy hàm ${name}.`);
+  const braceStart = source.indexOf('{', start);
+  let depth = 0;
+  for (let index = braceStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, index + 1);
+    }
+  }
+  throw new Error(`Hàm ${name} không đóng ngoặc.`);
+};
+const roleConstants = codeSource.slice(codeSource.indexOf('const ROLE_CODES'), codeSource.indexOf('function doGet'));
+const roleSandbox = {
+  Object,
+  clean_:value => value == null ? '' : String(value).trim(),
+  publicError_:message => new Error(message),
+  SUNGROW_CENTER:'Sungrow Service Center'
+};
+vm.createContext(roleSandbox);
+vm.runInContext(`${roleConstants}\n${extractFunction(codeSource,'resolveRole_')}\n${extractFunction(codeSource,'hasCapability_')}\n${extractFunction(codeSource,'assertCapability_')}\nthis.resolveRole_=resolveRole_;this.hasCapability_=hasCapability_;this.assertCapability_=assertCapability_;`, roleSandbox);
+const serviceManagerRole = roleSandbox.resolveRole_('service_manager','');
+assert.equal(serviceManagerRole.isGlobalManager,true,'service_manager phải có phạm vi toàn hệ thống.');
+assert.equal(serviceManagerRole.capabilities.viewDashboard,true,'service_manager phải xem được dashboard.');
+const sungrowManagerRole = roleSandbox.resolveRole_('Quản lý trung tâm','Sungrow Service Center');
+assert.equal(sungrowManagerRole.code,'service_manager','Quản lý Sungrow phải được nâng thành service_manager.');
+const datManagerRole = roleSandbox.resolveRole_('center_manager','DAT Center');
+assert.equal(datManagerRole.isGlobalManager,false,'Quản lý DAT không được có phạm vi toàn hệ thống.');
+assert.equal(datManagerRole.capabilities.createTransfer,true,'Quản lý center phải được luân chuyển thiết bị.');
+const staffRole = roleSandbox.resolveRole_('Nhân viên trung tâm','DAT Center');
+assert.equal(staffRole.capabilities.createCase,true,'Nhân viên center phải tiếp nhận được hồ sơ.');
+assert.equal(staffRole.capabilities.updateWorkOrder,true,'Nhân viên center phải cập nhật được công việc.');
+assert.equal(staffRole.capabilities.acceptTransfer,true,'Nhân viên center phải xác nhận được hàng đến.');
+assert.equal(staffRole.capabilities.createTransfer,false,'Nhân viên center không được chủ động luân chuyển.');
+assert.equal(staffRole.capabilities.returnToCustomer,false,'Nhân viên center không được giao trả khách.');
+assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.1\.3-final/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.2\.0-production-auth/, 'Code phải khai báo đúng version production hiện tại.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /'JGP Center'/, 'Danh sách center phải có JGP.');
 assert.match(codeSource, /claims\.sub/, 'Xác thực phải kiểm tra Google sub.');
 assert.match(codeSource, /email_verified/, 'Xác thực phải kiểm tra email_verified.');
+assert.match(codeSource, /function resolveRole_\(/, 'Backend phải chuẩn hóa role từ tab Người dùng.');
+assert.match(codeSource, /function assertCapability_\(/, 'Backend phải kiểm capability cho từng thao tác.');
+for (const [action, capability] of Object.entries({
+  createCase:'createCase', updateWorkOrder:'updateWorkOrder', createTransfer:'createTransfer',
+  acceptTransfer:'acceptTransfer', returnToCustomer:'returnToCustomer'
+})) {
+  const body = codeSource.match(new RegExp(`function ${action}\\([\\s\\S]*?\\n}`))?.[0] || '';
+  assert.match(body, new RegExp(`assertCapability_\\(actor, '${capability}'\\)`), `${action} phải kiểm quyền ${capability} ở backend.`);
+}
+assert.match(codeSource, /hasPrivateAccess \? item\['Số điện thoại khách hàng'\] : ''/, 'Center lịch sử không được nhận PII khách hàng khi không còn liên quan vận hành.');
+assert.match(codeSource, /Cấu hình người dùng bị trùng GoogleSub/, 'Cấu hình trùng GoogleSub phải bị từ chối.');
+assert.match(codeSource, /function auditUserAccessConfiguration\(\)/, 'Phải có hàm audit cấu hình user trước production.');
 assert.match(codeSource, /'Tên khách hàng': customerName/, 'Backend phải ghi thông tin khách hàng.');
 assert.match(codeSource, /'Mã vận đơn': returnTrackingCode/, 'Backend phải ghi thông tin vận chuyển ở bước giao trả.');
 assert.match(read('LegacyDashboardApi.gs'), /authenticateDashboardManager_\(request\.idToken\)/, 'Dashboard cũ phải dùng role manager của hệ thống hợp nhất.');
+assert.doesNotMatch(read('LegacyDashboardApi.gs'), /USERS_JSON/, 'Không được duy trì nguồn phân quyền USERS_JSON song song với tab Người dùng.');
 assert.match(read('LegacyDashboardApi.gs'), /request\.action === 'portal\.call'/, 'Apps Script phải định tuyến API cho platform GitHub Pages.');
 assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
 assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
@@ -102,13 +153,15 @@ assert.match(liveDataSource, /root\.hidden = false/, 'Ứng dụng phải đư�
 assert.match(liveDataSource, /sg-auth-login-slot/, 'Nút Google phải nằm trên trang đăng nhập riêng.');
 assert.match(liveDataSource, /\.sg-role-hidden\{display:none!important\}/, 'Menu dashboard của center phải bị ẩn bất kể CSS display mặc định.');
 assert.match(liveDataSource, /classList\.add\('sg-role-hidden'\)/, 'Account center phải được gắn lớp ẩn menu quản lý.');
+assert.match(liveDataSource, /function applyPortalCapabilities\(actor\)/, 'Sidebar platform phải hiển thị theo capability backend.');
+assert.match(entryHtml, /function viewAllowed\(id\)/, 'Trang nhập liệu phải chặn điều hướng view không đúng capability.');
 assert.match(liveDataSource, /tabIndex = -1/, 'Menu quản lý ẩn không được nhận focus bàn phím.');
 const casesView = entryHtml.match(/<section id="cases"[\s\S]*?<\/section>/i)?.[0] || '';
 assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhận thiết bị/, 'Danh sách hồ sơ không được lặp lại tiêu đề và nút tiếp nhận phía trên.');
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=36#/, 'Iframe nhập liệu phải dùng cache key mới cho bố cục danh sách.');
+assert.match(liveDataSource, /v=37#/, 'Iframe nhập liệu phải dùng cache key mới cho policy phân quyền production.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');

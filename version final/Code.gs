@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.3-final';
+const APP_VERSION = '1.2.0-production-auth';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -25,6 +25,16 @@ const CENTERS = Object.freeze([
 const WARRANTY_STATUSES = Object.freeze(['Trong bảo hành', 'Ngoài bảo hành', 'Sửa làm hàng good']);
 const PRE_WARRANTY_WORKFLOW_STATUSES = Object.freeze(['Đã nhận hàng', 'Đang kiểm tra']);
 const SUNGROW_CENTER = 'Sungrow Service Center';
+const ROLE_CODES = Object.freeze({
+  serviceManager: 'service_manager',
+  centerManager: 'center_manager',
+  centerStaff: 'center_staff'
+});
+const ROLE_CAPABILITIES = Object.freeze({
+  service_manager: Object.freeze({ viewDashboard: true, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: true, acceptTransfer: true, returnToCustomer: true, approveWarranty: true }),
+  center_manager: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: true, acceptTransfer: true, returnToCustomer: true, approveWarranty: false }),
+  center_staff: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: false, acceptTransfer: true, returnToCustomer: false, approveWarranty: false })
+});
 
 function doGet() {
   const template = HtmlService.createTemplateFromFile('Index');
@@ -69,11 +79,14 @@ function handlePortalApi_(request) {
 
 function listCases(idToken, filters) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'viewCases');
   filters = filters || {};
   const query = clean_(filters.query).toLowerCase();
   const status = clean_(filters.status);
   const warrantyStatus = clean_(filters.warrantyStatus);
   const center = clean_(filters.center);
+  if (center && CENTERS.indexOf(center) === -1) throw publicError_('Trung tâm lọc không hợp lệ.');
+  if (center && !actor.isGlobalManager) assertCenterAllowed_(actor, center);
   const pageSize = Math.max(10, Math.min(200, Number(filters.pageSize) || 20));
   const requestedPage = Math.max(1, Number(filters.page) || 1);
 
@@ -116,6 +129,7 @@ function searchCases(idToken, rawQuery) {
 
 function createCase(idToken, payload) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'createCase');
   payload = payload || {};
   const center = required_(payload.intakeCenter, 'Trung tâm tiếp nhận');
   assertCenterAllowed_(actor, center);
@@ -237,6 +251,7 @@ function confirmWarranty(idToken, payload) {
 
 function updateWorkOrder(idToken, payload) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'updateWorkOrder');
   payload = payload || {};
   const workOrderId = required_(payload.workOrderId, 'Mã công việc');
   const table = readTableWithRows_(SHEETS.workOrders);
@@ -289,6 +304,7 @@ function updateWorkOrder(idToken, payload) {
 
 function createTransfer(idToken, payload) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'createTransfer');
   payload = payload || {};
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
   const destination = required_(payload.toCenter, 'Trung tâm nhận');
@@ -355,6 +371,7 @@ function createTransfer(idToken, payload) {
 
 function acceptTransfer(idToken, payload) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'acceptTransfer');
   payload = payload || {};
   const transferId = required_(payload.transferId, 'Mã luân chuyển');
   const receivedAt = parseDateRequired_(payload.receivedAt, 'Ngày nhận');
@@ -397,6 +414,7 @@ function acceptTransfer(idToken, payload) {
 
 function returnToCustomer(idToken, payload) {
   const actor = authenticate_(idToken);
+  assertCapability_(actor, 'returnToCustomer');
   payload = payload || {};
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
   const readyAt = parseDateOptional_(payload.readyAt);
@@ -457,13 +475,17 @@ function authenticate_(idToken) {
   const email = String(claims.email || '').toLowerCase();
   const googleSub = clean_(claims.sub);
   let usersTable = readTableWithRows_(SHEETS.users);
-  let user = usersTable.rows.find(function (item) {
+  const subMatches = usersTable.rows.filter(function (item) {
     return clean_(item.GoogleSub) === googleSub && bool_(item['Đang hoạt động']);
   });
+  if (subMatches.length > 1) throw publicError_('Cấu hình người dùng bị trùng GoogleSub. Vui lòng liên hệ quản lý hệ thống.');
+  let user = subMatches[0] || null;
   if (!user) {
-    user = usersTable.rows.find(function (item) {
+    const emailMatches = usersTable.rows.filter(function (item) {
       return String(item['Email Google'] || '').toLowerCase() === email && bool_(item['Đang hoạt động']);
     });
+    if (emailMatches.length > 1) throw publicError_('Cấu hình người dùng bị trùng email. Vui lòng liên hệ quản lý hệ thống.');
+    user = emailMatches[0] || null;
     if (user && clean_(user.GoogleSub) && clean_(user.GoogleSub) !== googleSub) {
       throw publicError_('Tài khoản Google không khớp định danh đã được cấp quyền.');
     }
@@ -472,9 +494,11 @@ function authenticate_(idToken) {
       lock.waitLock(10000);
       try {
         usersTable = readTableWithRows_(SHEETS.users);
-        user = usersTable.rows.find(function (item) {
+        const lockedEmailMatches = usersTable.rows.filter(function (item) {
           return String(item['Email Google'] || '').toLowerCase() === email && bool_(item['Đang hoạt động']);
         });
+        if (lockedEmailMatches.length > 1) throw publicError_('Cấu hình người dùng bị trùng email. Vui lòng liên hệ quản lý hệ thống.');
+        user = lockedEmailMatches[0] || null;
         if (!user) throw publicError_('Tài khoản chưa được cấp quyền sử dụng hệ thống.');
         if (clean_(user.GoogleSub) && clean_(user.GoogleSub) !== googleSub) {
           throw publicError_('Tài khoản Google không khớp định danh đã được cấp quyền.');
@@ -489,14 +513,27 @@ function authenticate_(idToken) {
     }
   }
   if (!user) throw publicError_('Tài khoản chưa được cấp quyền sử dụng ứng dụng nhập liệu.');
-  const isGlobalManager = user['Vai trò'] === 'Quản lý dịch vụ' || (user['Vai trò'] === 'Quản lý trung tâm' && user['Trung tâm'] === SUNGROW_CENTER);
-  const all = isGlobalManager;
-  return { email: email, googleSub: googleSub, name: clean_(user['Họ và tên']), role: user['Vai trò'], homeCenter: clean_(user['Trung tâm']), centers: all ? CENTERS.slice() : [user['Trung tâm']], isGlobalManager: isGlobalManager };
+  const homeCenter = clean_(user['Trung tâm']);
+  const roleDefinition = resolveRole_(user['Vai trò'], homeCenter);
+  if (!roleDefinition.isGlobalManager && CENTERS.indexOf(homeCenter) === -1) {
+    throw publicError_('Tài khoản chưa được gán đúng trung tâm trong tab Người dùng.');
+  }
+  return {
+    email: email,
+    googleSub: googleSub,
+    name: clean_(user['Họ và tên']),
+    role: roleDefinition.label,
+    roleCode: roleDefinition.code,
+    homeCenter: homeCenter,
+    centers: roleDefinition.isGlobalManager ? CENTERS.slice() : [homeCenter],
+    isGlobalManager: roleDefinition.isGlobalManager,
+    capabilities: Object.assign({}, roleDefinition.capabilities)
+  };
 }
 
 function authenticateDashboardManager_(idToken) {
   const actor = authenticate_(idToken);
-  if (!actor.isGlobalManager) throw publicError_('Chỉ tài khoản quản lý Sungrow được xem dashboard.');
+  assertCapability_(actor, 'viewDashboard');
   return { email: actor.email, role: 'service_manager', centers: actor.centers.slice() };
 }
 
@@ -510,9 +547,11 @@ function canSeeCase_(actor, item, workOrders) {
 function publicCase_(actor, item, workOrders, transfers) {
   const isManager = actor.isGlobalManager;
   const isClosed = clean_(item['Trạng thái hồ sơ']) === 'Đã hoàn tất';
-  const canEditCase = !isClosed || isManager;
+  const hasPrivateAccess = isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1 || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1;
   const isIntake = isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1;
   const ownWorks = isManager ? workOrders : workOrders.filter(function (work) { return actor.centers.indexOf(work['Trung tâm xử lý']) !== -1; });
+  const hasEditableWork = ownWorks.some(function (work) { return ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1; });
+  const canEditCase = (isManager || !isClosed) && (isManager || (hasCapability_(actor, 'updateWorkOrder') && hasEditableWork));
   const relevantTransfers = transfers.filter(function (transfer) {
     return isManager || actor.centers.indexOf(transfer['Trung tâm gửi']) !== -1 || actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1;
   }).map(function (transfer) {
@@ -523,24 +562,24 @@ function publicCase_(actor, item, workOrders, transfers) {
       dispatchedAt: iso_(transfer['Ngày gửi']),
       receivedAt: iso_(transfer['Ngày xác nhận nhận']),
       status: transfer['Trạng thái luân chuyển'],
-      canAccept: canEditCase && actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1 && transfer['Trạng thái luân chuyển'] === 'Đang vận chuyển'
+      canAccept: !isClosed && hasCapability_(actor, 'acceptTransfer') && actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1 && transfer['Trạng thái luân chuyển'] === 'Đang vận chuyển'
     };
   });
   return {
     caseId: item['Mã hồ sơ'], deviceType: item['Loại thiết bị'], serialNumber: item['Số sê-ri (S/N)'], model: item.Model,
     quantity: Number(item['Số lượng'] || 1), intakeCenter: item['Trung tâm tiếp nhận khách'], currentCenter: item['Trung tâm đang giữ hàng'],
     caseStatus: item['Trạng thái hồ sơ'], warrantyStatus: item['Tình trạng bảo hành'],
-    sender: senderFromCase_(item), project: projectFromCase_(item), evidenceLink: safeDriveLink_(item['Liên kết hồ sơ Drive']), note: item['Ghi chú chung'],
-    customerName: item['Tên khách hàng'], customerAddress: item['Địa chỉ khách hàng'], customerPhone: item['Số điện thoại khách hàng'], customerEmail: item['Email khách hàng'],
-    senderCompany: item['Tên công ty gửi hàng'], senderCustomer: item['Tên người gửi hàng'], senderAddress: item['Địa chỉ gửi hàng'], senderPhone: item['Số điện thoại gửi hàng'],
-    senderEmail: item['Email gửi hàng'], carrier: item['Đơn vị vận chuyển'], trackingCode: item['Mã vận đơn'],
+    sender: hasPrivateAccess ? senderFromCase_(item) : '', project: hasPrivateAccess ? projectFromCase_(item) : '', evidenceLink: hasPrivateAccess ? safeDriveLink_(item['Liên kết hồ sơ Drive']) : '', note: hasPrivateAccess ? item['Ghi chú chung'] : '',
+    customerName: hasPrivateAccess ? item['Tên khách hàng'] : '', customerAddress: hasPrivateAccess ? item['Địa chỉ khách hàng'] : '', customerPhone: hasPrivateAccess ? item['Số điện thoại khách hàng'] : '', customerEmail: hasPrivateAccess ? item['Email khách hàng'] : '',
+    senderCompany: hasPrivateAccess ? item['Tên công ty gửi hàng'] : '', senderCustomer: hasPrivateAccess ? item['Tên người gửi hàng'] : '', senderAddress: hasPrivateAccess ? item['Địa chỉ gửi hàng'] : '', senderPhone: hasPrivateAccess ? item['Số điện thoại gửi hàng'] : '',
+    senderEmail: hasPrivateAccess ? item['Email gửi hàng'] : '', carrier: hasPrivateAccess ? item['Đơn vị vận chuyển'] : '', trackingCode: hasPrivateAccess ? item['Mã vận đơn'] : '',
     createdBy: item['Người tạo'], createdAt: iso_(item['Ngày tạo']),
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
     isClosed: isClosed, canEditCase: canEditCase, canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
-    workOrders: ownWorks.map(function (work) { const value = publicWorkOrder_(work); value.canUpdate = canEditCase && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
-    canTransfer: canEditCase && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
-    canReturn: canEditCase && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && item['Tình trạng bảo hành'] !== 'Chờ xác nhận'
+    workOrders: ownWorks.map(function (work) { const value = publicWorkOrder_(work); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
+    canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
+    canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && item['Tình trạng bảo hành'] !== 'Chờ xác nhận'
   };
 }
 
@@ -621,6 +660,32 @@ function latestWorkOrder_(caseId, center) {
 
 function assertCenterAllowed_(actor, center) {
   if (!actor.isGlobalManager && actor.centers.indexOf(center) === -1) throw publicError_('Bạn không có quyền thao tác dữ liệu của trung tâm này.');
+}
+
+function resolveRole_(rawRole, homeCenter) {
+  const raw = clean_(rawRole).toLowerCase();
+  const aliases = {};
+  ['service_manager', 'quản lý dịch vụ', 'quan ly dich vu', 'quản lý hệ thống', 'quan ly he thong'].forEach(function (value) { aliases[value] = ROLE_CODES.serviceManager; });
+  ['center_manager', 'sungrow_manager', 'quản lý trung tâm', 'quan ly trung tam', 'quản lý', 'quan ly'].forEach(function (value) { aliases[value] = ROLE_CODES.centerManager; });
+  ['center_staff', 'center_editor', 'nhân viên trung tâm', 'nhan vien trung tam', 'nhân viên', 'nhan vien'].forEach(function (value) { aliases[value] = ROLE_CODES.centerStaff; });
+  let code = aliases[raw];
+  if (!code) throw publicError_('Vai trò trong tab Người dùng không hợp lệ: ' + clean_(rawRole) + '.');
+  const sungrowGlobalManager = code === ROLE_CODES.centerManager && homeCenter === SUNGROW_CENTER;
+  const isGlobalManager = code === ROLE_CODES.serviceManager || sungrowGlobalManager;
+  if (sungrowGlobalManager) code = ROLE_CODES.serviceManager;
+  const labels = {};
+  labels[ROLE_CODES.serviceManager] = 'Quản lý dịch vụ';
+  labels[ROLE_CODES.centerManager] = 'Quản lý trung tâm';
+  labels[ROLE_CODES.centerStaff] = 'Nhân viên trung tâm';
+  return { code: code, label: labels[code], isGlobalManager: isGlobalManager, capabilities: ROLE_CAPABILITIES[code] };
+}
+
+function hasCapability_(actor, capability) {
+  return !!(actor && actor.capabilities && actor.capabilities[capability]);
+}
+
+function assertCapability_(actor, capability) {
+  if (!hasCapability_(actor, capability)) throw publicError_('Vai trò của bạn không được phép thực hiện thao tác này.');
 }
 
 function readTable_(sheetName) { return readTableWithRows_(sheetName).rows; }
@@ -728,6 +793,44 @@ function refreshDashboardData_() {
 
 function spreadsheet_() { return SpreadsheetApp.openById(DATABASE_SPREADSHEET_ID); }
 
+/**
+ * Chạy thủ công trong Apps Script trước khi deploy production.
+ * Hàm chỉ đọc tab Người dùng, không thay đổi dữ liệu.
+ */
+function auditUserAccessConfiguration() {
+  const rows = readTable_(SHEETS.users);
+  const errors = [];
+  const warnings = [];
+  const activeEmails = {};
+  const activeSubs = {};
+  const users = rows.map(function (row) {
+    const email = clean_(row['Email Google']).toLowerCase();
+    const center = clean_(row['Trung tâm']);
+    const active = bool_(row['Đang hoạt động']);
+    const sub = clean_(row.GoogleSub);
+    const configured = !!(email || clean_(row['Họ và tên']) || center || clean_(row['Vai trò']));
+    if (!configured && !active) return null;
+    let role = null;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Dòng ' + row.__rowNumber + ': Email Google không hợp lệ.');
+    try { role = resolveRole_(row['Vai trò'], center); }
+    catch (error) { errors.push('Dòng ' + row.__rowNumber + ': ' + error.message); }
+    if (role && !role.isGlobalManager && CENTERS.indexOf(center) === -1) errors.push('Dòng ' + row.__rowNumber + ': Trung tâm không hợp lệ cho tài khoản ' + email + '.');
+    if (active && email) {
+      if (activeEmails[email]) errors.push('Email đang hoạt động bị trùng: ' + email + '.');
+      activeEmails[email] = true;
+    }
+    if (active && sub) {
+      if (activeSubs[sub]) errors.push('GoogleSub đang hoạt động bị trùng ở dòng ' + row.__rowNumber + '.');
+      activeSubs[sub] = true;
+    }
+    if (active && !sub) warnings.push(email + ': GoogleSub sẽ được khóa ở lần đăng nhập hợp lệ đầu tiên.');
+    return { row: row.__rowNumber, email: email, active: active, roleCode: role ? role.code : '', center: center, googleSubBound: !!sub && sub.toLowerCase() !== 'false' };
+  }).filter(Boolean);
+  const report = { ok: errors.length === 0, activeUsers: users.filter(function (user) { return user.active; }).length, errors: errors, warnings: warnings, users: users };
+  console.log(JSON.stringify(report, null, 2));
+  return report;
+}
+
 function migrateLegacyProjectToSender() {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -763,7 +866,7 @@ function migrateLegacyProjectToSender() {
   }
 }
 
-function canApproveWarranty_(actor) { return !!actor.isGlobalManager; }
+function canApproveWarranty_(actor) { return hasCapability_(actor, 'approveWarranty'); }
 function assertCaseEditable_(actor, caseRecord) {
   if (!actor.isGlobalManager && clean_(caseRecord['Trạng thái hồ sơ']) === 'Đã hoàn tất') {
     throw publicError_('Hồ sơ đã hoàn tất. Chỉ quản lý toàn bộ center được phép điều chỉnh.');
@@ -776,7 +879,7 @@ function safeDriveLink_(value) {
 function validateDriveLink_(value) {
   if (!safeDriveLink_(value)) throw publicError_('Liên kết hồ sơ phải là link Google Drive hợp lệ.');
 }
-function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, canApproveWarranty: canApproveWarranty_(actor) }; }
+function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, roleCode: actor.roleCode, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, capabilities: Object.assign({}, actor.capabilities), canApproveWarranty: canApproveWarranty_(actor) }; }
 function groupBy_(rows, field) { return rows.reduce(function (out, row) { const key = row[field]; if (!out[key]) out[key] = []; out[key].push(row); return out; }, {}); }
 function stripInternal_(value) { const copy = Object.assign({}, value); delete copy.__rowNumber; return copy; }
 function required_(value, label) { const result = clean_(value); if (!result) throw publicError_('Thiếu ' + label + '.'); return result; }

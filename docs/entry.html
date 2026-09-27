@@ -65,7 +65,7 @@
           <button class="tab" data-view="transfer">Luân chuyển center</button>
         </nav>
         <div class="sidebar-user" id="userBox"></div>
-        <div class="side-foot">Ứng dụng nhập liệu · v1.1.3-final<br>Dữ liệu được lưu trên Google Sheets</div>
+        <div class="side-foot">Ứng dụng nhập liệu · v1.2.0-production-auth<br>Dữ liệu được lưu trên Google Sheets</div>
       </aside>
       <div class="workspace">
       <div id="message"></div>
@@ -171,6 +171,7 @@
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;
+        applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
         const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
         $('#userBox').innerHTML=`<div class="user-identity"><span class="user-avatar">${esc(initials)}</span><span class="user-copy"><strong title="${esc(data.actor.email)}">${esc(data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span></span></div>`;
@@ -178,10 +179,10 @@
         setupDashboardAccess();
         const requestedView=(location.hash||'#cases').slice(1);
         showView(['cases','receive','update','transfer'].includes(requestedView)?requestedView:'cases');
-        if(EMBEDDED)parent.postMessage({type:'sungrow-portal-ready'},location.origin);
+        if(EMBEDDED)parent.postMessage({type:'sungrow-portal-ready',actor:state.actor},location.origin);
       }).catch(err=>{
         if(isAuthError(err)){sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle();return}
-        showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.1.3-final. Hãy redeploy rồi tải lại trang.':err.message);
+        showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.2.0-production-auth. Hãy redeploy rồi tải lại trang.':err.message);
       });
     }
 
@@ -201,8 +202,10 @@
       document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCaseDrawer()});
     }
 
-    function showView(id){if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
-    window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(['cases','receive','update','transfer'].includes(view))showView(view)});
+    function viewAllowed(id){const c=state.actor?.capabilities||{};return id==='cases'?c.viewCases!==false:id==='receive'?!!c.createCase:id==='update'?!!c.updateWorkOrder:id==='transfer'?!!c.createTransfer:id==='dashboard'?!!c.viewDashboard:false}
+    function applyActorCapabilities(){$$('.tab[data-view]').forEach(button=>button.classList.toggle('hidden',!viewAllowed(button.dataset.view)))}
+    function showView(id){if(!viewAllowed(id))id='cases';if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
+    window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(['cases','receive','update','transfer'].includes(view)&&viewAllowed(view))showView(view)});
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
       if(!state.actor||!state.actor.isGlobalManager)return;
