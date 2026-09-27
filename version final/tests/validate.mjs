@@ -162,13 +162,15 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=38#/, 'Iframe nhập liệu phải dùng cache key mới cho giao diện sidebar.');
+assert.match(liveDataSource, /v=39#/, 'Iframe nhập liệu phải dùng cache key mới cho giao diện sidebar.');
 assert.match(entryHtml, /html\.embedded \.content\{padding:10px 22px\}/, 'Khoảng hở trang nhập liệu phải đồng bộ với vùng nội dung dashboard.');
 assert.match(liveDataSource, /sg-dashboard-parent/, 'Sidebar phải có nhóm cha Dashboard quản lý.');
 assert.match(liveDataSource, /function setNavGroup\(/, 'Các nhóm sidebar phải hỗ trợ expand/collapse.');
 assert.match(liveDataSource, /sg-nav-parent\[aria-expanded="true"\]/, 'Trạng thái mở của nhóm sidebar phải được thể hiện trực quan.');
 assert.match(liveDataSource, /border-right:2px solid currentColor;border-bottom:2px solid currentColor/, 'Chevron sidebar phải được vẽ bằng CSS thay vì ký tự chữ bị lệch.');
 assert.doesNotMatch(liveDataSource, /content:"⌄"/, 'Sidebar không được dùng ký tự glyph làm icon expand.');
+assert.match(liveDataSource, /sg-nav-parent\{[^}]*white-space:nowrap/, 'Tiêu đề nhóm sidebar phải giữ trên một dòng.');
+assert.match(liveDataSource, /sg-side\{padding-left:14px!important;padding-right:14px!important/, 'Nội dung sidebar desktop phải được dịch nhẹ sang trái.');
 assert.match(liveDataSource, /\.sg-official-logo svg\{[^}]*width:150px!important;[^}]*height:20px!important/, 'Logo sidebar phải có cùng kích thước cố định cho mọi role.');
 for (const field of ['customerName','customerAddress','customerPhone','customerEmail']) {
   assert.match(html, new RegExp(`name="${field}"`), `Form thiếu trường ${field}.`);
