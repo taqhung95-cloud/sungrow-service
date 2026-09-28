@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.4\.3-form-state-sync/, 'Code phải khai báo đúng version production hiện tại.');
+assert.match(codeSource, /1\.4\.4-confirmed-error-projection/, 'Code phải khai báo đúng version production hiện tại.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
 assert.match(codeSource, /getPortalSyncState: getPortalSyncState/, 'API GitHub Pages phải cho phép kiểm tra revision dữ liệu.');
@@ -161,6 +161,26 @@ assert.doesNotMatch(read('LegacyDashboardApi.gs'), /USERS_JSON/, 'Không đượ
 assert.match(read('LegacyDashboardApi.gs'), /request\.action === 'portal\.call'/, 'Apps Script phải định tuyến API cho platform GitHub Pages.');
 assert.match(read('LegacyDashboardApi.gs'), /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Dashboard cũ phải đọc database production.');
 const legacyApiSource = read('LegacyDashboardApi.gs');
+assert.match(extractFunction(legacyApiSource,'readOperationalRecords_'), /confirmedIssues = issues\.filter/, 'Dashboard chỉ đọc lỗi đã xác nhận từ tab Lỗi thiết bị.');
+assert.match(extractFunction(codeSource,'syncDashboardProjectionCase_'), /'Loại ghi nhận'\]\) !== 'Hiện tượng ban đầu'/, 'Bản xuất từng hồ sơ không được đưa hiện tượng ban đầu vào Issue 1-4.');
+assert.match(extractFunction(codeSource,'refreshDashboardData_'), /confirmedIssues = issues\.filter/, 'Bản xuất toàn bộ không được đưa hiện tượng ban đầu vào Issue 1-4.');
+const operationalFixture = {
+  'Hồ sơ thiết bị':[['Mã hồ sơ','Nguồn dữ liệu','Số sê-ri (S/N)','Model','Ngày nhận từ khách','Trung tâm đang giữ hàng'],['HS-ISSUE','Quy trình mới','SN-FAN','SG110CX',new Date('2026-09-27'),'Sungrow Service Center']],
+  'Công việc trung tâm':[['Mã hồ sơ','Mã công việc','Trung tâm xử lý'],['HS-ISSUE','CV-ISSUE','Sungrow Service Center']],
+  'Lỗi thiết bị':[['Mã công việc','Loại ghi nhận','Mã lỗi','Tên lỗi'],['CV-ISSUE','Hiện tượng ban đầu','','Hỏng quạt F3 và F4'],['CV-ISSUE','Lỗi xác nhận','36','Cảnh báo quạt']]
+};
+const operationalSandbox = {
+  SpreadsheetApp:{openById:() => ({getSheetByName:name => operationalFixture[name] ? {getLastRow:() => operationalFixture[name].length,getDataRange:() => ({getValues:() => operationalFixture[name]})} : null})},
+  clean_:value => value == null ? '' : String(value).trim(),
+  date_:value => value instanceof Date ? value : null,
+  resolveCenter_:value => value,
+  number_:value => Number(value) || 1
+};
+vm.createContext(operationalSandbox);
+vm.runInContext(extractFunction(legacyApiSource,'readOperationalRecords_') + '\nthis.readOperationalRecords_=readOperationalRecords_;',operationalSandbox);
+const operationalIssueRecord = operationalSandbox.readOperationalRecords_('fixture',[]).records[0];
+assert.deepEqual(Array.from(operationalIssueRecord.issues),['Cảnh báo quạt'],'Hiện tượng ban đầu phải bị loại khỏi nguồn lỗi dashboard; lỗi xác nhận vẫn được giữ.');
+assert.equal(operationalIssueRecord.errorCode,'36','Mã lỗi dashboard phải lấy từ lỗi xác nhận.');
 assert.match(legacyApiSource, /function readOperationalRecords_\(/, 'Dashboard phải đọc trực tiếp các tab nghiệp vụ hợp nhất.');
 assert.match(legacyApiSource, /objects\('Hồ sơ thiết bị'\)/, 'Dashboard phải lấy hồ sơ từ cùng nguồn với platform nhập liệu.');
 assert.match(legacyApiSource, /function readHybridRecordsForYear_\(/, 'Dashboard phải giữ tab lịch sử làm nền và ghép dữ liệu nhập liệu.');
@@ -181,7 +201,8 @@ vm.runInContext([
   extractFunction(legacyApiSource,'fallbackHybridKey_'),
   extractFunction(legacyApiSource,'overlayOperationalRecord_'),
   extractFunction(legacyApiSource,'mergeLegacyAndOperational_'),
-  'this.mergeLegacyAndOperational_=mergeLegacyAndOperational_;'
+  extractFunction(legacyApiSource,'groupConfirmedIssueCategories_'),
+  'this.mergeLegacyAndOperational_=mergeLegacyAndOperational_;this.groupConfirmedIssueCategories_=groupConfirmedIssueCategories_;'
 ].join('\n'), hybridSandbox);
 const legacyRow = {hasData:true,id:'2026-2',serialNumber:'SN-OLD',model:'SG110CX',receivedDate:new Date('2026-09-01T00:00:00Z'),center:'Sungrow Service Center',status:'Đang kiểm tra',deliveryStatus:'Chưa giao máy',issues:[],parts:[]};
 const operationalOverlay = {hasData:true,id:'HS-MIGRATED',sourceType:'Dữ liệu migrate',serialNumber:'SN-OLD',model:'SG110CX',receivedDate:new Date('2026-09-01T00:00:00Z'),center:'Sungrow Service Center',status:'Hoàn tất kỹ thuật',deliveryStatus:'Chờ giao máy',issues:['Hỏng IGBT'],parts:[]};
@@ -194,6 +215,21 @@ assert.equal(hybridResult.records[0].status,'Hoàn tất kỹ thuật','Cập nh
 assert.equal(hybridResult.stats.matchedOverlay,1,'Phải đếm được hồ sơ lịch sử đã ghép cập nhật.');
 assert.equal(hybridResult.stats.appendedNew,1,'Phải đếm được hồ sơ quy trình mới được bổ sung.');
 assert.equal(hybridResult.stats.unmatchedHistorical,1,'Phải cảnh báo dữ liệu migrate chưa ghép thay vì đếm trùng.');
+const projectedIntake = {...legacyRow,projectedCaseId:'HS-NEW-PROJECTION',issues:['Hỏng quạt F3 và F4','Nhiệt độ bên trong máy cao','Cảnh báo quạt']};
+const newCaseWithoutConfirmedIssue = {...operationalOverlay,id:'HS-NEW-PROJECTION',sourceType:'Quy trình mới',serialNumber:'SN-CHANGED',model:'SG50CX',issues:[]};
+const projectedMerge = hybridSandbox.mergeLegacyAndOperational_([projectedIntake],[newCaseWithoutConfirmedIssue],2026);
+assert.equal(projectedMerge.records.length,1,'Projection phải ghép theo Mã hồ sơ dù S/N hoặc model được chỉnh sau đó.');
+assert.equal(projectedMerge.records[0].issues.length,0,'Projection của hồ sơ mới không được giữ hiện tượng ban đầu như lỗi xác nhận.');
+assert.match(extractFunction(legacyApiSource,'normalizeRow_'), /projectedCaseId \? \[\] : schema\.issues/, 'Cột Issue của projection không được coi là lỗi xác nhận.');
+const groupedIssues = hybridSandbox.groupConfirmedIssueCategories_([
+  {issues:['Hỏng quạt F3 và F4','Nhiệt độ bên trong máy cao','Cảnh báo quạt']},
+  {issues:['Hỏng External Fan']},
+  {issues:['Nhiệt độ bên trong máy cao']},
+  {issues:['Hỏng IGBT','Hỏng IGBT']}
+]);
+assert.equal(groupedIssues.find(item => item.name === 'Lỗi quạt').count,2,'Ba mô tả lỗi quạt trên một inverter chỉ tính một thiết bị trong nhóm quạt.');
+assert.equal(groupedIssues.find(item => item.name === 'Hỏng IGBT').count,1,'Lỗi trùng tên trên một thiết bị chỉ được tính một lần.');
+assert.equal(groupedIssues.find(item => item.name === 'Nhiệt độ bên trong máy cao').count,1,'Nhiệt độ cao đứng riêng không tự bị coi là lỗi quạt.');
 assert.match(read('LegacyDashboardApi.gs'), /dataRevision/, 'Cache dashboard và tìm kiếm phải thay đổi theo revision dữ liệu.');
 const cacheItems = new Map();
 const cacheStub = {
@@ -278,6 +314,8 @@ assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hi
 assert.match(liveDataSource, /v=48#/, 'Iframe nhập liệu phải dùng cache key mới cho bản center động và đồng bộ nhanh.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
+assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=49/, 'GitHub Pages phải nạp bản giao diện thống kê lỗi mới.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
 assert.match(liveDataSource, /yearSelect\.type = 'number'/, 'Năm báo cáo phải cho phép nhập trực tiếp năm tương lai, không dùng dropdown cố định.');
 assert.match(liveDataSource, /legacyLabel\.style\.display = 'none'/, 'Bộ chọn kỳ YYYY-MM cũ phải được ẩn hoàn toàn.');

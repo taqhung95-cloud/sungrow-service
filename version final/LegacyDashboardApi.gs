@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.8-fast-dashboard-cache';
+const APP_VERSION = '1.8.9-confirmed-error-metrics';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -165,8 +165,9 @@ function readOperationalRecords_(spreadsheetId, centers) {
       (issuesByWork[clean_(work['Mã công việc'])] || []).forEach(function (issue) { issues.push(issue); });
       (partsByWork[clean_(work['Mã công việc'])] || []).forEach(function (part) { parts.push(part); });
     });
-    const issueNames = issues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
-    const errorCode = issues.map(function (issue) { return clean_(issue['Mã lỗi']); }).filter(Boolean)[0] || '';
+    const confirmedIssues = issues.filter(function (issue) { return clean_(issue['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
+    const issueNames = confirmedIssues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
+    const errorCode = confirmedIssues.map(function (issue) { return clean_(issue['Mã lỗi']); }).filter(Boolean)[0] || '';
     const caseStatus = clean_(item['Trạng thái hồ sơ']);
     const deliveryStatus = caseStatus === 'Đã hoàn tất' ? 'Đã giao máy' : (caseStatus === 'Sẵn sàng trả khách' ? 'Chờ giao máy' : 'Chưa giao máy');
     const note = [clean_(item['Ghi chú chung']), clean_(latest['Ghi chú nội bộ'])].filter(Boolean).join(' ');
@@ -257,7 +258,11 @@ function overlayOperationalRecord_(legacy, operational) {
   if (operational.deliveryStatus && (!merged.deliveryStatus || !/^chưa\s+giao/i.test(operational.deliveryStatus))) {
     merged.deliveryStatus = operational.deliveryStatus;
   }
-  if (operational.issues && operational.issues.length) merged.issues = operational.issues.slice();
+  // New-workflow projections can still contain intake symptoms in Issue 1-4.
+  // An empty confirmed-issue list must clear them when the operational case is authoritative.
+  if (/^quy\s*trình\s*mới$/i.test(clean_(operational.sourceType)) || (operational.issues && operational.issues.length)) {
+    merged.issues = (operational.issues || []).slice();
+  }
   if (operational.parts && operational.parts.length) merged.parts = operational.parts.slice();
   merged.waitingParts = Boolean(operational.waitingParts || merged.waitingParts);
   merged.operationalCaseId = operational.id;
@@ -267,6 +272,7 @@ function overlayOperationalRecord_(legacy, operational) {
 
 function mergeLegacyAndOperational_(legacyRecords, operationalRecords, year) {
   const records = legacyRecords.slice();
+  const byCaseId = {};
   const strong = {};
   const fallback = {};
   function addIndex(map, key, index) {
@@ -275,15 +281,17 @@ function mergeLegacyAndOperational_(legacyRecords, operationalRecords, year) {
     map[key].push(index);
   }
   records.forEach(function (record, index) {
+    if (record.projectedCaseId) addIndex(byCaseId, record.projectedCaseId, index);
     addIndex(strong, strongHybridKey_(record), index);
     addIndex(fallback, fallbackHybridKey_(record), index);
   });
   const stats = { legacyRows: records.length, matchedOverlay: 0, appendedNew: 0, duplicateNew: 0, unmatchedHistorical: 0 };
   operationalRecords.forEach(function (operational) {
     if (!operational.hasData || !operational.receivedDate || operational.receivedDate.getFullYear() !== Number(year)) return;
+    const caseMatches = byCaseId[operational.id] || [];
     const strongMatches = strong[strongHybridKey_(operational)] || [];
     const fallbackMatches = fallback[fallbackHybridKey_(operational)] || [];
-    const matches = strongMatches.length === 1 ? strongMatches : (fallbackMatches.length === 1 ? fallbackMatches : []);
+    const matches = caseMatches.length === 1 ? caseMatches : (strongMatches.length === 1 ? strongMatches : (fallbackMatches.length === 1 ? fallbackMatches : []));
     const isNew = /^quy\s*trình\s*mới$/i.test(clean_(operational.sourceType));
     if (matches.length === 1) {
       records[matches[0]] = overlayOperationalRecord_(records[matches[0]], operational);
@@ -450,7 +458,7 @@ function readSheetValues_(spreadsheetId, sheetName) {
   const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(String(sheetName));
   if (!sheet) throw apiError_('SOURCE_TAB_NOT_FOUND', 'Không tìm thấy tab dữ liệu ' + sheetName + '.');
   const lastRow = sheet.getLastRow();
-  const lastColumn = Math.min(Math.max(sheet.getLastColumn(), 1), 31);
+  const lastColumn = Math.min(Math.max(sheet.getLastColumn(), 1), 40);
   const values = lastRow ? sheet.getRange(1, 1, lastRow, lastColumn).getValues() : [];
   return { values: values, sheetName: sheetName, lastRow: values.length };
 }
@@ -529,7 +537,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     return catalog;
   }, {})).sort(function (a, b) { return a.localeCompare(b, 'vi', { sensitivity: 'base', numeric: true }); });
   const modelTypes = groupModelTypes_(periodRows);
-  const errors = groupCountMulti_(periodRows, function (r) { return r.issues; });
+  const errors = groupConfirmedIssueCategories_(periodRows);
   const parts = groupParts_(records.filter(function (r) { return inPeriod_(r.checkDate, period); }));
   const quality = qualitySummary_(records, periodRows, sourceLastRow);
   const tickets = records.slice().sort(function (a, b) { return time_(b.receivedDate) - time_(a.receivedDate); }).slice(0, 250).map(publicTicket_);
@@ -594,7 +602,9 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
 
 function normalizeRow_(row, rowNumber, year, centers, schema) {
   const center = resolveCenter_(row[schema.center], centers);
-  const issues = schema.issues.map(function (index) { return row[index]; }).map(clean_).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; });
+  const projectedCaseId = schema.projectedCaseId === undefined ? '' : clean_(row[schema.projectedCaseId]);
+  // Issue columns in workflow projections may contain intake symptoms. Read confirmed issues from the operational tab instead.
+  const issues = projectedCaseId ? [] : schema.issues.map(function (index) { return row[index]; }).map(clean_).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; });
   const parts = schema.parts.map(function (pair) { return [row[pair[0]], row[pair[1]]]; })
     .filter(function (part) { return clean_(part[0]); }).map(function (part) { return { pn: clean_(part[0]), qty: number_(part[1]) }; });
   const note = clean_(row[schema.note]);
@@ -602,6 +612,7 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
     hasData: row.some(function (value) { return value !== '' && value !== null; }),
     rowNumber: rowNumber,
     id: year + '-' + rowNumber,
+    projectedCaseId: projectedCaseId,
     sourceNo: clean_(row[schema.sourceNo]),
     sourceType: 'Dữ liệu lịch sử',
     deviceType: clean_(row[schema.deviceType]),
@@ -741,10 +752,26 @@ function groupModelTypes_(rows) {
   }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
 }
 
-function groupCountMulti_(rows, keysFn) {
+function groupConfirmedIssueCategories_(rows) {
   const counts = {};
-  rows.forEach(function (r) { keysFn(r).forEach(function (k) { counts[k] = (counts[k] || 0) + 1; }); });
-  return Object.keys(counts).map(function (name) { return { name: name, count: counts[name] }; }).sort(function (a, b) { return b.count - a.count; }).slice(0, 10);
+  const labels = {};
+  rows.forEach(function (record) {
+    const issues = (record.issues || []).map(function (name) { return clean_(name).replace(/\s+/g, ' '); }).filter(Boolean);
+    const hasFanIssue = issues.some(function (name) { return /\bfan\b|quạt/i.test(name); });
+    const categoriesForDevice = {};
+    issues.forEach(function (name) {
+      // Keep a temperature symptom with the fan category only when this device also has a fan issue.
+      const category = /\bfan\b|quạt/i.test(name) || (hasFanIssue && /nhiệt\s*độ|quá\s*nhiệt/i.test(name)) ? 'Lỗi quạt' : name;
+      const key = category.toLocaleLowerCase('vi');
+      categoriesForDevice[key] = category;
+    });
+    Object.keys(categoriesForDevice).forEach(function (key) {
+      counts[key] = (counts[key] || 0) + 1;
+      labels[key] = categoriesForDevice[key];
+    });
+  });
+  return Object.keys(counts).map(function (key) { return { name: labels[key], count: counts[key] }; })
+    .sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name, 'vi'); }).slice(0, 10);
 }
 
 function groupParts_(rows) {
@@ -780,7 +807,7 @@ function schemaForHeaders_(headers) {
     return index;
   }
   const schema = {
-    sourceNo: get('No.', true), deviceType: get('Device Type', true), serialNumber: get('S/N', false), model: get('Model', false),
+    sourceNo: get('No.', true), projectedCaseId: get('Mã hồ sơ', false), deviceType: get('Device Type', true), serialNumber: get('S/N', false), model: get('Model', false),
     receivedDate: get('Received date', true), distributor: get('Distributor', false), workshop: get('Where sent to Workshop', false),
     errorCode: get('Error Code', false), warrantyConfirmation: get('Warranty confirmation', false), warrantyStatus: get('Warranty Status', false),
     center: get('Service Center', true), checkDate: get('Check / Repair date', false), deliveryStatus: get('Delivery Status', false),

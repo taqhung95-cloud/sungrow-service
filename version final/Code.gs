@@ -1,4 +1,4 @@
-const APP_VERSION = '1.4.3-form-state-sync';
+const APP_VERSION = '1.4.4-confirmed-error-projection';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -971,7 +971,9 @@ function syncDashboardProjectionCase_(caseId) {
     const works = readTable_(SHEETS.workOrders).filter(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     const latest = works.length ? works[works.length - 1] : {};
     const workIds = works.reduce(function (map, item) { map[clean_(item['Mã công việc'])] = true; return map; }, {});
-    const issues = readTable_(SHEETS.issues).filter(function (item) { return workIds[clean_(item['Mã công việc'])]; });
+    const issues = readTable_(SHEETS.issues).filter(function (item) {
+      return workIds[clean_(item['Mã công việc'])] && clean_(item['Loại ghi nhận']) !== 'Hiện tượng ban đầu';
+    });
     const parts = readTable_(SHEETS.parts).filter(function (item) { return workIds[clean_(item['Mã công việc'])]; });
     const issueNames = issues.map(function (item) { return clean_(item['Tên lỗi']); }).filter(Boolean);
     const errorCode = issues.map(function (item) { return clean_(item['Mã lỗi']); }).filter(Boolean)[0] || '';
@@ -1092,8 +1094,9 @@ function refreshDashboardData_() {
         (issuesByWork[work['Mã công việc']] || []).forEach(function (issue) { issues.push(issue); });
         (partsByWork[work['Mã công việc']] || []).forEach(function (part) { parts.push(part); });
       });
-      const issueNames = issues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
-      const errorCode = issues.map(function (issue) { return clean_(issue['Mã lỗi']); }).filter(Boolean)[0] || '';
+      const confirmedIssues = issues.filter(function (issue) { return clean_(issue['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
+      const issueNames = confirmedIssues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
+      const errorCode = confirmedIssues.map(function (issue) { return clean_(issue['Mã lỗi']); }).filter(Boolean)[0] || '';
       const caseStatus = clean_(item['Trạng thái hồ sơ']);
       const deliveryStatus = caseStatus === 'Đã hoàn tất' ? 'Đã giao máy' : (caseStatus === 'Sẵn sàng trả khách' ? 'Chờ giao máy' : 'Chưa giao máy');
       const row = [
