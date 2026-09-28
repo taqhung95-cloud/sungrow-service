@@ -195,6 +195,37 @@ assert.equal(hybridResult.stats.matchedOverlay,1,'Phải đếm được hồ s�
 assert.equal(hybridResult.stats.appendedNew,1,'Phải đếm được hồ sơ quy trình mới được bổ sung.');
 assert.equal(hybridResult.stats.unmatchedHistorical,1,'Phải cảnh báo dữ liệu migrate chưa ghép thay vì đếm trùng.');
 assert.match(read('LegacyDashboardApi.gs'), /dataRevision/, 'Cache dashboard và tìm kiếm phải thay đổi theo revision dữ liệu.');
+const cacheItems = new Map();
+const cacheStub = {
+  get:key => cacheItems.get(key) || null,
+  getAll:keys => Object.fromEntries(keys.filter(key => cacheItems.has(key)).map(key => [key,cacheItems.get(key)])),
+  put:(key,value) => cacheItems.set(key,value),
+  putAll:entries => Object.entries(entries).forEach(([key,value]) => cacheItems.set(key,value))
+};
+const cacheSandbox = {console, Utilities:{newBlob:value => ({getBytes:() => [...Buffer.from(value,'utf8')]})}};
+vm.createContext(cacheSandbox);
+vm.runInContext([
+  extractFunction(legacyApiSource,'safeCacheGet_'),
+  extractFunction(legacyApiSource,'safeCachePut_'),
+  'this.safeCacheGet_=safeCacheGet_;this.safeCachePut_=safeCachePut_;'
+].join('\n'), cacheSandbox);
+const largeDashboard = {centers:[{center:'JGP Center'}],tickets:'Thiết bị '.repeat(15000)};
+cacheSandbox.safeCachePut_(cacheStub,'dashboard-test',largeDashboard,300);
+assert.match(cacheItems.get('dashboard-test'),/^chunks:\d+$/,'Dashboard lớn phải được cache theo nhiều phần.');
+assert.equal(cacheSandbox.safeCacheGet_(cacheStub,'dashboard-test').tickets,largeDashboard.tickets,'Cache nhiều phần phải khôi phục đầy đủ tiếng Việt.');
+cacheItems.delete('dashboard-test:part:0');
+assert.equal(cacheSandbox.safeCacheGet_(cacheStub,'dashboard-test'),null,'Thiếu một phần cache phải đọc lại nguồn, không trả dữ liệu hỏng.');
+assert.match(legacyApiSource, /year === selectedYear && selectedYearRecords/, 'Không được đọc lại Sheet của năm đang chọn khi tính tổng năm.');
+assert.match(legacyApiSource, /actor\.email, scope\.slice\(\)\.sort/, 'Cache phải tách theo email và phạm vi center.');
+const registrySandbox = {
+  DEFAULT_CENTERS:[{id:'sungrow',name:'Sungrow Service Center'},{id:'jgp',name:'JGP Center'}],
+  PropertiesService:{getScriptProperties:() => ({})},
+  parseJsonProperty_:() => [{id:'sungrow',name:'Sungrow Service Center'}],
+  clean_:value => value == null ? '' : String(value).trim()
+};
+vm.createContext(registrySandbox);
+vm.runInContext(extractFunction(legacyApiSource,'centerRegistry_') + '\nthis.centerRegistry_=centerRegistry_;',registrySandbox);
+assert.equal(registrySandbox.centerRegistry_().length,2,'Cấu hình center cũ không được làm mất JGP khỏi dashboard.');
 assert.match(html, /navigateToCase\('update',item\.caseId\)/, 'Sau xác nhận bảo hành phải tải lại hồ sơ mới nhất trước khi cập nhật kỹ thuật.');
 assert.match(entryHtml, /navigateToCase\('update',item\.caseId\)/, 'GitHub Pages phải tải lại hồ sơ sau xác nhận bảo hành.');
 for (const field of ['issues','parts','holds']) {
@@ -244,7 +275,9 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=47#/, 'Iframe nhập liệu phải dùng cache key mới cho bản bộ lọc năm linh hoạt.');
+assert.match(liveDataSource, /v=48#/, 'Iframe nhập liệu phải dùng cache key mới cho bản center động và đồng bộ nhanh.');
+assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
+assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
 assert.match(liveDataSource, /yearSelect\.type = 'number'/, 'Năm báo cáo phải cho phép nhập trực tiếp năm tương lai, không dùng dropdown cố định.');
 assert.match(liveDataSource, /legacyLabel\.style\.display = 'none'/, 'Bộ chọn kỳ YYYY-MM cũ phải được ẩn hoàn toàn.');

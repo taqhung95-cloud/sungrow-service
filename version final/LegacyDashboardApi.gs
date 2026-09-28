@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.7-hybrid-projection';
+const APP_VERSION = '1.8.8-fast-dashboard-cache';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -61,16 +61,16 @@ function getDashboard_(request, actor) {
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.role, scope.sort().join(','), period.key].join(':');
+  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.email, scope.slice().sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
-  const cached = request.refresh === true ? null : cache.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  const cached = request.refresh === true ? null : safeCacheGet_(cache, cacheKey);
+  if (cached) return cached;
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
   const operational = readOperationalRecords_(spreadsheetId, centers);
   const hybrid = readHybridRecordsForYear_(spreadsheetId, period.year, centers, operational.records);
   const records = hybrid.records.filter(function (r) { return r.hasData && scope.includes(r.center); });
-  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records);
+  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records, hybrid.records);
   const output = buildDashboard_(records, period, scope, hybrid.sheetName, hybrid.lastRow, spreadsheetId, actor, yearlyTotals);
   output.dataQuality.hybridMerge = hybrid.stats;
   if (request.includeTickets === false) output.tickets = [];
@@ -98,9 +98,9 @@ function searchTickets_(request, actor) {
     : Array.from({length:currentYear - FIRST_REPORT_YEAR + 1}, function (_, index) { return FIRST_REPORT_YEAR + index; });
   const cache = CacheService.getScriptCache();
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
-  const cached = cache.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.email, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
+  const cached = safeCacheGet_(cache, cacheKey);
+  if (cached) return cached;
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
   const lowerQuery = query.toLowerCase();
@@ -336,12 +336,14 @@ function yearlyTotalFromRecords_(records, year) {
   };
 }
 
-function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, operationalRecords) {
+function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, operationalRecords, selectedYearRecords) {
   const lastYear = Math.max(new Date().getFullYear(), selectedYear);
   const totals = [];
   for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
-    const hybrid = readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords);
-    const scoped = hybrid.records.filter(function (record) { return record.hasData && scope.includes(record.center); });
+    const yearRecords = year === selectedYear && selectedYearRecords
+      ? selectedYearRecords
+      : readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords).records;
+    const scoped = yearRecords.filter(function (record) { return record.hasData && scope.includes(record.center); });
     totals.push(yearlyTotalFromRecords_(scoped, year));
   }
   return totals;
@@ -753,7 +755,14 @@ function groupParts_(rows) {
 
 function centerRegistry_() {
   const custom = parseJsonProperty_(PropertiesService.getScriptProperties(), 'CENTERS_JSON', null);
-  return Array.isArray(custom) && custom.length ? custom : DEFAULT_CENTERS;
+  if (!Array.isArray(custom) || !custom.length) return DEFAULT_CENTERS;
+  const registry = custom.slice();
+  DEFAULT_CENTERS.forEach(function (center) {
+    if (!registry.some(function (item) { return clean_(item.id).toLowerCase() === center.id || clean_(item.name).toLowerCase() === center.name.toLowerCase(); })) {
+      registry.push(center);
+    }
+  });
+  return registry;
 }
 
 function resolveCenter_(value, centers) {
@@ -833,10 +842,36 @@ function iso_(value) { return value ? Utilities.formatDate(value, Session.getScr
 function clean_(value) { return value === null || value === undefined ? '' : String(value).trim(); }
 function number_(value) { const n = Number(value); return isFinite(n) && n > 0 ? n : 1; }
 function digest_(value) { return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value)).slice(0, 40); }
+function safeCacheGet_(cache, key) {
+  try {
+    const stored = cache.get(key);
+    if (!stored) return null;
+    if (stored.indexOf('chunks:') !== 0) return JSON.parse(stored);
+    const count = Number(stored.slice(7));
+    if (!Number.isInteger(count) || count < 1 || count > 80) return null;
+    const keys = Array.from({length: count}, function (_, index) { return key + ':part:' + index; });
+    const chunks = cache.getAll(keys);
+    if (keys.some(function (partKey) { return !chunks[partKey]; })) return null;
+    return JSON.parse(keys.map(function (partKey) { return chunks[partKey]; }).join(''));
+  } catch (error) {
+    console.warn('Dashboard cache read skipped: ' + String(error && error.message || error));
+    return null;
+  }
+}
 function safeCachePut_(cache, key, value, ttl) {
   try {
     const serialized = JSON.stringify(value);
-    if (Utilities.newBlob(serialized).getBytes().length <= 95000) cache.put(key, serialized, ttl);
+    if (Utilities.newBlob(serialized).getBytes().length <= 95000) {
+      cache.put(key, serialized, ttl);
+      return;
+    }
+    // CacheService limits each value to 100 KB. Split the response so large dashboards can still be cached.
+    const parts = serialized.match(/[\s\S]{1,15000}/g) || [];
+    if (!parts.length || parts.length > 80) return;
+    const entries = {};
+    parts.forEach(function (part, index) { entries[key + ':part:' + index] = part; });
+    cache.putAll(entries, ttl);
+    cache.put(key, 'chunks:' + parts.length, ttl);
   } catch (error) {
     console.warn('Dashboard cache skipped: ' + String(error && error.message || error));
   }

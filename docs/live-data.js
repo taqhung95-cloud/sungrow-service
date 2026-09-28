@@ -130,7 +130,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=47#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=48#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -165,6 +165,22 @@
     const month = q('#sg-period-month')?.value;
     if (year) return month && month !== 'all' ? year + '-' + month : year;
     return q('#sg-period').selectedOptions[0]?.dataset.livePeriod || cfg.defaultPeriod || new Date().toISOString().slice(0, 7);
+  }
+
+  function syncCenterOptions(data) {
+    const select = q('#sg-center');
+    if (!select || !data) return;
+    const names = [];
+    (data.centers || []).forEach(function (item) {
+      const name = String(item && item.center || '').trim();
+      if (name && !names.includes(name)) names.push(name);
+    });
+    if (!names.length) return;
+    const selected = select.value;
+    const existing = Array.from(select.options).map(function (option) { return option.value; }).filter(function (value) { return value !== 'all'; });
+    const complete = Array.from(new Set(existing.concat(names)));
+    select.innerHTML = '<option value="all">Tất cả trung tâm</option>' + complete.map(function (name) { return '<option value="' + esc(name) + '">' + esc(name) + '</option>'; }).join('');
+    select.value = complete.includes(selected) ? selected : 'all';
   }
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -208,7 +224,7 @@
       }
       if (nextRevision !== portalRevision) {
         portalRevision = nextRevision;
-        await loadLive({force:true,comparison:false});
+        await loadLive({comparison:false});
       }
     } catch (_) {
       // The regular dashboard refresh remains the fallback after a transient check failure.
@@ -236,8 +252,13 @@
       live = currentData;
       root.dataset.liveData = 'true';
       renderIdentity(live.actor);
+      syncCenterOptions(live);
       const refreshComparison = options.comparison !== false || !previousLive;
       if (refreshComparison) previousLive = null;
+      renderAll();
+      lastSuccessfulSync = Date.now();
+      const currentUpdated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      status('Đã đồng bộ', `${live.source.sheetName} · ${currentUpdated}${refreshComparison ? ' · đang tải kỳ so sánh' : ''}`, 'ok');
       const previousPeriod = /^\d{4}$/.test(periodKey)
         ? String(Number(periodKey) - 1)
         : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
@@ -249,7 +270,6 @@
       }
       if (sequence !== loadSequence) return;
       renderAll();
-      lastSuccessfulSync = Date.now();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       status('Đã đồng bộ', `${live.source.sheetName} · ${updated}${previousLive ? '' : ' · chưa tải kỳ so sánh'}`, previousLive ? 'ok' : '');
     } catch (error) {
@@ -991,11 +1011,11 @@
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
-  setInterval(() => {if(token && !document.hidden && !activeController)loadLive({force:true,comparison:false});},AUTO_SYNC_MS);
+  setInterval(() => {if(token && !document.hidden && !activeController)loadLive({comparison:false});},AUTO_SYNC_MS);
   setInterval(checkDashboardRevision,REVISION_SYNC_MS);
-  document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({force:true,comparison:false});});
+  document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({comparison:false});});
   document.addEventListener('visibilitychange',() => {if(!document.hidden)checkDashboardRevision();});
-  window.addEventListener('online',() => {if(token && !activeController)loadLive({force:true,comparison:false});});
+  window.addEventListener('online',() => {if(token && !activeController)loadLive({comparison:false});});
   window.addEventListener('focus',checkDashboardRevision);
   const savedToken = sessionStorage.getItem('sungrow_id_token');
   if (savedToken) {
