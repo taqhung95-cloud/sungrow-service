@@ -506,7 +506,7 @@
     else {
       const first = ticketSearchState.total ? (ticketSearchState.page - 1) * ticketSearchState.pageSize + 1 : 0;
       const last = Math.min(ticketSearchState.page * ticketSearchState.pageSize, ticketSearchState.total);
-      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · năm ${ticketSearchState.year || live.period.year}`;
+      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · năm ${ticketSearchState.year || live.period.year}${ticketSearchState.fallback?' · dữ liệu gần nhất; chờ cập nhật API phân trang':''}`;
     }
     renderTicketPager();
   }
@@ -547,10 +547,13 @@
     try {
       const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4)),status:q('#sg-status').value,page:page,pageSize:pageSize},controller.signal,2);
       if (sequence !== ticketSearchSequence) return;
-      ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],year:data.year};
+      ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],year:data.year,fallback:false};
     } catch (error) {
       if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
-      ticketSearchState = Object.assign({}, ticketSearchState, {rows:[],total:0,totalPages:1,loading:false,error:'Không tải được danh sách thiết bị. Vui lòng thử lại.'});
+      const center=q('#sg-center').value,statusFilter=q('#sg-status').value;
+      let fallbackRows=(live.tickets||[]).filter(function(ticket){const identity=[ticket.serialNumber,ticket.model].join(' ').toLowerCase();return(center==='all'||ticket.center===center)&&(!term||identity.includes(term))&&(statusFilter==='all'||ticketStatus(ticket)===statusFilter)});
+      const fallbackTotal=fallbackRows.length,fallbackPages=Math.max(1,Math.ceil(fallbackTotal/pageSize)),fallbackPage=Math.min(page,fallbackPages),fallbackStart=(fallbackPage-1)*pageSize;
+      ticketSearchState=Object.assign({},ticketSearchState,{rows:fallbackRows.slice(fallbackStart,fallbackStart+pageSize),total:fallbackTotal,page:fallbackPage,totalPages:fallbackPages,loading:false,error:'',statuses:Array.from(new Set((live.tickets||[]).map(ticketStatus).filter(Boolean))),year:live.period.year,fallback:true});
     } finally {
       if (ticketSearchController === controller) ticketSearchController = null;
       if (sequence === ticketSearchSequence) renderTickets();

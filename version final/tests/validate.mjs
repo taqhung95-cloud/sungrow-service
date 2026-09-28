@@ -335,7 +335,7 @@ assert.match(liveDataSource, /v=51#/, 'Iframe nhập liệu phải dùng cache k
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=52/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=53/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
 assert.match(entryHtml, /item\.canDelete/, 'Nút xóa phải phụ thuộc quyền do backend trả về.');
 assert.match(entryHtml, /case-row-actions/, 'Nút xóa phải nằm cạnh nút mở chi tiết trong cột thao tác.');
