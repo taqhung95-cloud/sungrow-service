@@ -1,7 +1,15 @@
-const APP_VERSION = '1.4.4-confirmed-error-projection';
+const APP_VERSION = '1.5.0-warranty-attachments';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
+const WARRANTY_LOOKUP_SHEET_ID = '1CPQkL-FJVxaXwuPKJUO-PnK9ML3s2KYXg8ZvmnfPev8';
+const CASE_EVIDENCE_FOLDERS = Object.freeze({
+  'Sungrow Service Center': '1oSqOD50t9O2VXZX7WHSDcagHUbYpJk67',
+  'XBSolar Center': '1I6W-C0hvJ4sJ4L7NE6v1rWe-drYM8coy',
+  'DAT Center': '1J_BodbodjndAJicA22FiM8ZXjQp9vfrQ',
+  'BKE Center': '1oS2Ub1fsl6kTywc-_zThQxOZdYpxEDhK',
+  'JGP Center': '1O9XohztuMW4utxCSPiIFoLVyghqETZr4'
+});
 
 const SHEETS = Object.freeze({
   cases: 'Hồ sơ thiết bị',
@@ -85,6 +93,7 @@ function handlePortalApi_(request) {
     getPortalSyncState: getPortalSyncState,
     listCases: listCases,
     searchCases: searchCases,
+    lookupWarranty: lookupWarranty,
     createCase: createCase,
     confirmWarranty: confirmWarranty,
     updateWorkOrder: updateWorkOrder,
@@ -193,6 +202,65 @@ function searchCases(idToken, rawQuery) {
   return listCases(idToken, { query: query, page: 1, pageSize: 200 }).items;
 }
 
+function lookupWarranty(idToken, serialNumber) {
+  authenticate_(idToken);
+  const serial = clean_(serialNumber).toUpperCase();
+  if (!serial) return { status: 'no_information', label: 'Không có thông tin' };
+  if (serial.length > 100) throw publicError_('Số sê-ri quá dài.');
+  const sheetId = PropertiesService.getScriptProperties().getProperty('WARRANTY_LOOKUP_SHEET_ID') || WARRANTY_LOOKUP_SHEET_ID;
+  const sheet = SpreadsheetApp.openById(sheetId).getSheets().find(function (candidate) {
+    if (!candidate.getLastRow() || !candidate.getLastColumn()) return false;
+    const names = candidate.getRange(1, 1, 1, candidate.getLastColumn()).getDisplayValues()[0].map(function (value) { return clean_(value).toLowerCase(); });
+    return names.indexOf('sn') !== -1 && names.indexOf('start date') !== -1 && names.indexOf('warranty package') !== -1;
+  });
+  if (!sheet) throw publicError_('Nguồn bảo hành không có tab với các cột SN, Start date, Warranty package.');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
+  const serialColumn = headers.findIndex(function (value) { return value.toUpperCase() === 'SN'; }) + 1;
+  const startColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'start date'; }) + 1;
+  const packageColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'warranty package'; }) + 1;
+  if (!serialColumn || !startColumn || !packageColumn) throw publicError_('Nguồn bảo hành thiếu cột SN, Start date hoặc Warranty package.');
+  const found = sheet.getRange(2, serialColumn, Math.max(1, sheet.getLastRow() - 1), 1)
+    .createTextFinder(serial).matchEntireCell(true).matchCase(false).findNext();
+  if (!found) return { status: 'no_information', label: 'Không có thông tin' };
+  const row = sheet.getRange(found.getRow(), 1, 1, headers.length).getValues()[0];
+  const start = warrantyDate_(row[startColumn - 1]);
+  const packageName = clean_(row[packageColumn - 1]);
+  const years = /extended/i.test(packageName) ? 10 : (/standard/i.test(packageName) ? 5 : 0);
+  if (!start || !years) return { status: 'insufficient', label: 'Thiếu thông tin bảo hành', package: packageName };
+  const expires = new Date(start.getFullYear() + years, start.getMonth(), start.getDate());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return { status: today <= expires ? 'valid' : 'expired', label: today <= expires ? 'Còn bảo hành' : 'Hết bảo hành', package: packageName, startDate: iso_(start), expiryDate: iso_(expires) };
+}
+
+function warrantyDate_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  const text = clean_(value);
+  let match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(text);
+  if (match) return validWarrantyDate_(Number(match[1]), Number(match[2]), Number(match[3]));
+  match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
+  return match ? validWarrantyDate_(Number(match[3]), Number(match[2]), Number(match[1])) : null;
+}
+
+function validWarrantyDate_(year, month, day) {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+}
+
+// Có thể chạy một lần để kiểm tra nguồn và lưu ID trong Script Properties.
+// Nếu không chạy, hệ thống vẫn dùng WARRANTY_LOOKUP_SHEET_ID ở trên.
+function configureWarrantyLookupSheet() {
+  const copy = SpreadsheetApp.openById(WARRANTY_LOOKUP_SHEET_ID);
+  const valid = copy.getSheets().some(function (sheet) {
+    if (sheet.getLastRow() < 1000 || !sheet.getLastColumn()) return false;
+    const names = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(function (value) { return clean_(value).toLowerCase(); });
+    return ['sn', 'start date', 'warranty package'].every(function (name) { return names.indexOf(name) !== -1; });
+  });
+  if (!valid) throw new Error('Google Sheet bảo hành thiếu cột hoặc số dòng; chưa đổi nguồn tra cứu.');
+  PropertiesService.getScriptProperties().setProperty('WARRANTY_LOOKUP_SHEET_ID', WARRANTY_LOOKUP_SHEET_ID);
+  return WARRANTY_LOOKUP_SHEET_ID;
+}
+
 function createCase(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'createCase');
@@ -202,21 +270,25 @@ function createCase(idToken, payload) {
   const receivedAt = parseDateRequired_(payload.receivedAt, 'Ngày nhận từ khách');
   const deviceType = required_(payload.deviceType, 'Loại thiết bị');
   const model = required_(payload.model, 'Model');
-  const serial = required_(payload.serialNumber, 'Số sê-ri (S/N)');
+  const serial = clean_(payload.serialNumber);
+  if (deviceType !== 'Fan' && !serial) throw publicError_('Số sê-ri (S/N) là bắt buộc, trừ thiết bị Fan.');
   const customerName = required_(payload.customerName, 'Tên khách hàng');
   const customerAddress = required_(payload.customerAddress, 'Địa chỉ khách hàng');
   const customerPhone = required_(payload.customerPhone, 'Số điện thoại khách hàng');
   const customerEmail = emailOptional_(payload.customerEmail, 'Email khách hàng');
   const project = clean_(payload.project);
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
-  const evidenceLink = required_(payload.evidenceLink, 'Liên kết hồ sơ Drive');
-  validateDriveLink_(evidenceLink);
+  const gsp = clean_(payload.gsp);
+  const ma = clean_(payload.ma);
+  if (gsp.length > 100 || ma.length > 100) throw publicError_('GSP hoặc MA quá dài.');
   const quantity = Math.max(1, Number(payload.quantity || 1));
   if (!Number.isFinite(quantity)) throw publicError_('Số lượng không hợp lệ.');
+  const evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
+    ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
     const caseId = makeId_('HS');
     const workOrderId = makeId_('CV');
     const now = new Date();
@@ -225,6 +297,8 @@ function createCase(idToken, payload) {
       'Loại thiết bị': deviceType,
       'Số sê-ri (S/N)': serial,
       'Model': model,
+      'GSP': gsp,
+      'MA': ma,
       'Số lượng': quantity,
       'Trung tâm tiếp nhận khách': center,
       'Ngày nhận từ khách': receivedAt,
@@ -651,7 +725,9 @@ function authenticateUncached_(idToken) {
     }
     if (user && !clean_(user.GoogleSub)) {
       const lock = LockService.getScriptLock();
-      lock.waitLock(10000);
+      // First-time account binding is serialized; leave room for several users
+      // signing in together instead of failing at the former 10-second limit.
+      lock.waitLock(30000);
       try {
         usersTable = readTableWithRows_(SHEETS.users);
         const lockedEmailMatches = usersTable.rows.filter(function (item) {
@@ -729,6 +805,7 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
   });
   return {
     caseId: item['Mã hồ sơ'], deviceType: item['Loại thiết bị'], serialNumber: item['Số sê-ri (S/N)'], model: item.Model,
+    gsp: clean_(item.GSP), ma: clean_(item.MA),
     quantity: Number(item['Số lượng'] || 1), intakeCenter: item['Trung tâm tiếp nhận khách'], currentCenter: item['Trung tâm đang giữ hàng'],
     caseStatus: item['Trạng thái hồ sơ'], warrantyStatus: item['Tình trạng bảo hành'],
     sender: hasPrivateAccess ? senderFromCase_(item) : '', project: hasPrivateAccess ? projectFromCase_(item) : '', evidenceLink: hasPrivateAccess ? safeDriveLink_(item['Liên kết hồ sơ Drive']) : '', note: hasPrivateAccess ? item['Ghi chú chung'] : '',
@@ -949,6 +1026,39 @@ function audit_(actor, action, type, id, center, before, after) {
     'Thời gian': new Date(), 'Email người dùng': actor.email, 'Hành động': action, 'Loại đối tượng': type,
     'Mã đối tượng': id, 'Trung tâm': center, 'Dữ liệu trước': before ? JSON.stringify(stripInternal_(before)) : '', 'Dữ liệu sau': after ? JSON.stringify(after) : ''
   });
+}
+
+function ensureSheetColumns_(sheetName, names) {
+  const sheet = spreadsheet_().getSheetByName(sheetName);
+  const headers = tableHeaders_(sheetName);
+  names.forEach(function (name) {
+    if (headers.indexOf(name) !== -1) return;
+    const column = headers.length + 1;
+    sheet.getRange(1, column).setValue(name);
+    headers.push(name);
+  });
+}
+
+function uploadCaseEvidence_(center, receivedAt, serial, model, customerName, attachment) {
+  if (!attachment || !attachment.base64 || !attachment.name) throw publicError_('Vui lòng đính kèm hồ sơ .zip hoặc .rar.');
+  const filename = clean_(attachment.name).replace(/[\\/]/g, '_').slice(0, 150);
+  if (!/\.(zip|rar)$/i.test(filename)) throw publicError_('Chỉ nhận file .zip hoặc .rar.');
+  if (attachment.base64.length > 11200000) throw publicError_('File vượt quá 8 MB. Vui lòng nén nhỏ hơn.');
+  const bytes = Utilities.base64Decode(attachment.base64);
+  if (bytes.length > 8 * 1024 * 1024) throw publicError_('File vượt quá 8 MB.');
+  const isZip = bytes[0] === 80 && bytes[1] === 75 && [3, 5, 7].indexOf(bytes[2]) !== -1;
+  const isRar = bytes[0] === 82 && bytes[1] === 97 && bytes[2] === 114 && bytes[3] === 33;
+  if ((/\.zip$/i.test(filename) && !isZip) || (/\.rar$/i.test(filename) && !isRar)) throw publicError_('Nội dung file không đúng định dạng .zip/.rar.');
+  const parentId = CASE_EVIDENCE_FOLDERS[center];
+  if (!parentId) throw publicError_('Chưa cấu hình thư mục Drive cho center.');
+  const safe = function (value) { return clean_(value).replace(/[\\/:*?"<>|\r\n]/g, '_').slice(0, 80) || 'Chua-co'; };
+  const folderName = [iso_(receivedAt), safe(serial || 'Fan-khong-SN'), safe(model), safe(customerName)].join('-');
+  const parent = DriveApp.getFolderById(parentId);
+  const existing = parent.getFoldersByName(folderName);
+  const folder = existing.hasNext() ? existing.next() : parent.createFolder(folderName);
+  const blob = Utilities.newBlob(bytes, /\.zip$/i.test(filename) ? 'application/zip' : 'application/vnd.rar', filename);
+  folder.createFile(blob);
+  return folder.getUrl();
 }
 
 /**

@@ -180,6 +180,8 @@ function readOperationalRecords_(spreadsheetId, centers) {
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
+      gsp: clean_(item.GSP),
+      ma: clean_(item.MA),
       receivedDate: date_(item['Ngày nhận từ khách']),
       distributor: clean_(item['Tên khách hàng']) || clean_(item['Đơn vị gửi hàng']) || clean_(item['Nơi gửi hàng']),
       workshop: clean_(item['Trung tâm đang giữ hàng']),
@@ -252,7 +254,7 @@ function fallbackHybridKey_(record) {
 
 function overlayOperationalRecord_(legacy, operational) {
   const merged = Object.assign({}, legacy);
-  ['warrantyConfirmation', 'warrantyStatus', 'center', 'checkDate', 'status', 'sparePartDate', 'returnDate', 'errorCode'].forEach(function (field) {
+  ['warrantyConfirmation', 'warrantyStatus', 'center', 'checkDate', 'status', 'sparePartDate', 'returnDate', 'errorCode', 'gsp', 'ma'].forEach(function (field) {
     if (operational[field] !== '' && operational[field] !== null && operational[field] !== undefined) merged[field] = operational[field];
   });
   if (operational.deliveryStatus && (!merged.deliveryStatus || !/^chưa\s+giao/i.test(operational.deliveryStatus))) {
@@ -618,6 +620,8 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
     deviceType: clean_(row[schema.deviceType]),
     serialNumber: clean_(row[schema.serialNumber]),
     model: clean_(row[schema.model]),
+    gsp: '',
+    ma: '',
     receivedDate: date_(row[schema.receivedDate]),
     distributor: clean_(row[schema.distributor]),
     workshop: clean_(row[schema.workshop]),
@@ -646,6 +650,8 @@ function publicTicket_(r) {
     id: r.id,
     serialNumber: r.serialNumber,
     model: r.model,
+    gsp: r.gsp || '',
+    ma: r.ma || '',
     deviceType: r.deviceType,
     receivedDate: iso_(r.receivedDate),
     returnDate: iso_(r.returnDate),

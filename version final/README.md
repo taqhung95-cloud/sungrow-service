@@ -88,3 +88,13 @@ Số lượng KPI dùng trường `Số lượng`; không mặc định mỗi h�
 9. Thử account không có trong tab `Người dùng`, account inactive, account trùng email/GoogleSub và account có `GoogleSub` sai; tất cả phải bị từ chối.
 
 Việc cập nhật code local hoặc push GitHub không tự deploy Google Apps Script.
+
+## Triển khai bổ sung: bảo hành và tệp hồ sơ
+
+1. Sao lưu bản deployment đang chạy. Chép lại `Code.gs`, `LegacyDashboardApi.gs` và `appsscript.json` từ bản này; frontend tương ứng là `docs/entry.html`, `docs/live-data.js`, `docs/visual-polish.css`. Không thay các tab dữ liệu lịch sử.
+2. Nguồn tra cứu hiện là Google Sheet `1CPQkL-FJVxaXwuPKJUO-PnK9ML3s2KYXg8ZvmnfPev8`. Bảo đảm tài khoản chạy Web App có quyền xem file này. Không cần bật Advanced Drive service để đọc bảng bảo hành.
+3. Có thể chạy `configureWarrantyLookupSheet()` một lần để kiểm tra đủ các cột `SN`, `Start date`, `Warranty package` và lưu ID vào Script Property `WARRANTY_LOOKUP_SHEET_ID`. Nếu không chạy, code vẫn dùng ID mặc định ở trên.
+4. Từ nay cập nhật trực tiếp trên cùng Google Sheet này thì hệ thống đọc dữ liệu mới mà không phải chuyển đổi lại. Nếu thay bằng một file Google Sheet khác, cập nhật Script Property `WARRANTY_LOOKUP_SHEET_ID` bằng ID file mới.
+5. Tài khoản chạy Web App phải có quyền ghi vào 5 thư mục center đã cấu hình. Tệp `.zip/.rar` tối đa 8 MB; folder con được tạo theo `ngày nhận-SN-model-khách hàng`. Không cấp quyền công khai tự động.
+6. Deploy **New version** của Apps Script, rồi kiểm tra GitHub Pages đã xuất bản bản frontend tương ứng. Thử lần lượt: S/N Standard/Extended/cũ/hết hạn/không tìm thấy; Fan không SN; GSP/MA; upload cho từng center; kiểm tra dữ liệu chỉ hiện đúng phạm vi center; kiểm tra dashboard lịch sử và mới.
+7. Thử đồng thời ít nhất 10 tài khoản Google thật trong môi trường triển khai. Việc kiểm tra cú pháp local không thay thế được kiểm thử tải OAuth, quota Apps Script và quyền Drive thực tế.

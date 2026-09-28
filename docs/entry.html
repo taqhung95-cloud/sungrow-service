@@ -107,15 +107,17 @@
           <div><label>Trung tâm tiếp nhận *</label><select name="intakeCenter" class="center-select" required></select></div>
           <div><label>Loại thiết bị *</label><select name="deviceType" required><option value="">Chọn loại thiết bị</option><option>Inverter</option><option>Fan</option><option>Power Stack</option><option>Battery</option><option>Thiết bị giám sát</option><option>Backup Box</option><option>Meter</option><option>Khác</option></select></div>
           <div><label>Model *</label><input name="model" required placeholder="Ví dụ: SG110CX"></div>
-          <div><label>Số sê-ri (S/N) *</label><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"></div>
+          <div><label>Số sê-ri (S/N) <span id="serialRequired">*</span></label><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"><div id="warrantyLookup" class="muted" aria-live="polite">Nhập S/N để tra cứu bảo hành.</div></div>
           <div><label>Số lượng *</label><input name="quantity" type="number" min="1" value="1" required></div>
+          <div><label>GSP</label><input name="gsp" maxlength="100" placeholder="Nếu có"></div>
+          <div><label>MA</label><input name="ma" maxlength="100" placeholder="Nếu có"></div>
           <div><label>Tình trạng bảo hành</label><input value="Chờ xác nhận - do quản lý Sungrow xác nhận" disabled></div>
           <div class="span3"><h3>Thông tin khách hàng</h3></div>
           <div><label>Tên khách hàng *</label><input name="customerName" required></div>
           <div><label>Số điện thoại khách hàng *</label><input name="customerPhone" type="tel" required></div>
           <div><label>Email khách hàng</label><input name="customerEmail" type="email" placeholder="Nếu có"></div>
           <div class="span3"><label>Địa chỉ khách hàng *</label><input name="customerAddress" required></div>
-          <div class="span3"><label>Liên kết hồ sơ Google Drive *</label><input name="evidenceLink" type="url" required placeholder="https://drive.google.com/..."><div class="muted">Center cần cấp quyền xem liên kết này cho người quản lý.</div></div>
+          <div class="span3"><label>Hồ sơ đính kèm (.zip/.rar) *</label><input name="evidenceFile" type="file" accept=".zip,.rar" required><div class="muted">Tối đa 8 MB. Cần gồm hình ảnh, file thu thập thông tin sự cố, log file và tài liệu liên quan. Hệ thống tự lưu vào thư mục của center.</div></div>
           <div class="span3"><label>Hiện tượng ban đầu *</label><textarea name="initialIssue" required></textarea></div>
           <div class="span3"><label>Ghi chú chung</label><textarea name="note"></textarea></div>
         </div><div class="actions"><button class="primary" type="submit">Tạo hồ sơ</button></div></form>
@@ -188,7 +190,37 @@
 
     function bindEvents(){
       $$('.tab').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
-      $('#receiveForm').addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{const result=await call('createCase',[state.token,formData(e.target)]);showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}});
+      const receiveForm=$('#receiveForm');
+      const serialInput=receiveForm.elements.serialNumber;
+      receiveForm.elements.deviceType.addEventListener('change',()=>{
+        const fan=receiveForm.elements.deviceType.value==='Fan';
+        serialInput.required=!fan;
+        $('#serialRequired').textContent=fan?'(không bắt buộc)':'*';
+        if(fan)$('#warrantyLookup').textContent='Fan không yêu cầu S/N.';
+        else if(serialInput.value.trim())serialInput.dispatchEvent(new Event('input'));
+        else $('#warrantyLookup').textContent='Nhập S/N để tra cứu bảo hành.';
+      });
+      let warrantyTimer=0;
+      serialInput.addEventListener('input',()=>{
+        clearTimeout(warrantyTimer);
+        const serial=serialInput.value.trim();
+        if(receiveForm.elements.deviceType.value==='Fan'||!serial){$('#warrantyLookup').textContent=receiveForm.elements.deviceType.value==='Fan'?'Fan không yêu cầu S/N.':'Nhập S/N để tra cứu bảo hành.';return}
+        $('#warrantyLookup').textContent='Đang tra cứu bảo hành…';
+        warrantyTimer=setTimeout(async()=>{
+          try{
+            const result=await call('lookupWarranty',[state.token,serial]);
+            if(serialInput.value.trim()===serial)$('#warrantyLookup').textContent=result.label+(result.expiryDate?` · Đến ${result.expiryDate}`:'');
+          }catch(error){if(serialInput.value.trim()===serial)$('#warrantyLookup').textContent='Không thể tra cứu lúc này: '+error.message}
+        },450);
+      });
+      receiveForm.addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{
+        const file=e.target.elements.evidenceFile.files[0];
+        if(!file||!(/\.(zip|rar)$/i.test(file.name)))throw new Error('Vui lòng chọn file .zip hoặc .rar.');
+        if(file.size>8*1024*1024)throw new Error('File vượt quá 8 MB.');
+        const attachment={name:file.name,base64:await fileToBase64(file)};
+        const payload=formData(e.target);delete payload.evidenceFile;payload.attachment=attachment;
+        const result=await call('createCase',[state.token,payload]);showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();e.target.elements.deviceType.dispatchEvent(new Event('change'));$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')
+      }catch(err){showMessage(err.message,true)}finally{busy(btn,false)}});
       $('#caseRefresh').addEventListener('click',()=>loadCases(true));
       $('#caseQuery').addEventListener('keydown',e=>{if(e.key==='Enter')loadCases(true)});
       $('#caseStatus').addEventListener('change',()=>loadCases(true));
@@ -347,18 +379,22 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0){
-      const readOnly=['getBootstrap','getPortalSyncState','listCases','searchCases'].includes(name);
+      const readOnly=['getBootstrap','getPortalSyncState','listCases','searchCases','lookupWarranty'].includes(name);
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
-        const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store'});
+        const controller=new AbortController();
+        const timeout=setTimeout(()=>controller.abort(),name==='createCase'?90000:45000);
+        let response;
+        try{response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal})}
+        finally{clearTimeout(timeout)}
         if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}
         const result=await response.json();
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
         return result.data;
       }catch(error){
-        const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|Failed to fetch|NetworkError/i.test(error.message||''));
+        const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
         if(retryable&&attempt<2){await new Promise(resolve=>setTimeout(resolve,[500,1400][attempt]));return call(name,args,attempt+1)}
         throw error;
       }
@@ -409,6 +445,7 @@
       const drawerOpen = drawer && !drawer.classList.contains('hidden');
       return Boolean(drawerOpen || document.querySelector('.case-form-panel form'));
     }
+    function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Không đọc được file đính kèm.'));reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');reader.readAsDataURL(file)})}
 
     function showRealtimeNotice() {
       let notice = document.getElementById('portalRealtimeNotice');

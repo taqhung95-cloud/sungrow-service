@@ -215,6 +215,10 @@
 #sg-preview #sg-tickets .sg-controls{margin-left:auto;flex-wrap:nowrap}
 #sg-preview #sg-tickets .sg-search{width:280px}
 #sg-preview #sg-tickets .sg-status{font-size:12px;padding:5px 8px;white-space:nowrap}
+#sg-preview #sg-tickets .sg-device-table{min-width:1100px}
+#sg-preview .sg-detail-parts{margin-top:18px;padding-top:16px;border-top:1px solid #e5eaee}
+#sg-preview .sg-detail-parts h3{margin:0 0 10px;font-size:13px}
+#sg-preview .sg-detail-parts table{max-width:520px}
 #sg-preview #sg-tickets .sg-age{white-space:nowrap;font-weight:500}
 #sg-preview #sg-tickets .sg-detail-btn{width:32px;height:32px;border:1px solid #d9dde1;border-radius:6px;background:#fff}
 #sg-preview #sg-tickets .sg-detail-btn:hover{border-color:var(--sg-orange);color:#a44800}

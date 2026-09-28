@@ -25,7 +25,7 @@
   let revisionCheckBusy = false;
 
   const style = document.createElement('style');
-  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-live-text strong{display:block;color:#333}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}#sg-preview #sg-period-year{width:76px!important;min-width:76px!important}#sg-preview #sg-period-month{width:98px!important;min-width:98px!important}#sg-preview .sg-filter-panel #sg-center{width:154px!important;min-width:154px!important}#sg-preview .sg-filter-panel #sg-compare-mode{width:100px!important;min-width:100px!important}';
+  style.textContent = '#sg-preview .sg-live-box{display:flex;align-items:center;gap:8px}.sg-live-dot{width:8px;height:8px;border-radius:50%;background:#c56b0b}.sg-live-dot.ok{background:#2f7a52}.sg-live-dot.error{background:#b63d35}.sg-live-text{font-size:10px;color:#606060}.sg-login-slot{display:flex;align-items:center;min-height:32px}.sg-account-name{display:block;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#333;font-size:11px;font-weight:600}.sg-account-role{margin-top:10px;color:#606060}.sg-side-foot>div:first-child{display:flex;align-items:center;min-width:0}.sg-side-foot>div:first-child span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sg-refresh-button{border:1px solid #d9dee2;background:#fff;color:#4c5c66;border-radius:5px;padding:5px 8px;font-size:10px;line-height:1;white-space:nowrap}.sg-refresh-button:hover{border-color:#ff7900;color:#a74b00}.sg-refresh-button:disabled{opacity:.5;cursor:default}#sg-preview #sg-period-year{width:76px!important;min-width:76px!important}#sg-preview #sg-period-month{width:98px!important;min-width:98px!important}#sg-preview .sg-filter-panel #sg-center{width:154px!important;min-width:154px!important}#sg-preview .sg-filter-panel #sg-compare-mode{width:138px!important;min-width:138px!important;text-overflow:clip!important}';
   style.textContent += '#sg-preview .sg-role-hidden{display:none!important}#sg-preview .sg-nav-parent{position:relative;padding-left:6px!important;padding-right:30px!important;color:#9a4708;font-size:13.5px!important;font-weight:700;letter-spacing:-.1px;white-space:nowrap}#sg-preview .sg-nav-parent::after{content:"";position:absolute;right:12px;top:50%;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-65%) rotate(-45deg);transform-origin:50% 50%;transition:transform .16s ease}#sg-preview .sg-nav-parent[aria-expanded="true"]::after{transform:translateY(-75%) rotate(45deg)}#sg-preview .sg-nav-children{display:grid;gap:3px;margin:0 0 5px 9px;padding:2px 0 3px 10px;border-left:1px solid #e7e8ea}#sg-preview .sg-nav-children[hidden]{display:none!important}#sg-preview .sg-nav-children button{min-height:38px;padding:8px 10px;font-size:12px;font-weight:400}#sg-preview .sg-platform-parent{margin-top:5px;border-top:1px solid #f0f1f2;padding-top:15px!important;border-radius:0}#sg-preview .sg-signout{margin-top:11px;padding:7px 0;border:0;background:transparent;color:#a44800;font-size:11px;font-weight:600;text-align:left}#sg-preview .sg-signout:hover{text-decoration:underline}#sg-preview .sg-portal-frame{display:none;width:100%;height:calc(100vh - 64px);min-height:0;border:0;background:#f5f6f7;flex:1}#sg-preview .sg-main.sg-portal-mode>.sg-content{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-portal-frame{display:block!important}#sg-preview .sg-main.sg-portal-mode .sg-filter-panel,#sg-preview .sg-main.sg-portal-mode .sg-demo,#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:none!important}#sg-preview .sg-main.sg-portal-mode>.sg-top{display:flex!important;min-height:64px;justify-content:flex-start}@media(min-width:581px){#sg-preview .sg-side{padding-left:14px!important;padding-right:14px!important}#sg-preview .sg-brand{display:block!important;width:100%;min-height:72px;padding:0 4px 24px!important}#sg-preview .sg-official-logo{width:150px;height:32px;padding:2px 0 10px!important}#sg-preview .sg-official-logo svg{display:block;width:150px!important;height:20px!important;max-width:none!important}#sg-preview .sg-brand small{display:block;margin:0;padding:0!important;font-size:12px;line-height:18px;letter-spacing:1.25px}}';
   style.textContent += '#sg-auth-page{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#f8f9fa 0%,#f1f3f5 55%,#fff4e8 100%);font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif;color:#262626}#sg-auth-page[hidden]{display:none!important}#sg-auth-page .sg-auth-card{width:min(100%,430px);padding:44px 42px 38px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;box-shadow:0 22px 65px rgba(25,35,45,.12);text-align:center}#sg-auth-page .sg-auth-brand{display:flex;justify-content:center;padding-bottom:28px;border-bottom:1px solid #ededed}#sg-auth-page .sg-auth-brand .sg-brand{padding:0!important}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:210px;height:auto}#sg-auth-page .sg-auth-brand small{display:block;margin-top:9px;color:#606060;font-size:13px;letter-spacing:2px}#sg-auth-page h1{margin:28px 0 10px;font-size:24px;font-weight:600;line-height:1.35}#sg-auth-page .sg-auth-copy{margin:0 auto 26px;max-width:315px;color:#667085;font-size:13px;line-height:1.65}#sg-auth-login-slot{display:flex;justify-content:center;min-height:44px}#sg-auth-message{min-height:20px;margin:18px 0 0;color:#667085;font-size:12px;line-height:1.5}#sg-auth-message.sg-auth-error{color:#b42318}#sg-auth-page .sg-auth-note{margin:25px 0 0;padding-top:20px;border-top:1px solid #ededed;color:#8a8f98;font-size:11px;line-height:1.6}@media(max-width:520px){#sg-auth-page{padding:16px}#sg-auth-page .sg-auth-card{padding:34px 24px 30px}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:180px}}';
   document.head.appendChild(style);
@@ -130,7 +130,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=48#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=49#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -190,14 +190,30 @@
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
         const body = new URLSearchParams({payload: JSON.stringify(payload)});
-        const response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow', signal, cache:'no-store'});
+        const requestController = new AbortController();
+        const timeout = setTimeout(() => requestController.abort(), 45000);
+        if (signal?.aborted) requestController.abort();
+        const forwardAbort = () => requestController.abort();
+        signal?.addEventListener('abort', forwardAbort, {once:true});
+        let response;
+        try {
+          response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow', signal:requestController.signal, cache:'no-store'});
+        } finally {
+          clearTimeout(timeout);
+          signal?.removeEventListener('abort', forwardAbort);
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const result = await response.json();
-        if (!result.ok) throw new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
+        if (!result.ok) {
+          const error = new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
+          error.code = result.error?.code || '';
+          throw error;
+        }
         return result.data;
       } catch (error) {
         if (signal.aborted) throw error;
         lastError = error;
+        if (/AUTH|TOKEN|FORBIDDEN|INVALID|ACTION_NOT_ALLOWED|UNAUTHORIZED/.test(String(error.code || ''))) throw error;
         if (attempt < attempts - 1) await delay([700,1800,3500][attempt] || 3500);
       }
     }
@@ -391,7 +407,7 @@
     return '<div class="sg-mini-table-head sg-attention-list-head"><span>Thiết bị</span><span>Center</span><span>Trạng thái</span><span title="Thời gian xử lý">Xử lý</span></div><div class="sg-card-list-body sg-attention-list-body">' + body + '</div>';
   }
   function ticketStatus(t) {
-    return t.deliveryStatus || t.warrantyStatus || 'Chưa cập nhật';
+    return t.status || t.deliveryStatus || 'Chưa cập nhật';
   }
 
   function ticketDuration(t) {
@@ -406,15 +422,22 @@
   }
 
   function ticketTable(rows, emptyMessage) {
-    const columns = '<colgroup><col style="width:22%"><col style="width:32%"><col style="width:16%"><col style="width:16%"><col style="width:10%"><col style="width:52px"></colgroup>';
+    const columns = '<colgroup><col style="width:19%"><col style="width:26%"><col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:13%"><col style="width:12%"><col style="width:52px"></colgroup>';
     const body = rows.map(function(t) {
       const serial = t.serialNumber ? 'S/N ' + t.serialNumber : 'Chưa có S/N';
       const status = ticketStatus(t);
       const duration = ticketDuration(t);
       const identity = [t.model || t.deviceType || 'Chưa xác định',t.serialNumber || ''].filter(Boolean).join(' ');
-      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${duration.old?'old':''}" title="${esc(duration.title)}">${esc(duration.text)}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin ${esc(identity)}">↗</button></td></tr>`;
+      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td>${esc(t.gsp || '—')}</td><td>${esc(t.ma || '—')}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${duration.old?'old':''}" title="${esc(duration.title)}">${esc(duration.text)}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin ${esc(identity)}">↗</button></td></tr>`;
     }).join('');
-    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="6">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
+    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>GSP</th><th>MA</th><th>Trung tâm</th><th>Trạng thái xử lý</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="8">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
+  }
+  function syncTicketStatusOptions(rows) {
+    const select = q('#sg-status');
+    const selected = select.value;
+    const values = Array.from(new Set(rows.map(ticketStatus).filter(Boolean))).sort((a,b) => a.localeCompare(b,'vi'));
+    select.innerHTML = '<option value="all">Tất cả trạng thái</option>' + values.map(value => '<option value="' + esc(value) + '">' + esc(value) + '</option>').join('');
+    select.value = values.includes(selected) ? selected : 'all';
   }
   function renderMonthlyComparison() {
     const grid = q('#sg-month-compare-grid');
@@ -475,11 +498,12 @@
   function renderTickets() {
     const term = (q('#sg-search').value || '').trim().toLowerCase();
     const center = q('#sg-center').value;
-    const statusFilter = q('#sg-status').value;
     const searchLoading = !!(term && ticketSearchState.term === term && ticketSearchState.loading);
     const searchedAllYears = term && ticketSearchState.term === term && Array.isArray(ticketSearchState.rows);
     let rows = searchedAllYears ? ticketSearchState.rows.slice() : live.tickets.slice();
     rows = rows.filter(t => center === 'all' || t.center === center);
+    syncTicketStatusOptions(rows);
+    const statusFilter = q('#sg-status').value;
     if (term && !searchedAllYears) rows = rows.filter(t => [t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
     if (statusFilter !== 'all') rows = rows.filter(t => ticketStatus(t) === statusFilter);
     q('#sg-tickets-table').innerHTML = searchLoading ? ticketTable([], 'Đang tìm trong năm đang chọn…') : ticketTable(rows);
@@ -543,13 +567,18 @@
       ['Ngày trả',formatDate(ticket.returnDate)],
       ['Trung tâm',ticket.center || '—'],
       ['Tình trạng bảo hành',ticket.warrantyStatus || 'Chưa có thông tin'],
+      ['GSP',ticket.gsp || '—'],
+      ['MA',ticket.ma || '—'],
       ['Lỗi ghi nhận',ticket.error || '—'],
       ['Trạng thái',status],
       ['Thời gian xử lý',duration.text]
     ];
     const detail = q('#sg-detail');
     detail.classList.remove('sg-hidden');
-    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>';
+    const warrantyConfirmed = ['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].includes(ticket.warrantyStatus);
+    const parts = Array.isArray(ticket.parts) ? ticket.parts.filter(part => part.pn && Number(part.qty) > 0) : [];
+    const partsHtml = warrantyConfirmed ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<table><thead><tr><th>Part number</th><th>Số lượng</th></tr></thead><tbody>' + parts.map(part => '<tr><td>' + esc(part.pn) + '</td><td>' + esc(part.qty) + '</td></tr>').join('') + '</tbody></table>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
+    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>' + partsHtml;
     detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
   function fallbackModelTypes() {
@@ -907,7 +936,7 @@
     setAuthMessage('Đang xác thực tài khoản và phân quyền…');
     sessionStorage.setItem('sungrow_id_token', token);
     try {
-      const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 1);
+      const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 3);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
       if (!bootstrap.actor?.isGlobalManager) {
