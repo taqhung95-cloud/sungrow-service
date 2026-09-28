@@ -150,7 +150,7 @@ function readOperationalRecords_(spreadsheetId, centers) {
     }, {});
   }
 
-  const cases = objects('Hồ sơ thiết bị');
+  const cases = objects('Hồ sơ thiết bị').filter(function (item) { return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy'; });
   if (!cases.length) return { records: [], sheetName: 'Hồ sơ thiết bị', lastRow: 0 };
   const worksByCase = grouped(objects('Công việc trung tâm'), 'Mã hồ sơ');
   const issuesByWork = grouped(objects('Lỗi thiết bị'), 'Mã công việc');

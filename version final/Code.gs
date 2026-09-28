@@ -1,4 +1,4 @@
-const APP_VERSION = '1.5.0-warranty-attachments';
+const APP_VERSION = '1.5.1-case-cancellation';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -95,6 +95,7 @@ function handlePortalApi_(request) {
     searchCases: searchCases,
     lookupWarranty: lookupWarranty,
     createCase: createCase,
+    cancelCase: cancelCase,
     confirmWarranty: confirmWarranty,
     updateWorkOrder: updateWorkOrder,
     createTransfer: createTransfer,
@@ -172,6 +173,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const holdsByWork = groupBy_(holds, 'Mã công việc');
 
   const filtered = cases.filter(function (item) {
+    if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
     const ownWorks = workByCase[item['Mã hồ sơ']] || [];
     if (!canSeeCase_(actor, item, ownWorks)) return false;
     const searchable = [
@@ -362,6 +364,51 @@ function confirmWarranty() {
   return withSerializedWrite_('xác nhận bảo hành', function () {
     return confirmWarrantyUnlocked_.apply(null, args);
   });
+}
+
+function cancelCase(idToken, payload) {
+  const actor = authenticate_(idToken);
+  assertCapability_(actor, 'createCase');
+  payload = payload || {};
+  const caseId = required_(payload.caseId, 'Mã hồ sơ');
+  const reason = required_(payload.reason, 'Lý do xóa hồ sơ');
+  if (reason.length > 500) throw publicError_('Lý do xóa hồ sơ không được vượt quá 500 ký tự.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    ensureSheetColumns_(SHEETS.cases, ['Người hủy', 'Ngày hủy', 'Lý do hủy']);
+    const table = readTableWithRows_(SHEETS.cases);
+    const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    if (!record) throw publicError_('Không tìm thấy hồ sơ cần xóa.');
+    if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Hồ sơ đã được xóa trước đó.');
+    if (clean_(record['Tình trạng bảo hành']) !== 'Chờ xác nhận') {
+      throw publicError_('Không thể xóa hồ sơ sau khi đã xác nhận tình trạng bảo hành.');
+    }
+    const intakeCenter = clean_(record['Trung tâm tiếp nhận khách']);
+    const currentCenter = clean_(record['Trung tâm đang giữ hàng']);
+    if (!actor.isGlobalManager && actor.centers.indexOf(intakeCenter) === -1) {
+      throw publicError_('Chỉ nhân viên của center tiếp nhận mới được xóa hồ sơ này.');
+    }
+    if (currentCenter !== intakeCenter) throw publicError_('Không thể xóa hồ sơ đã rời center tiếp nhận.');
+    const hasTransfer = readTable_(SHEETS.transfers).some(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    if (hasTransfer) throw publicError_('Không thể xóa hồ sơ đã phát sinh luân chuyển center.');
+    const now = new Date();
+    const changes = {
+      'Trạng thái hồ sơ': 'Đã hủy',
+      'Người hủy': actor.email,
+      'Ngày hủy': now,
+      'Lý do hủy': reason,
+      'Người cập nhật gần nhất': actor.email,
+      'Ngày cập nhật gần nhất': now
+    };
+    updateObjectRow_(SHEETS.cases, tableHeaders_(SHEETS.cases), record.__rowNumber, changes);
+    audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes);
+    try { removeDashboardProjectionCase_(caseId); }
+    catch (projectionError) { console.error('Hồ sơ đã hủy nhưng không thể xóa projection ' + caseId + ': ' + String(projectionError && projectionError.message || projectionError)); }
+    return { caseId: caseId, cancelled: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function confirmWarrantyUnlocked_(idToken, payload) {
@@ -788,6 +835,10 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
   const ownWorks = isManager ? workOrders : workOrders.filter(function (work) { return actor.centers.indexOf(work['Trung tâm xử lý']) !== -1; });
   const hasEditableWork = ownWorks.some(function (work) { return ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1; });
   const canEditCase = (isManager || !isClosed) && (isManager || (hasCapability_(actor, 'updateWorkOrder') && hasEditableWork));
+  const canDeleteCase = clean_(item['Tình trạng bảo hành']) === 'Chờ xác nhận' &&
+    clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy' && transfers.length === 0 &&
+    clean_(item['Trung tâm đang giữ hàng']) === clean_(item['Trung tâm tiếp nhận khách']) &&
+    (isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1);
   const relevantTransfers = transfers.filter(function (transfer) {
     return isManager || actor.centers.indexOf(transfer['Trung tâm gửi']) !== -1 || actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1;
   }).map(function (transfer) {
@@ -815,6 +866,7 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
     createdBy: item['Người tạo'], createdAt: iso_(item['Ngày tạo']),
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
     isClosed: isClosed, canEditCase: canEditCase, canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
+    canDelete: canDeleteCase,
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
     workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
@@ -1077,6 +1129,7 @@ function syncDashboardProjectionCase_(caseId) {
     if (!sheet) return { ok: false, reason: 'missing_dashboard_sheet' };
     const caseRecord = readTable_(SHEETS.cases).find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (!caseRecord) return { ok: false, reason: 'missing_case' };
+    if (clean_(caseRecord['Trạng thái hồ sơ']) === 'Đã hủy') return removeDashboardProjectionCase_(caseId);
 
     const works = readTable_(SHEETS.workOrders).filter(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     const latest = works.length ? works[works.length - 1] : {};
@@ -1158,6 +1211,22 @@ function syncDashboardProjectionCase_(caseId) {
     console.error('Không thể đồng bộ hồ sơ ' + clean_(caseId) + ' sang Dữ liệu dashboard: ' + String(error && error.message || error));
     return { ok: false, reason: String(error && error.message || error) };
   }
+}
+
+function removeDashboardProjectionCase_(caseId) {
+  const sheet = spreadsheet_().getSheetByName(SHEETS.dashboard);
+  if (!sheet || sheet.getLastRow() < 2) return { ok: true, removed: 0 };
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
+  const caseIdColumn = headers.indexOf('Mã hồ sơ') + 1;
+  if (!caseIdColumn) return { ok: true, removed: 0 };
+  const values = sheet.getRange(2, caseIdColumn, sheet.getLastRow() - 1, 1).getDisplayValues();
+  let removed = 0;
+  for (let index = values.length - 1; index >= 0; index--) {
+    if (clean_(values[index][0]) !== clean_(caseId)) continue;
+    sheet.deleteRow(index + 2);
+    removed++;
+  }
+  return { ok: true, removed: removed };
 }
 
 function normalizeProjectionKey_(value) {

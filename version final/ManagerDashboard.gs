@@ -12,7 +12,9 @@ function getManagerDashboard(idToken, rawFilters) {
   const today = startOfDay_(new Date());
   const periodEndForAge = filters.end < today ? filters.end : today;
 
-  const normalized = cases.map(function (item) {
+  const normalized = cases.filter(function (item) {
+    return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy';
+  }).map(function (item) {
     const works = workByCase[item['Mã hồ sơ']] || [];
     const latest = works.length ? works[works.length - 1] : {};
     const technicalDates = works.map(function (work) { return asDate_(work['Ngày hoàn tất kỹ thuật']); }).filter(Boolean);
