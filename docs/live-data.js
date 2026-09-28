@@ -18,7 +18,7 @@
   let ticketSearchTimer = null;
   let ticketSearchController = null;
   let ticketSearchSequence = 0;
-  let ticketSearchState = {term:'',rows:null,total:0,truncated:false,loading:false,error:'',fromYear:null,toYear:null};
+  let ticketSearchState = {term:'',rows:null,total:0,loading:false,error:'',page:1,pageSize:20,totalPages:1,statuses:[],year:null};
   const AUTO_SYNC_MS = 120000;
   const REVISION_SYNC_MS = 15000;
   let portalRevision = '';
@@ -130,7 +130,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=50#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=51#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -261,7 +261,7 @@
     if (refreshButton) refreshButton.disabled = true;
     const periodKey = selectedPeriod();
     const center = q('#sg-center').value;
-    status('Đang đồng bộ', 'Đọc Google Sheet…');
+    status('Chưa đồng bộ', lastSuccessfulSync ? new Date(lastSuccessfulSync).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : new Date().toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
     try {
       const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center, refresh:forceRefresh}, controller.signal);
       if (sequence !== loadSequence) return;
@@ -274,7 +274,8 @@
       renderAll();
       lastSuccessfulSync = Date.now();
       const currentUpdated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      status('Đã đồng bộ', `${live.source.sheetName} · ${currentUpdated}${refreshComparison ? ' · đang tải kỳ so sánh' : ''}`, 'ok');
+      status('Đã đồng bộ', currentUpdated, 'ok');
+      if (!q('#sg-tickets').classList.contains('sg-hidden')) loadTicketPage(true);
       const previousPeriod = /^\d{4}$/.test(periodKey)
         ? String(Number(periodKey) - 1)
         : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
@@ -287,14 +288,14 @@
       if (sequence !== loadSequence) return;
       renderAll();
       const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      status('Đã đồng bộ', `${live.source.sheetName} · ${updated}${previousLive ? '' : ' · chưa tải kỳ so sánh'}`, previousLive ? 'ok' : '');
+      status('Đã đồng bộ', updated, 'ok');
     } catch (error) {
       if (controller.signal.aborted || sequence !== loadSequence) return;
       if (live) {
-        status('Kết nối gián đoạn', 'Đang giữ dữ liệu lần đồng bộ gần nhất', '');
+        status('Chưa đồng bộ', new Date(lastSuccessfulSync || Date.now()).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}), '');
       } else {
         const detail = String(error && error.message || 'Không nhận được phản hồi từ Apps Script').replace(/^INTERNAL_ERROR:\s*/,'');
-        status('Lỗi đồng bộ', detail, 'error');
+        status('Chưa đồng bộ', new Date().toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}), 'error');
         if (options.recovery !== false) setTimeout(function(){ if(token && !live && !activeController && navigator.onLine) loadLive({force:true,recovery:false}); },5000);
       }
     } finally {
@@ -422,20 +423,20 @@
   }
 
   function ticketTable(rows, emptyMessage) {
-    const columns = '<colgroup><col style="width:19%"><col style="width:26%"><col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:13%"><col style="width:12%"><col style="width:52px"></colgroup>';
+    const columns = '<colgroup><col style="width:8%"><col style="width:8%"><col style="width:19%"><col style="width:25%"><col style="width:12%"><col style="width:14%"><col style="width:12%"><col style="width:52px"></colgroup>';
     const body = rows.map(function(t) {
       const serial = t.serialNumber ? 'S/N ' + t.serialNumber : 'Chưa có S/N';
       const status = ticketStatus(t);
       const duration = ticketDuration(t);
       const identity = [t.model || t.deviceType || 'Chưa xác định',t.serialNumber || ''].filter(Boolean).join(' ');
-      return `<tr><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td>${esc(t.gsp || '—')}</td><td>${esc(t.ma || '—')}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${duration.old?'old':''}" title="${esc(duration.title)}">${esc(duration.text)}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin ${esc(identity)}">↗</button></td></tr>`;
+      return `<tr><td>${esc(t.gsp || '—')}</td><td>${esc(t.ma || '—')}</td><td><span class="sg-sn">${esc(t.model || t.deviceType || 'Chưa xác định')}</span><span class="sg-small">${esc(serial)}</span></td><td title="${esc(t.error)}">${esc(t.error)}</td><td title="${esc(t.center)}">${esc(shortCenter(t.center))}</td><td><span class="sg-status ${statusTone(status)}">${esc(status)}</span></td><td class="sg-age ${duration.old?'old':''}" title="${esc(duration.title)}">${esc(duration.text)}</td><td class="sg-action-cell"><button class="sg-detail-btn" type="button" data-live-ticket="${esc(t.id)}" aria-label="Xem thông tin ${esc(identity)}">↗</button></td></tr>`;
     }).join('');
-    return '<table class="sg-device-table">' + columns + '<thead><tr><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>GSP</th><th>MA</th><th>Trung tâm</th><th>Trạng thái xử lý</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="8">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
+    return '<table class="sg-device-table">' + columns + '<thead><tr><th>GSP</th><th>MA</th><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái xử lý</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="8">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
   }
-  function syncTicketStatusOptions(rows) {
+  function syncTicketStatusOptions(source) {
     const select = q('#sg-status');
     const selected = select.value;
-    const values = Array.from(new Set(rows.map(ticketStatus).filter(Boolean))).sort((a,b) => a.localeCompare(b,'vi'));
+    const values = Array.from(new Set((source || []).map(value => typeof value === 'string' ? value : ticketStatus(value)).filter(Boolean))).sort((a,b) => a.localeCompare(b,'vi'));
     select.innerHTML = '<option value="all">Tất cả trạng thái</option>' + values.map(value => '<option value="' + esc(value) + '">' + esc(value) + '</option>').join('');
     select.value = values.includes(selected) ? selected : 'all';
   }
@@ -496,61 +497,76 @@
   }
 
   function renderTickets() {
-    const term = (q('#sg-search').value || '').trim().toLowerCase();
-    const center = q('#sg-center').value;
-    const searchLoading = !!(term && ticketSearchState.term === term && ticketSearchState.loading);
-    const searchedAllYears = term && ticketSearchState.term === term && Array.isArray(ticketSearchState.rows);
-    let rows = searchedAllYears ? ticketSearchState.rows.slice() : live.tickets.slice();
-    rows = rows.filter(t => center === 'all' || t.center === center);
-    syncTicketStatusOptions(rows);
-    const statusFilter = q('#sg-status').value;
-    if (term && !searchedAllYears) rows = rows.filter(t => [t.serialNumber,t.model].join(' ').toLowerCase().includes(term));
-    if (statusFilter !== 'all') rows = rows.filter(t => ticketStatus(t) === statusFilter);
-    q('#sg-tickets-table').innerHTML = searchLoading ? ticketTable([], 'Đang tìm trong năm đang chọn…') : ticketTable(rows);
-    if (searchLoading) {
-      q('#sg-result-count').textContent = 'Đang tra cứu dữ liệu năm đang chọn…';
-    } else if (term && ticketSearchState.term === term && ticketSearchState.error) {
-      q('#sg-result-count').textContent = ticketSearchState.error;
-    } else if (searchedAllYears) {
-      const shown = rows.length;
-      const total = ticketSearchState.total;
-      const searchPeriod = ticketSearchState.fromYear === ticketSearchState.toYear ? String(ticketSearchState.toYear) : ticketSearchState.fromYear + '–' + ticketSearchState.toYear;
-      q('#sg-result-count').textContent = `${shown} dòng hiển thị · ${total} kết quả trong dữ liệu ${searchPeriod}${ticketSearchState.truncated ? ' · giới hạn 200 dòng' : ''}`;
-    } else {
-      q('#sg-result-count').textContent = `${rows.length} thiết bị gần nhất · dữ liệu từ tab ${live.source.sheetName}`;
+    const rows = Array.isArray(ticketSearchState.rows) ? ticketSearchState.rows : [];
+    syncTicketStatusOptions(ticketSearchState.statuses.length ? ticketSearchState.statuses : (live.tickets || []));
+    q('#sg-ticket-page-size').value = String(ticketSearchState.pageSize || 20);
+    q('#sg-tickets-table').innerHTML = ticketSearchState.loading ? ticketTable([], 'Đang tải danh sách thiết bị…') : ticketTable(rows);
+    if (ticketSearchState.loading) q('#sg-result-count').textContent = 'Đang tải danh sách thiết bị…';
+    else if (ticketSearchState.error) q('#sg-result-count').textContent = ticketSearchState.error;
+    else {
+      const first = ticketSearchState.total ? (ticketSearchState.page - 1) * ticketSearchState.pageSize + 1 : 0;
+      const last = Math.min(ticketSearchState.page * ticketSearchState.pageSize, ticketSearchState.total);
+      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · năm ${ticketSearchState.year || live.period.year}`;
     }
+    renderTicketPager();
+  }
+
+  function renderTicketPager() {
+    const total = ticketSearchState.totalPages || 1;
+    const current = ticketSearchState.page || 1;
+    const pages = [];
+    for (let page = 1; page <= total; page++) if (page === 1 || page === total || Math.abs(page - current) <= 2) pages.push(page);
+    let html = `<button class="sg-ticket-page" type="button" data-live-ticket-page="${current-1}" ${current<=1?'disabled':''}>‹</button>`;
+    let previous = 0;
+    pages.forEach(function(page) {
+      if (previous && page - previous > 1) html += '<span class="sg-ticket-ellipsis">…</span>';
+      html += `<button class="sg-ticket-page ${page===current?'active':''}" type="button" data-live-ticket-page="${page}" ${page===current?'aria-current="page"':''}>${page}</button>`;
+      previous = page;
+    });
+    html += `<button class="sg-ticket-page" type="button" data-live-ticket-page="${current+1}" ${current>=total?'disabled':''}>›</button>`;
+    q('#sg-ticket-pages').innerHTML = html;
+  }
+
+  async function loadTicketPage(resetPage) {
+    if (!live || !token) return;
+    const term = (q('#sg-search').value || '').trim().toLowerCase();
+    if (term.length === 1) {
+      ticketSearchState = Object.assign({}, ticketSearchState, {term:term,rows:[],total:0,totalPages:1,page:1,loading:false,error:'Nhập ít nhất 2 ký tự để tìm trong năm đang chọn.'});
+      renderTickets();
+      return;
+    }
+    clearTimeout(ticketSearchTimer);
+    if (ticketSearchController) ticketSearchController.abort();
+    const sequence = ++ticketSearchSequence;
+    const page = resetPage ? 1 : Math.max(1, Number(ticketSearchState.page) || 1);
+    const pageSize = Number(q('#sg-ticket-page-size').value) || ticketSearchState.pageSize || 20;
+    ticketSearchState = Object.assign({}, ticketSearchState, {term:term,page:page,pageSize:pageSize,loading:true,error:''});
+    renderTickets();
+    const controller = new AbortController();
+    ticketSearchController = controller;
+    try {
+      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4)),status:q('#sg-status').value,page:page,pageSize:pageSize},controller.signal,2);
+      if (sequence !== ticketSearchSequence) return;
+      ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],year:data.year};
+    } catch (error) {
+      if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
+      ticketSearchState = Object.assign({}, ticketSearchState, {rows:[],total:0,totalPages:1,loading:false,error:'Không tải được danh sách thiết bị. Vui lòng thử lại.'});
+    } finally {
+      if (ticketSearchController === controller) ticketSearchController = null;
+      if (sequence === ticketSearchSequence) renderTickets();
+    }
+  }
+
+  function goTicketPage(page) {
+    if (page < 1 || page > ticketSearchState.totalPages || page === ticketSearchState.page) return;
+    ticketSearchState.page = page;
+    loadTicketPage(false);
   }
 
   function scheduleTicketSearch() {
     q('#sg-detail').classList.add('sg-hidden');
-    const term = (q('#sg-search').value || '').trim().toLowerCase();
     clearTimeout(ticketSearchTimer);
-    if (ticketSearchController) ticketSearchController.abort();
-    const sequence = ++ticketSearchSequence;
-    ticketSearchState = {term:term,rows:null,total:0,truncated:false,loading:!!term,error:'',fromYear:null,toYear:null};
-    if (!term) { renderTickets(); return; }
-    if (term.length < 2) {
-      ticketSearchState.loading = false;
-      ticketSearchState.error = 'Nhập ít nhất 2 ký tự để tìm trong năm đang chọn.';
-      renderTickets();
-      return;
-    }
-    renderTickets();
-    ticketSearchTimer = setTimeout(async function() {
-      const controller = new AbortController();
-      ticketSearchController = controller;
-      try {
-        const data = await fetchDashboard({action:'tickets.search',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4))},controller.signal,2);
-        if (sequence !== ticketSearchSequence) return;
-        ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,truncated:!!data.truncated,loading:false,error:'',fromYear:data.fromYear,toYear:data.toYear};
-      } catch (error) {
-        if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
-        ticketSearchState = {term:term,rows:null,total:0,truncated:false,loading:false,error:'Không tra cứu được dữ liệu năm đang chọn. Vui lòng thử lại.',fromYear:null,toYear:null};
-      } finally {
-        if (ticketSearchController === controller) ticketSearchController = null;
-        if (sequence === ticketSearchSequence) renderTickets();
-      }
-    },300);
+    ticketSearchTimer = setTimeout(function(){ loadTicketPage(true); },300);
   }
 
   function showTicketDetail(ticketId) {
@@ -577,7 +593,7 @@
     detail.classList.remove('sg-hidden');
     const warrantyConfirmed = ['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].includes(ticket.warrantyStatus);
     const parts = Array.isArray(ticket.parts) ? ticket.parts.filter(part => part.pn && Number(part.qty) > 0) : [];
-    const partsHtml = warrantyConfirmed ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<table><thead><tr><th>Part number</th><th>Số lượng</th></tr></thead><tbody>' + parts.map(part => '<tr><td>' + esc(part.pn) + '</td><td>' + esc(part.qty) + '</td></tr>').join('') + '</tbody></table>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
+    const partsHtml = warrantyConfirmed ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<div class="sg-parts-inline">' + parts.map(part => '<div class="sg-part-chip"><strong>' + esc(part.pn) + '</strong><span>Số lượng: ' + esc(part.qty) + '</span></div>').join('') + '</div>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
     detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>' + partsHtml;
     detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
@@ -1028,12 +1044,17 @@
   }));
   q('#sg-model-type').addEventListener('change',() => {if(live)setTimeout(renderModels,0);});
   q('#sg-search').addEventListener('input',() => {if(live)scheduleTicketSearch();});
-  q('#sg-status').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');renderTickets();}});
+  q('#sg-status').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
+  q('#sg-ticket-page-size').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
   root.addEventListener('click',e => {
     if (!live) return;
     const detailButton = e.target.closest('[data-live-ticket]');
     if (detailButton) { showTicketDetail(detailButton.dataset.liveTicket); return; }
+    const ticketPageButton = e.target.closest('[data-live-ticket-page]');
+    if (ticketPageButton && !ticketPageButton.disabled) { goTicketPage(Number(ticketPageButton.dataset.liveTicketPage)); return; }
     if (e.target.closest('[data-live-close]')) { q('#sg-detail').classList.add('sg-hidden'); return; }
+    const pageButton = e.target.closest('[data-page]');
+    if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ loadTicketPage(true); },0);
     if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
   });
   q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});

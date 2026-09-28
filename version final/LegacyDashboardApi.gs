@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.8.9-confirmed-error-metrics';
+const APP_VERSION = '1.9.0-ticket-pagination';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -25,6 +25,7 @@ function doPost(e) {
     let data;
     if (request.action === 'dashboard.read') data = getDashboard_(request, actor);
     else if (request.action === 'tickets.search') data = searchTickets_(request, actor);
+    else if (request.action === 'tickets.page') data = pageTickets_(request, actor);
     else throw apiError_('ACTION_NOT_ALLOWED', 'Action is not allowed.');
     return json_({ ok: true, data: data });
   } catch (error) {
@@ -204,6 +205,58 @@ function readOperationalRecords_(spreadsheetId, centers) {
     };
   });
   return { records: records, sheetName: 'Hồ sơ thiết bị + dữ liệu nghiệp vụ', lastRow: cases.length + 1 };
+}
+
+function pageTickets_(request, actor) {
+  const query = clean_(request.query);
+  if (query.length === 1 || query.length > 100) throw apiError_('INVALID_QUERY', 'Nhập ít nhất 2 và không quá 100 ký tự để tra cứu thiết bị.');
+
+  const centers = centerRegistry_();
+  const allowed = actor.role === 'service_manager'
+    ? centers.map(function (c) { return c.name; })
+    : centers.filter(function (c) { return actor.centers.includes(c.id) || actor.centers.includes(c.name); }).map(function (c) { return c.name; });
+  if (!allowed.length) throw apiError_('FORBIDDEN', 'Tài khoản chưa được gán service center.');
+
+  const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
+  if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
+  const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
+  const requestedYear = Number(request.year);
+  const year = Number.isInteger(requestedYear) && requestedYear >= FIRST_REPORT_YEAR && requestedYear <= 2100 ? requestedYear : new Date().getFullYear();
+  const pageSize = [20, 50, 100].includes(Number(request.pageSize)) ? Number(request.pageSize) : 20;
+  const requestedPage = Math.max(1, Math.floor(Number(request.page) || 1));
+  const statusFilter = clean_(request.status);
+  const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const cacheKey = ['ticket-page', APP_VERSION, dataRevision, actor.email, scope.slice().sort().join(','), year, digest_(query.toUpperCase()), statusFilter, requestedPage, pageSize].join(':');
+  const cache = CacheService.getScriptCache();
+  const cached = request.refresh === true ? null : safeCacheGet_(cache, cacheKey);
+  if (cached) return cached;
+
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
+  const operational = readOperationalRecords_(spreadsheetId, centers);
+  const hybrid = readHybridRecordsForYear_(spreadsheetId, year, centers, operational.records);
+  const lowerQuery = query.toLowerCase();
+  const compactQuery = normalizeDeviceKey_(query);
+  let tickets = hybrid.records.filter(function (record) {
+    if (!record.hasData || !scope.includes(record.center)) return false;
+    if (!query) return true;
+    const searchable = [record.serialNumber, record.model].join(' ');
+    return searchable.toLowerCase().includes(lowerQuery) || (compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery));
+  }).map(publicTicket_);
+
+  const statuses = Array.from(new Set(tickets.map(function (ticket) {
+    return clean_(ticket.status || ticket.deliveryStatus) || 'Chưa cập nhật';
+  }))).sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+  if (statusFilter && statusFilter !== 'all') {
+    tickets = tickets.filter(function (ticket) { return (clean_(ticket.status || ticket.deliveryStatus) || 'Chưa cập nhật') === statusFilter; });
+  }
+  tickets.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
+  const total = tickets.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const start = (page - 1) * pageSize;
+  const output = { tickets: tickets.slice(start, start + pageSize), total: total, page: page, pageSize: pageSize, totalPages: totalPages, statuses: statuses, year: year };
+  safeCachePut_(cache, cacheKey, output, 120);
+  return output;
 }
 
 function readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords) {
