@@ -108,11 +108,8 @@
           <div><label>Trung tâm tiếp nhận *</label><select name="intakeCenter" class="center-select" required></select></div>
           <div><label>Loại thiết bị *</label><select name="deviceType" required><option value="">Chọn loại thiết bị</option><option>Inverter</option><option>Fan</option><option>Power Stack</option><option>Battery</option><option>Thiết bị giám sát</option><option>Backup Box</option><option>Meter</option><option>Khác</option></select></div>
           <div><label>Model *</label><input name="model" required placeholder="Ví dụ: SG110CX"></div>
-          <div><label>Số sê-ri (S/N) <span id="serialRequired">*</span></label><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"><div id="warrantyLookup" class="muted" aria-live="polite">Nhập S/N để tra cứu bảo hành.</div></div>
+          <div><label>Số sê-ri (S/N) <span id="serialRequired">*</span></label><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"></div>
           <div><label>Số lượng *</label><input name="quantity" type="number" min="1" value="1" required></div>
-          <div><label>GSP</label><input name="gsp" maxlength="100" placeholder="Nếu có"></div>
-          <div><label>MA</label><input name="ma" maxlength="100" placeholder="Nếu có"></div>
-          <div><label>Tình trạng bảo hành</label><input value="Chờ xác nhận - do quản lý Sungrow xác nhận" disabled></div>
           <div class="span3"><h3>Thông tin khách hàng</h3></div>
           <div><label>Tên khách hàng *</label><input name="customerName" required></div>
           <div><label>Số điện thoại khách hàng *</label><input name="customerPhone" type="tel" required></div>
@@ -147,7 +144,7 @@
     const CONFIG = window.SUNGROW_CONFIG || {};
     const EMBEDDED = window.self !== window.top;
     if(EMBEDDED)document.documentElement.classList.add('embedded');
-    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false };
+    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false, caseCache:{} };
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -197,22 +194,6 @@
         const fan=receiveForm.elements.deviceType.value==='Fan';
         serialInput.required=!fan;
         $('#serialRequired').textContent=fan?'(không bắt buộc)':'*';
-        if(fan)$('#warrantyLookup').textContent='Fan không yêu cầu S/N.';
-        else if(serialInput.value.trim())serialInput.dispatchEvent(new Event('input'));
-        else $('#warrantyLookup').textContent='Nhập S/N để tra cứu bảo hành.';
-      });
-      let warrantyTimer=0;
-      serialInput.addEventListener('input',()=>{
-        clearTimeout(warrantyTimer);
-        const serial=serialInput.value.trim();
-        if(receiveForm.elements.deviceType.value==='Fan'||!serial){$('#warrantyLookup').textContent=receiveForm.elements.deviceType.value==='Fan'?'Fan không yêu cầu S/N.':'Nhập S/N để tra cứu bảo hành.';return}
-        $('#warrantyLookup').textContent='Đang tra cứu bảo hành…';
-        warrantyTimer=setTimeout(async()=>{
-          try{
-            const result=await call('lookupWarranty',[state.token,serial]);
-            if(serialInput.value.trim()===serial)$('#warrantyLookup').textContent=result.label+(result.expiryDate?` · Đến ${result.expiryDate.split('-').reverse().join('/')}`:'');
-          }catch(error){if(serialInput.value.trim()===serial)$('#warrantyLookup').textContent='Không thể tra cứu lúc này: '+error.message}
-        },450);
       });
       receiveForm.addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{
         const file=e.target.elements.evidenceFile.files[0];
@@ -300,23 +281,22 @@
       if(state.caseLoading){state.caseReloadPending=true;return}
       state.caseLoading=true;
       const box=$('#caseResults');
-      box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
+      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};
+      const cacheKey=JSON.stringify(filters),cached=state.caseCache[cacheKey];
+      if(cached)renderCasesResponse(cached);else box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
       try{
-        const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};
         const response=await call('listCases',[state.token,filters]);
         const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;
-        state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;
-        $('#casePageSize').value=String(data.pageSize);
-        box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';
-        const first=data.total?(data.page-1)*data.pageSize+1:0;const last=Math.min(data.page*data.pageSize,data.total);
-        $('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager();
+        state.caseCache[cacheKey]=data;renderCasesResponse(data);
       }catch(err){
-        box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} <button type="button" class="secondary" onclick="loadCases(false)">Thử lại</button></span></td></tr>`;
+        if(!cached)box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} <button type="button" class="secondary" onclick="loadCases(false)">Thử lại</button></span></td></tr>`;
+        else showMessage('Đang hiển thị dữ liệu gần nhất; chưa lấy được bản cập nhật mới.',true);
       }finally{
         state.caseLoading=false;
         if(state.caseReloadPending){state.caseReloadPending=false;window.setTimeout(()=>loadCases(false),100)}
       }
     }
+    function renderCasesResponse(data){const box=$('#caseResults');state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;$('#casePageSize').value=String(data.pageSize);box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';const first=data.total?(data.page-1)*data.pageSize+1:0,last=Math.min(data.page*data.pageSize,data.total);$('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager()}
     function renderPager(){const total=state.caseTotalPages,current=state.casePage,pages=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-current)<=2)pages.push(p)}let html=`<button class="page-button" ${current<=1?'disabled':''} onclick="goCasePage(${current-1})">‹</button>`,previous=0;pages.forEach(p=>{if(previous&&p-previous>1)html+='<span style="padding:8px 3px">…</span>';html+=`<button class="page-button ${p===current?'active':''}" onclick="goCasePage(${p})">${p}</button>`;previous=p});html+=`<button class="page-button" ${current>=total?'disabled':''} onclick="goCasePage(${current+1})">›</button>`;$('#casePager').innerHTML=html}
     function goCasePage(page){if(page<1||page>state.caseTotalPages||page===state.casePage)return;state.casePage=page;loadCases(false)}
     function refreshCurrent(){if(state.currentView==='cases')loadCases(false);else if(state.currentView==='transfer')$('#transferSearch').click();else $('#updateSearch').click()}
@@ -373,7 +353,12 @@
     function partRow(item={}){return `<div class="repeat-row" data-part-usage-id="${esc(item.partUsageId||'')}" data-received-at="${esc(item.receivedAt||'')}" data-used-at="${esc(item.usedAt||'')}" data-note="${esc(item.note||'')}"><input placeholder="Part Number" value="${esc(item.partNumber||'')}"><input placeholder="Tên linh kiện" value="${esc(item.name||'')}"><input type="number" min="1" value="${esc(item.quantity||1)}"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div>`}
     function holdRow(item={}){const reasons=['Chờ khách hàng xác nhận','Khách hàng yêu cầu giữ hàng','Chờ linh kiện','Chờ phê duyệt bảo hành','Chờ vận chuyển','Yếu tố khách quan khác'];return `<div class="repeat-row" data-hold-id="${esc(item.holdId||'')}" data-note="${esc(item.note||'')}"><select><option value="">Chọn lý do</option>${reasons.map(x=>`<option ${x===item.reason?'selected':''}>${x}</option>`).join('')}</select><input type="date" value="${esc(item.startAt||'')}"><input type="date" value="${esc(item.endAt||'')}"><button type="button" class="danger" onclick="this.parentElement.remove()">Xóa</button></div>`}
     function rowsOrBlank(items,renderer){return (items&&items.length?items:[{}]).map(renderer).join('')}
-    function openWork(raw){const data=JSON.parse(raw),w=data.work,c=data.case;const panel=$(`#panel-${CSS.escape(c.caseId)}`);panel.innerHTML=`<form class="work-edit"><h3>Cập nhật ${esc(w.workOrderId)}</h3>${c.warrantyStatus==='Chờ xác nhận'?'<div class="notice error">Chỉ được tiếp nhận và kiểm tra ban đầu cho đến khi quản lý Sungrow xác nhận bảo hành.</div>':''}<div class="grid"><input type="hidden" name="workOrderId" value="${esc(w.workOrderId)}"><div><label>Trạng thái xử lý *</label><select name="workflowStatus">${workStatuses(c).map(x=>`<option ${x===w.workflowStatus?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Ngày hoàn tất chẩn đoán</label><input type="date" name="diagnosisCompletedAt" value="${esc(w.diagnosisCompletedAt)}"></div><div><label>Ngày hoàn tất kỹ thuật</label><input type="date" name="technicalCompletedAt" value="${esc(w.technicalCompletedAt)}"></div><div><label>Kết quả xử lý</label><select name="outcome"><option value="">Chưa có kết quả</option>${['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].map(x=>`<option ${x===w.outcome?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Loại thiết bị đổi</label><select name="replacementType"><option value="">Không áp dụng</option>${['Inverter','Battery','Logger','Meter','Khác'].map(x=>`<option ${x===w.replacementType?'selected':''}>${x}</option>`).join('')}</select></div><div class="span3"><label>Ghi chú nội bộ</label><textarea name="note">${esc(w.note)}</textarea></div></div><h3>Lỗi xác nhận</h3><div class="row-list issues">${rowsOrBlank(w.issues,issueRow)}</div><button type="button" class="secondary" onclick="addIssueRow(this)">+ Thêm lỗi</button><h3>Linh kiện sử dụng</h3><div class="row-list parts">${rowsOrBlank(w.parts,partRow)}</div><button type="button" class="secondary" onclick="addPartRow(this)">+ Thêm linh kiện</button><h3>Tạm dừng SLA</h3><div class="row-list holds">${rowsOrBlank(w.holds,holdRow)}</div><div class="actions"><button class="primary" type="submit">Lưu cập nhật</button></div></form>`;panel.querySelector('form').onsubmit=e=>saveWork(e,c.caseId)}
+    function openWork(raw){
+      const data=JSON.parse(raw),w=data.work,c=data.case;
+      const panel=$(`#panel-${CSS.escape(c.caseId)}`);
+      panel.innerHTML=`<form class="work-edit"><h3>Cập nhật ${esc(w.workOrderId)}</h3>${c.warrantyStatus==='Chờ xác nhận'?'<div class="notice error">Chỉ được tiếp nhận và kiểm tra ban đầu cho đến khi quản lý Sungrow xác nhận bảo hành.</div>':''}<div class="grid"><input type="hidden" name="workOrderId" value="${esc(w.workOrderId)}"><div><label>GSP</label><input name="gsp" maxlength="100" value="${esc(c.gsp||'')}" placeholder="Nếu có"></div><div><label>MA</label><input name="ma" maxlength="100" value="${esc(c.ma||'')}" placeholder="Nếu có"></div><div><label>Trạng thái xử lý *</label><select name="workflowStatus">${workStatuses(c).map(x=>`<option ${x===w.workflowStatus?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Ngày hoàn tất chẩn đoán</label><input type="date" name="diagnosisCompletedAt" value="${esc(w.diagnosisCompletedAt)}"></div><div><label>Ngày hoàn tất kỹ thuật</label><input type="date" name="technicalCompletedAt" value="${esc(w.technicalCompletedAt)}"></div><div><label>Kết quả xử lý</label><select name="outcome"><option value="">Chưa có kết quả</option>${['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].map(x=>`<option ${x===w.outcome?'selected':''}>${x}</option>`).join('')}</select></div><div><label>Loại thiết bị đổi</label><select name="replacementType"><option value="">Không áp dụng</option>${['Inverter','Battery','Logger','Meter','Khác'].map(x=>`<option ${x===w.replacementType?'selected':''}>${x}</option>`).join('')}</select></div><div class="span3"><label>Ghi chú nội bộ</label><textarea name="note">${esc(w.note)}</textarea></div></div><h3>Lỗi xác nhận</h3><div class="row-list issues">${rowsOrBlank(w.issues,issueRow)}</div><button type="button" class="secondary" onclick="addIssueRow(this)">+ Thêm lỗi</button><h3>Linh kiện sử dụng</h3><div class="row-list parts">${rowsOrBlank(w.parts,partRow)}</div><button type="button" class="secondary" onclick="addPartRow(this)">+ Thêm linh kiện</button><h3>Tạm dừng SLA</h3><div class="row-list holds">${rowsOrBlank(w.holds,holdRow)}</div><div class="actions"><button class="primary" type="submit">Lưu cập nhật</button></div></form>`;
+      panel.querySelector('form').onsubmit=e=>saveWork(e,c.caseId)
+    }
     function addIssueRow(btn){btn.closest('.row-list').insertAdjacentHTML('beforeend',issueRow())}
     function addPartRow(btn){btn.closest('.row-list').insertAdjacentHTML('beforeend',partRow())}
     async function saveWork(e,caseId){e.preventDefault();const btn=e.submitter,data=formData(e.target);data.issues=Array.from(e.target.querySelectorAll('.issues .repeat-row')).map(r=>({issueId:r.dataset.issueId||'',code:r.children[0].value,name:r.children[1].value,confirmedAt:r.children[2].value,type:'Lỗi xác nhận',note:r.dataset.note||''}));data.parts=Array.from(e.target.querySelectorAll('.parts .repeat-row')).map(r=>({partUsageId:r.dataset.partUsageId||'',partNumber:r.children[0].value,name:r.children[1].value,quantity:r.children[2].value,receivedAt:r.dataset.receivedAt||'',usedAt:r.dataset.usedAt||data.technicalCompletedAt,note:r.dataset.note||''}));data.holds=Array.from(e.target.querySelectorAll('.holds .repeat-row')).map(r=>({holdId:r.dataset.holdId||'',reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value,note:r.dataset.note||''}));busy(btn,true);try{await call('updateWorkOrder',[state.token,data]);showMessage('Đã lưu cập nhật kỹ thuật.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}
@@ -389,17 +374,18 @@
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
         const controller=new AbortController();
-        const timeout=setTimeout(()=>controller.abort(),name==='createCase'?90000:45000);
+        const timeout=setTimeout(()=>controller.abort(),name==='createCase'?90000:name==='listCases'?75000:45000);
         let response;
         try{response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal})}
         finally{clearTimeout(timeout)}
         if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}
         const result=await response.json();
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
+        if(!readOnly)state.caseCache={};
         return result.data;
       }catch(error){
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
-        if(retryable&&attempt<2){await new Promise(resolve=>setTimeout(resolve,[500,1400][attempt]));return call(name,args,attempt+1)}
+        if(retryable&&attempt<3){await new Promise(resolve=>setTimeout(resolve,[500,1400,3000][attempt]));return call(name,args,attempt+1)}
         throw error;
       }
     }

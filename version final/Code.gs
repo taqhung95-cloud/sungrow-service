@@ -1,4 +1,4 @@
-const APP_VERSION = '1.5.1-case-cancellation';
+const APP_VERSION = '1.6.0-workflow-resilience';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -138,7 +138,7 @@ function listCases(idToken, filters) {
     try {
       const serialized = JSON.stringify(result);
       if (Utilities.newBlob(serialized).getBytes().length < 90000) {
-        cache.put(cacheKey, serialized, 90);
+        cache.put(cacheKey, serialized, 300);
       }
     } catch (cacheError) {
       console.warn('Portal list cache write skipped: ' + String(cacheError && cacheError.message || cacheError));
@@ -280,9 +280,6 @@ function createCase(idToken, payload) {
   const customerEmail = emailOptional_(payload.customerEmail, 'Email khách hàng');
   const project = clean_(payload.project);
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
-  const gsp = clean_(payload.gsp);
-  const ma = clean_(payload.ma);
-  if (gsp.length > 100 || ma.length > 100) throw publicError_('GSP hoặc MA quá dài.');
   const quantity = Math.max(1, Number(payload.quantity || 1));
   if (!Number.isFinite(quantity)) throw publicError_('Số lượng không hợp lệ.');
   const evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
@@ -299,8 +296,8 @@ function createCase(idToken, payload) {
       'Loại thiết bị': deviceType,
       'Số sê-ri (S/N)': serial,
       'Model': model,
-      'GSP': gsp,
-      'MA': ma,
+      'GSP': '',
+      'MA': '',
       'Số lượng': quantity,
       'Trung tâm tiếp nhận khách': center,
       'Ngày nhận từ khách': receivedAt,
@@ -367,6 +364,16 @@ function confirmWarranty() {
 }
 
 function cancelCase(idToken, payload) {
+  try {
+    return cancelCaseUnlocked_(idToken, payload);
+  } catch (error) {
+    if (error && error.publicMessage) throw error;
+    console.error('Lỗi xóa hồ sơ: ' + String(error && error.stack || error));
+    throw publicError_('Không thể xóa hồ sơ. Chi tiết: ' + String(error && error.message || error || 'Lỗi không xác định'));
+  }
+}
+
+function cancelCaseUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'createCase');
   payload = payload || {};
@@ -374,7 +381,7 @@ function cancelCase(idToken, payload) {
   const reason = required_(payload.reason, 'Lý do xóa hồ sơ');
   if (reason.length > 500) throw publicError_('Lý do xóa hồ sơ không được vượt quá 500 ký tự.');
   const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  if (!lock.tryLock(20000)) throw publicError_('Dữ liệu đang được cập nhật. Vui lòng chờ vài giây rồi xóa lại hồ sơ.');
   try {
     ensureSheetColumns_(SHEETS.cases, ['Người hủy', 'Ngày hủy', 'Lý do hủy']);
     const table = readTableWithRows_(SHEETS.cases);
@@ -402,7 +409,8 @@ function cancelCase(idToken, payload) {
       'Ngày cập nhật gần nhất': now
     };
     updateObjectRow_(SHEETS.cases, tableHeaders_(SHEETS.cases), record.__rowNumber, changes);
-    audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes);
+    try { audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes); }
+    catch (auditError) { console.error('Hồ sơ đã hủy nhưng chưa ghi được audit ' + caseId + ': ' + String(auditError && auditError.message || auditError)); }
     try { removeDashboardProjectionCase_(caseId); }
     catch (projectionError) { console.error('Hồ sơ đã hủy nhưng không thể xóa projection ' + caseId + ': ' + String(projectionError && projectionError.message || projectionError)); }
     return { caseId: caseId, cancelled: true };
@@ -512,9 +520,14 @@ function updateWorkOrderUnlocked_(idToken, payload) {
     throw publicError_('Công việc đã kết thúc tại center này và không thể cập nhật thêm.');
   }
 
-  const caseRecord = readTable_(SHEETS.cases).find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
+  ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
+  const caseTable = readTableWithRows_(SHEETS.cases);
+  const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của công việc.');
   assertCaseEditable_(actor, caseRecord);
+  const gsp = clean_(payload.gsp);
+  const ma = clean_(payload.ma);
+  if (gsp.length > 100 || ma.length > 100) throw publicError_('GSP hoặc MA không được vượt quá 100 ký tự.');
   const requestedStatus = required_(payload.workflowStatus, 'Trạng thái xử lý');
   const warrantyPending = clean_(caseRecord['Tình trạng bảo hành']) === 'Chờ xác nhận';
   const hasParts = (payload.parts || []).some(function (item) { return clean_(item.partNumber); });
@@ -543,6 +556,12 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   }
   validateTechnicalDates_(record, changes);
   updateObjectRow_(SHEETS.workOrders, table.headers, record.__rowNumber, changes);
+  updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
+    'GSP': gsp,
+    'MA': ma,
+    'Người cập nhật gần nhất': actor.email,
+    'Ngày cập nhật gần nhất': new Date()
+  });
   updateCaseAfterWork_(record['Mã hồ sơ'], actor, changes);
   replaceWorkOrderChildren_(actor, workOrderId, payload.issues || [], payload.parts || []);
   if (changes['Ngày hoàn tất kỹ thuật']) fillMissingPartUsageDates_(workOrderId, changes['Ngày hoàn tất kỹ thuật']);

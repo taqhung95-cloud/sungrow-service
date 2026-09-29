@@ -109,9 +109,9 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.5\.1-case-cancellation/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.6\.0-workflow-resilience/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
-const cancelSource = extractFunction(codeSource, 'cancelCase');
+const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
 assert.match(cancelSource, /Trung tâm tiếp nhận khách/, 'Backend phải giới hạn quyền hủy theo center tiếp nhận.');
 assert.match(cancelSource, /readTable_\(SHEETS\.transfers\)/, 'Hồ sơ đã luân chuyển không được phép hủy.');
@@ -282,7 +282,7 @@ assert.match(entryHtml, /rowsOrBlank\(w\.issues,issueRow\)/, 'Form cập nhật 
 assert.match(entryHtml, /rowsOrBlank\(w\.holds,holdRow\)/, 'Form cập nhật phải nạp các khoảng tạm dừng SLA đã lưu.');
 assert.match(entryHtml, /item\.returnedAt\|\|today\(\)/, 'Form giao trả phải nạp ngày trả đã lưu.');
 assert.match(entryHtml, /item\.carrier\|\|''/, 'Form giao trả phải nạp đơn vị vận chuyển đã lưu.');
-assert.match(entryHtml, /attempt<2/, 'Các request chỉ đọc phải tự retry khi Apps Script lỗi tạm thời.');
+assert.match(entryHtml, /attempt<3/, 'Các request chỉ đọc phải tự retry khi Apps Script lỗi tạm thời.');
 assert.match(entryHtml, /state\.caseLoading/, 'Polling không được chạy chồng với request tải danh sách.');
 assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
 assert.doesNotMatch(entryHtml, /google\.script\.run|<\?=/, 'GitHub Pages không được phụ thuộc runtime template của Apps Script.');
@@ -296,7 +296,9 @@ assert.doesNotMatch(receiveForm, /Thông tin gửi hàng|senderCompany|trackingC
 assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard phải điều hướng tới trang nhập liệu GitHub Pages.');
 const liveDataSource = readDocs('live-data.js');
 new vm.Script(liveDataSource, {filename:'docs/live-data.js'});
-for (const field of ['gsp', 'ma']) assert.match(receiveForm, new RegExp(`name="${field}"`), `Form tiếp nhận thiếu ${field}.`);
+for (const field of ['gsp', 'ma']) assert.doesNotMatch(receiveForm, new RegExp(`name="${field}"`), `Form tiếp nhận không được nhập ${field}.`);
+assert.doesNotMatch(receiveForm, /warrantyLookup|Tình trạng bảo hành/, 'Form tiếp nhận không được hiển thị tra cứu hoặc trạng thái bảo hành.');
+for (const field of ['gsp', 'ma']) assert.match(entryHtml, new RegExp(`function openWork[\\s\\S]*name="${field}"`), `Form cập nhật công việc thiếu ${field}.`);
 assert.match(receiveForm, /name="evidenceFile"[^>]*accept="\.zip,\.rar"/, 'Form phải chọn hồ sơ nén .zip/.rar.');
 assert.match(codeSource, /const serial = clean_\(payload\.serialNumber\)/, 'Fan phải có thể bỏ trống S/N ở backend.');
 assert.match(codeSource, /ensureSheetColumns_\(SHEETS\.cases, \['GSP', 'MA'\]\)/, 'GSP/MA phải được lưu trong bảng hồ sơ.');
@@ -335,7 +337,8 @@ assert.match(liveDataSource, /v=51#/, 'Iframe nhập liệu phải dùng cache k
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=53/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=54/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
 assert.match(entryHtml, /item\.canDelete/, 'Nút xóa phải phụ thuộc quyền do backend trả về.');
 assert.match(entryHtml, /case-row-actions/, 'Nút xóa phải nằm cạnh nút mở chi tiết trong cột thao tác.');
