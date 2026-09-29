@@ -381,7 +381,7 @@
       const delta = p === null ? null : item.value-p;
       const better = delta === 0 ? null : (item.lower ? delta<0 : delta>0);
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
-      const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? 'Không đổi' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
+      const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? '--' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
       return '<div class="sg-kpi sg-kpi-' + item.key + '"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
