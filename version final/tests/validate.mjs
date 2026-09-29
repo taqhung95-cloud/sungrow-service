@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.6\.0-workflow-resilience/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.6\.1-cancel-cache-sync/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
@@ -123,6 +123,8 @@ assert.match(codeSource, /function getPortalDatabaseRevision_\(/, 'Backend phả
 assert.match(codeSource, /portal-cases-v1-/, 'Danh sách hồ sơ phải có cache theo user, revision và bộ lọc.');
 assert.match(codeSource, /portal-actor-v1-/, 'Actor đã xác thực phải có cache ngắn hạn để giảm đọc tab Người dùng.');
 assert.match(codeSource, /PORTAL_DATA_REVISION/, 'Các thao tác ghi phải cập nhật revision của database.');
+assert.match(cancelSource, /bumpPortalDatabaseRevision_\(\)/, 'Xóa hồ sơ phải vô hiệu hóa cache của danh sách hồ sơ và dashboard ngay lập tức.');
+assert.match(codeSource, /matchesLegacyProjection/, 'Xóa hồ sơ phải loại cả dòng projection cũ theo S\/N và ngày nhận.');
 assert.match(codeSource, /function syncDashboardProjectionCase_\(/, 'Mỗi case phải có cơ chế upsert tăng dần sang Dữ liệu dashboard.');
 assert.match(codeSource, /function reconcileDashboardProjection\(\)/, 'Phải có hàm đối soát và bù các case mới còn thiếu trong projection.');
 for (const mutation of ['createCase','confirmWarrantyUnlocked_','updateWorkOrderUnlocked_','createTransferUnlocked_','acceptTransferUnlocked_','returnToCustomerUnlocked_']) {
@@ -337,7 +339,7 @@ assert.match(liveDataSource, /v=51#/, 'Iframe nhập liệu phải dùng cache k
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=55/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=56/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -345,7 +347,9 @@ assert.match(entryHtml, /item\.canDelete/, 'Nút xóa phải phụ thuộc quy�
 assert.match(entryHtml, /case-row-actions/, 'Nút xóa phải nằm cạnh nút mở chi tiết trong cột thao tác.');
 assert.doesNotMatch(entryHtml, /drawer-actions">\$\{deleteAction\}/, 'Nút xóa không được nằm trong ngăn chi tiết thiết bị.');
 assert.match(legacyApiSource, /request\.action === 'tickets\.page'/, 'Dashboard phải có API phân trang toàn bộ danh sách thiết bị.');
+assert.match(legacyApiSource, /cancelledStrongKeys/, 'Dashboard phải loại projection của hồ sơ đã hủy theo S/N và ngày nhận.');
 assert.match(liveDataSource, /idToken:token,query:term[\s\S]*action:'tickets\.page'|action:'tickets\.page'[\s\S]*idToken:token/, 'Frontend phải gọi API phân trang thiết bị.');
+assert.match(liveDataSource, /refresh:Boolean\(term\)/, 'Tìm kiếm thiết bị phải bỏ qua cache cũ để không hiện hồ sơ đã hủy.');
 assert.match(liveDataSource, /<th>GSP<\/th><th>MA<\/th><th>Thiết bị \/ S\/N<\/th>/, 'GSP và MA phải đứng trước cột Thiết bị / S/N.');
 assert.match(liveDataSource, /sg-parts-inline/, 'Linh kiện sử dụng phải hiển thị theo bố cục ngang gọn.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');

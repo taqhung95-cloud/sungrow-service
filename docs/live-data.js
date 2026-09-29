@@ -546,7 +546,7 @@
     const controller = new AbortController();
     ticketSearchController = controller;
     try {
-      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4)),status:q('#sg-status').value,page:page,pageSize:pageSize},controller.signal,2);
+      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4)),status:q('#sg-status').value,page:page,pageSize:pageSize,refresh:Boolean(term)},controller.signal,2);
       if (sequence !== ticketSearchSequence) return;
       ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],year:data.year,fallback:false};
     } catch (error) {

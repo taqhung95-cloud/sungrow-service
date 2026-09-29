@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.0-workflow-resilience';
+const APP_VERSION = '1.6.1-cancel-cache-sync';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -62,6 +62,14 @@ function getPortalDatabaseRevision_() {
     store.setProperty('PORTAL_DATA_REVISION', String(revision));
   }
   return String(revision);
+}
+
+function bumpPortalDatabaseRevision_() {
+  const store = PropertiesService.getScriptProperties();
+  const previous = Number(store.getProperty('PORTAL_DATA_REVISION') || 0);
+  const next = Math.max(Date.now(), previous + 1);
+  store.setProperty('PORTAL_DATA_REVISION', String(next));
+  return String(next);
 }
 
 function getPortalSyncState(idToken) {
@@ -411,8 +419,9 @@ function cancelCaseUnlocked_(idToken, payload) {
     updateObjectRow_(SHEETS.cases, tableHeaders_(SHEETS.cases), record.__rowNumber, changes);
     try { audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes); }
     catch (auditError) { console.error('Hồ sơ đã hủy nhưng chưa ghi được audit ' + caseId + ': ' + String(auditError && auditError.message || auditError)); }
-    try { removeDashboardProjectionCase_(caseId); }
+    try { removeDashboardProjectionCase_(caseId, record); }
     catch (projectionError) { console.error('Hồ sơ đã hủy nhưng không thể xóa projection ' + caseId + ': ' + String(projectionError && projectionError.message || projectionError)); }
+    bumpPortalDatabaseRevision_();
     return { caseId: caseId, cancelled: true };
   } finally {
     lock.releaseLock();
@@ -1090,9 +1099,7 @@ function tableHeaders_(sheetName) {
 }
 
 function audit_(actor, action, type, id, center, before, after) {
-  const revisionStore = PropertiesService.getScriptProperties();
-  const previousRevision = Number(revisionStore.getProperty('PORTAL_DATA_REVISION') || 0);
-  revisionStore.setProperty('PORTAL_DATA_REVISION', String(Math.max(Date.now(), previousRevision + 1)));
+  bumpPortalDatabaseRevision_();
   appendObject_(SHEETS.audit, {
     'Thời gian': new Date(), 'Email người dùng': actor.email, 'Hành động': action, 'Loại đối tượng': type,
     'Mã đối tượng': id, 'Trung tâm': center, 'Dữ liệu trước': before ? JSON.stringify(stripInternal_(before)) : '', 'Dữ liệu sau': after ? JSON.stringify(after) : ''
@@ -1148,7 +1155,7 @@ function syncDashboardProjectionCase_(caseId) {
     if (!sheet) return { ok: false, reason: 'missing_dashboard_sheet' };
     const caseRecord = readTable_(SHEETS.cases).find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (!caseRecord) return { ok: false, reason: 'missing_case' };
-    if (clean_(caseRecord['Trạng thái hồ sơ']) === 'Đã hủy') return removeDashboardProjectionCase_(caseId);
+    if (clean_(caseRecord['Trạng thái hồ sơ']) === 'Đã hủy') return removeDashboardProjectionCase_(caseId, caseRecord);
 
     const works = readTable_(SHEETS.workOrders).filter(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     const latest = works.length ? works[works.length - 1] : {};
@@ -1232,16 +1239,20 @@ function syncDashboardProjectionCase_(caseId) {
   }
 }
 
-function removeDashboardProjectionCase_(caseId) {
+function removeDashboardProjectionCase_(caseId, caseRecord) {
   const sheet = spreadsheet_().getSheetByName(SHEETS.dashboard);
   if (!sheet || sheet.getLastRow() < 2) return { ok: true, removed: 0 };
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
   const caseIdColumn = headers.indexOf('Mã hồ sơ') + 1;
-  if (!caseIdColumn) return { ok: true, removed: 0 };
-  const values = sheet.getRange(2, caseIdColumn, sheet.getLastRow() - 1, 1).getDisplayValues();
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const serial = normalizeProjectionKey_(caseRecord && caseRecord['Số sê-ri (S/N)']);
+  const received = iso_(caseRecord && caseRecord['Ngày nhận từ khách']);
   let removed = 0;
   for (let index = values.length - 1; index >= 0; index--) {
-    if (clean_(values[index][0]) !== clean_(caseId)) continue;
+    const row = values[index];
+    const matchesCaseId = caseIdColumn && clean_(row[caseIdColumn - 1]) === clean_(caseId);
+    const matchesLegacyProjection = serial && received && normalizeProjectionKey_(row[2]) === serial && iso_(row[4]) === received;
+    if (!matchesCaseId && !matchesLegacyProjection) continue;
     sheet.deleteRow(index + 2);
     removed++;
   }

@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.9.0-ticket-pagination';
+const APP_VERSION = '1.9.1-cancelled-filter';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -151,8 +151,23 @@ function readOperationalRecords_(spreadsheetId, centers) {
     }, {});
   }
 
-  const cases = objects('Hồ sơ thiết bị').filter(function (item) { return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy'; });
-  if (!cases.length) return { records: [], sheetName: 'Hồ sơ thiết bị', lastRow: 0 };
+  const allCases = objects('Hồ sơ thiết bị');
+  const cancelledCaseIds = {};
+  const cancelledStrongKeys = {};
+  allCases.filter(function (item) { return clean_(item['Trạng thái hồ sơ']) === 'Đã hủy'; }).forEach(function (item) {
+    const caseId = clean_(item['Mã hồ sơ']);
+    const serial = normalizeDeviceKey_(item['Số sê-ri (S/N)']);
+    const received = date_(item['Ngày nhận từ khách']);
+    if (caseId) cancelledCaseIds[caseId] = true;
+    if (serial && received) cancelledStrongKeys['SN|' + serial + '|' + hybridDateKey_(received)] = true;
+  });
+  const cases = allCases.filter(function (item) { return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy'; });
+  if (!cases.length) {
+    const emptyRecords = [];
+    emptyRecords.cancelledCaseIds = cancelledCaseIds;
+    emptyRecords.cancelledStrongKeys = cancelledStrongKeys;
+    return { records: emptyRecords, sheetName: 'Hồ sơ thiết bị', lastRow: 0 };
+  }
   const worksByCase = grouped(objects('Công việc trung tâm'), 'Mã hồ sơ');
   const issuesByWork = grouped(objects('Lỗi thiết bị'), 'Mã công việc');
   const partsByWork = grouped(objects('Linh kiện sử dụng'), 'Mã công việc');
@@ -204,6 +219,8 @@ function readOperationalRecords_(spreadsheetId, centers) {
       unnamedAE: ''
     };
   });
+  records.cancelledCaseIds = cancelledCaseIds;
+  records.cancelledStrongKeys = cancelledStrongKeys;
   return { records: records, sheetName: 'Hồ sơ thiết bị + dữ liệu nghiệp vụ', lastRow: cases.length + 1 };
 }
 
@@ -279,6 +296,11 @@ function readHybridRecordsForYear_(spreadsheetId, year, centers, operationalReco
       return normalizeRow_(row, index + 2, String(year), centers, schema);
     }).filter(function (record) { return record.hasData && (!combinedDashboardSource || inYear_(record.receivedDate, year)); });
   }
+  const cancelledCaseIds = operationalRecords && operationalRecords.cancelledCaseIds || {};
+  const cancelledStrongKeys = operationalRecords && operationalRecords.cancelledStrongKeys || {};
+  legacyRecords = legacyRecords.filter(function (record) {
+    return !cancelledCaseIds[clean_(record.projectedCaseId)] && !cancelledStrongKeys[strongHybridKey_(record)];
+  });
   const merged = mergeLegacyAndOperational_(legacyRecords, operationalRecords || [], year);
   return {
     records: merged.records,
