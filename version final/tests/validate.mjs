@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.6\.2-force-refresh/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.6\.3-orphan-projection-cleanup/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
@@ -127,6 +127,8 @@ assert.match(cancelSource, /bumpPortalDatabaseRevision_\(\)/, 'Xóa hồ sơ ph�
 assert.match(codeSource, /matchesLegacyProjection/, 'Xóa hồ sơ phải loại cả dòng projection cũ theo S\/N và ngày nhận.');
 assert.match(codeSource, /function syncDashboardProjectionCase_\(/, 'Mỗi case phải có cơ chế upsert tăng dần sang Dữ liệu dashboard.');
 assert.match(codeSource, /function reconcileDashboardProjection\(\)/, 'Phải có hàm đối soát và bù các case mới còn thiếu trong projection.');
+assert.match(codeSource, /function removeOrphanDashboardProjections_\(/, 'Đối soát phải dọn các dòng dashboard mồ côi của hồ sơ đã xóa.');
+assert.match(extractFunction(codeSource, 'reconcileDashboardProjection'), /removedOrphans/, 'Kết quả đối soát phải báo số dòng dashboard mồ côi đã xóa.');
 for (const mutation of ['createCase','confirmWarrantyUnlocked_','updateWorkOrderUnlocked_','createTransferUnlocked_','acceptTransferUnlocked_','returnToCustomerUnlocked_']) {
   assert.match(extractFunction(codeSource, mutation), /syncDashboardProjectionCase_\(/, `${mutation} phải đồng bộ case sang Dữ liệu dashboard.`);
 }

@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.2-force-refresh';
+const APP_VERSION = '1.6.3-orphan-projection-cleanup';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -1263,13 +1263,42 @@ function normalizeProjectionKey_(value) {
   return clean_(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-/** Run once after deploying to backfill new-workflow cases missing in the projection. */
+function removeOrphanDashboardProjections_(validCaseIds) {
+  const sheet = spreadsheet_().getSheetByName(SHEETS.dashboard);
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0].map(clean_);
+  const caseIdColumn = headers.indexOf('Mã hồ sơ') + 1;
+  if (!caseIdColumn) return 0;
+  const values = sheet.getRange(2, caseIdColumn, sheet.getLastRow() - 1, 1).getDisplayValues();
+  let removed = 0;
+  for (let index = values.length - 1; index >= 0; index--) {
+    const caseId = clean_(values[index][0]);
+    if (!caseId || !/^HS-/i.test(caseId) || validCaseIds[caseId]) continue;
+    sheet.deleteRow(index + 2);
+    removed++;
+  }
+  return removed;
+}
+
+/** Run once after deploying to backfill new-workflow cases and purge deleted projections. */
 function reconcileDashboardProjection() {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const cases = readTable_(SHEETS.cases).filter(function (item) { return clean_(item['Nguồn dữ liệu']) === 'Quy trình mới'; });
-    const result = { total: cases.length, synced: 0, inserted: 0, errors: [] };
+    const allCases = readTable_(SHEETS.cases);
+    const validCaseIds = {};
+    allCases.forEach(function (item) {
+      const caseId = clean_(item['Mã hồ sơ']);
+      if (caseId) validCaseIds[caseId] = true;
+    });
+    const cases = allCases.filter(function (item) { return clean_(item['Nguồn dữ liệu']) === 'Quy trình mới'; });
+    const result = {
+      total: cases.length,
+      synced: 0,
+      inserted: 0,
+      removedOrphans: removeOrphanDashboardProjections_(validCaseIds),
+      errors: []
+    };
     cases.forEach(function (item) {
       const caseId = clean_(item['Mã hồ sơ']);
       const sync = syncDashboardProjectionCase_(caseId);
