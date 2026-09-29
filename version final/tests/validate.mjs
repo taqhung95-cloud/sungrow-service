@@ -301,7 +301,9 @@ assert.match(readDocs('config.js'), /dataEntryPage:\s*'entry\.html'/, 'Dashboard
 const liveDataSource = readDocs('live-data.js');
 new vm.Script(liveDataSource, {filename:'docs/live-data.js'});
 for (const field of ['gsp', 'ma']) assert.doesNotMatch(receiveForm, new RegExp(`name="${field}"`), `Form tiếp nhận không được nhập ${field}.`);
-assert.doesNotMatch(receiveForm, /warrantyLookup|Tình trạng bảo hành/, 'Form tiếp nhận không được hiển thị tra cứu hoặc trạng thái bảo hành.');
+assert.match(receiveForm, /id="warrantyLookup"/, 'Form tiếp nhận phải hiển thị kết quả tra cứu bảo hành ngay dưới S/N.');
+assert.doesNotMatch(receiveForm, /<label>Tình trạng bảo hành<\/label>/, 'Form tiếp nhận không được hiển thị ô trạng thái bảo hành cố định.');
+assert.match(entryHtml, /call\('lookupWarranty',\[state\.token,serial\]\)/, 'Giao diện phải gọi tra cứu bảo hành khi nhập S/N.');
 for (const field of ['gsp', 'ma']) assert.match(entryHtml, new RegExp(`function openWork[\\s\\S]*name="${field}"`), `Form cập nhật công việc thiếu ${field}.`);
 assert.match(receiveForm, /name="evidenceFile"[^>]*accept="\.zip,\.rar"/, 'Form phải chọn hồ sơ nén .zip/.rar.');
 assert.match(codeSource, /const serial = clean_\(payload\.serialNumber\)/, 'Fan phải có thể bỏ trống S/N ở backend.');
@@ -337,11 +339,11 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=56#/, 'Iframe nhập liệu phải dùng cache key mới cho bản xóa hồ sơ và đồng bộ cache.');
+assert.match(liveDataSource, /v=57#/, 'Iframe nhập liệu phải dùng cache key mới cho nhãn tra cứu bảo hành trong ô S/N.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=57/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=58/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
