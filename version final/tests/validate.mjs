@@ -81,6 +81,23 @@ const extractFunction = (source, name) => {
   }
   throw new Error(`Hàm ${name} không đóng ngoặc.`);
 };
+let validationValues = ['Mới tiếp nhận','Đang xử lý','Đã hoàn tất'];
+let validationWrites = 0;
+const validationSandbox = {
+  SHEETS:{cases:'cases'}, publicError_:message=>new Error(message),
+  SpreadsheetApp:{DataValidationCriteria:{VALUE_IN_LIST:'list',VALUE_IN_RANGE:'range'}},
+  spreadsheet_:()=>({getSheetByName:()=>({getRange:(row,column)=>{
+    assert.equal(row,1522); assert.equal(column,2);
+    return {getDataValidation:()=>({getCriteriaType:()=> 'list',getCriteriaValues:()=>[validationValues,false],copy:()=>({requireValueInList:(values,visible)=>{assert.equal(visible,false);return {build:()=>values}}})}),setDataValidation:values=>{validationValues=values;validationWrites++}};
+  }})})
+};
+vm.createContext(validationSandbox);
+vm.runInContext(extractFunction(codeSource,'allowCancelledCaseStatus_'),validationSandbox);
+validationSandbox.allowCancelledCaseStatus_(['Mã hồ sơ','Trạng thái hồ sơ'],1522);
+assert.equal(JSON.stringify(validationValues),JSON.stringify(['Mới tiếp nhận','Đang xử lý','Đã hoàn tất','Đã hủy']));
+validationSandbox.allowCancelledCaseStatus_(['Mã hồ sơ','Trạng thái hồ sơ'],1522);
+assert.equal(validationWrites,1,'Validation migration must be idempotent');
+assert.ok(codeSource.indexOf('allowCancelledCaseStatus_(headers, record.__rowNumber)') < codeSource.indexOf('updateObjectRow_(SHEETS.cases, headers, record.__rowNumber, changes)'));
 const roleConstants = codeSource.slice(codeSource.indexOf('const ROLE_CODES'), codeSource.indexOf('function doGet'));
 const roleSandbox = {
   Object,
@@ -109,7 +126,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.6\.4-verified-mutations/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.6\.5-cancellation-validation/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');

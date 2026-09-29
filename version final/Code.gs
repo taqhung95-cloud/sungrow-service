@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.4-verified-mutations';
+const APP_VERSION = '1.6.5-cancellation-validation';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -474,7 +474,9 @@ function cancelCaseUnlocked_(idToken, payload) {
       'Người cập nhật gần nhất': actor.email,
       'Ngày cập nhật gần nhất': now
     };
-    updateObjectRow_(SHEETS.cases, tableHeaders_(SHEETS.cases), record.__rowNumber, changes);
+    const headers = tableHeaders_(SHEETS.cases);
+    allowCancelledCaseStatus_(headers, record.__rowNumber);
+    updateObjectRow_(SHEETS.cases, headers, record.__rowNumber, changes);
     SpreadsheetApp.flush();
     const saved = readTable_(SHEETS.cases).find(function (row) { return clean_(row['Mã hồ sơ']) === caseId; });
     if (!saved || clean_(saved['Trạng thái hồ sơ']) !== 'Đã hủy') throw publicError_('Chưa xác nhận được việc xóa hồ sơ trong database. Vui lòng thử lại.');
@@ -487,6 +489,25 @@ function cancelCaseUnlocked_(idToken, payload) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Extend only the authorized case's dropdown, retaining existing choices and
+// rejection policy. Never clear validation or modify a shared lookup range.
+function allowCancelledCaseStatus_(headers, rowNumber) {
+  const column = headers.indexOf('Trạng thái hồ sơ') + 1;
+  if (!column) throw publicError_('Không tìm thấy cột Trạng thái hồ sơ.');
+  const cell = spreadsheet_().getSheetByName(SHEETS.cases).getRange(rowNumber, column);
+  const rule = cell.getDataValidation();
+  if (!rule) return;
+  const type = rule.getCriteriaType();
+  const args = rule.getCriteriaValues();
+  let values;
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) values = args[0].slice();
+  else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) values = args[0].getDisplayValues().reduce(function (all, row) { return all.concat(row); }, []).filter(String);
+  else throw publicError_('Quy tắc trạng thái không phải danh sách. Cần quản lý kiểm tra validation trước khi hủy.');
+  if (values.indexOf('Đã hủy') !== -1) return;
+  values.push('Đã hủy');
+  cell.setDataValidation(rule.copy().requireValueInList(values, args[1] !== false).build());
 }
 
 function confirmWarrantyUnlocked_(idToken, payload) {
