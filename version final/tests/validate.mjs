@@ -126,9 +126,11 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.7\.0-shared-read-cache/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.7\.1-resilient-sync/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 assert.match(extractFunction(codeSource,'listCasesUncached_'), /readTableShared_\(SHEETS\.cases, revision\)/, 'Danh sách hồ sơ phải dùng cache bảng chung theo revision.');
+assert.match(extractFunction(codeSource,'listCasesUncached_'), /total && includeDetails \? groupBy_\(readTableShared_\(SHEETS\.issues/, 'Danh sách nhẹ không được đọc bảng chi tiết khi chưa mở thao tác.');
+assert.match(extractFunction(codeSource,'searchCases'), /includeDetails: true/, 'Tìm kiếm nghiệp vụ phải tải đủ chi tiết khi người dùng mở cập nhật.');
 assert.match(extractFunction(codeSource,'listCases'), /latestRevision !== revision/, 'Danh sách phải phát hiện dữ liệu đổi trong lúc làm ấm cache.');
 assert.match(codeSource, /function warmPortalReadCache\(/, 'Backend phải có hàm làm ấm cache trước khi người dùng truy cập.');
 
@@ -161,6 +163,7 @@ vm.createContext(sharedCacheSandbox);
 vm.runInContext([
   extractFunction(codeSource,'packPortalTable_'),
   extractFunction(codeSource,'unpackPortalTable_'),
+  extractFunction(codeSource,'stalePortalRows_'),
   extractFunction(codeSource,'readPortalChunkedCache_'),
   extractFunction(codeSource,'writePortalChunkedCache_'),
   extractFunction(codeSource,'readTableShared_')
@@ -170,16 +173,15 @@ assert.equal(sharedSheetReads,1,'Mười lượt đọc cùng revision chỉ đ�
 sharedCacheSandbox.readTableShared_('Hồ sơ thiết bị','r2');
 assert.equal(sharedSheetReads,2,'Revision mới phải tạo đúng một snapshot mới.');
 const contendedRevision='r3';
-const contendedBase='portal-table-v2-'+sharedCacheSandbox.digest_(`Hồ sơ thiết bị|${contendedRevision}`);
 const leaseKey='PORTAL_TABLE_LEASE_'+sharedCacheSandbox.digest_('Hồ sơ thiết bị');
 sharedProperties.set(leaseKey,JSON.stringify({owner:'another-request',revision:contendedRevision,startedAt:Date.now()}));
 let contentionSleeps=0;
-sharedCacheSandbox.Utilities.sleep=()=>{
-  contentionSleeps++;
-  if(contentionSleeps===1)sharedCacheSandbox.writePortalChunkedCache_(sharedCacheSandbox.CacheService.getScriptCache(),contendedBase,sharedCacheSandbox.packPortalTable_({headers:['id'],rows:[{__rowNumber:2,id:'shared-builder-row'}]}),1800);
-};
-assert.equal(sharedCacheSandbox.readTableShared_('Hồ sơ thiết bị',contendedRevision)[0].id,'shared-builder-row');
-assert.equal(sharedSheetReads,2,'Request chờ phải dùng snapshot của builder khác, không đọc Sheet lần nữa.');
+sharedCacheSandbox.Utilities.sleep=()=>{contentionSleeps++};
+const staleRows=sharedCacheSandbox.readTableShared_('Hồ sơ thiết bị',contendedRevision);
+assert.equal(staleRows[0].id,'Hồ sơ thiết bị-row');
+assert.equal(staleRows.__cacheStale,true,'Fallback phải được đánh dấu stale để không cache theo người dùng.');
+assert.equal(contentionSleeps,0,'Khi builder khác đang làm việc phải trả snapshot cũ ngay, không giữ request chờ.');
+assert.equal(sharedSheetReads,2,'Request đồng thời phải dùng snapshot cũ, không đọc Sheet lần nữa.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
@@ -410,15 +412,16 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=60#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=61#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=61/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=62/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
 assert.match(entryHtml, /caseLoadFailures:0, caseRetryTimer:null/, 'Danh sách hồ sơ phải theo dõi phục hồi tải lỗi mà không reload trang.');
+assert.match(entryHtml, /includeDetails:false/, 'Tải danh sách hồ sơ phải dùng payload nhẹ, không chờ lỗi và linh kiện toàn database.');
 assert.match(entryHtml, /retryDelays=\[3000,7000,15000,30000\]/, 'Danh sách hồ sơ phải tự thử lại với backoff có giới hạn.');
 assert.match(entryHtml, /đang được chuẩn bị/, 'Lỗi làm ấm cache phải được coi là lỗi đọc tạm thời và tự thử lại.');
 assert.match(entryHtml, /item\.canDelete/, 'Nút xóa phải phụ thuộc quyền do backend trả về.');

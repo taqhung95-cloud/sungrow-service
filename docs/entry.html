@@ -335,7 +335,7 @@
       if(state.caseRetryTimer){clearTimeout(state.caseRetryTimer);state.caseRetryTimer=null}
       state.caseLoading=true;
       const box=$('#caseResults');
-      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize,refresh:Boolean(resetPage)};
+      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize,includeDetails:false,refresh:Boolean(resetPage)};
       const cacheKey=JSON.stringify(filters),cached=state.caseCache[cacheKey];
       if(cached)renderCasesResponse(cached);else box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
       try{

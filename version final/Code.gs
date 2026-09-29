@@ -1,4 +1,4 @@
-const APP_VERSION = '1.7.0-shared-read-cache';
+const APP_VERSION = '1.7.1-resilient-sync';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -151,6 +151,12 @@ function listCases(idToken, filters) {
     cache = null;
     cacheKey = '';
   }
+  if (result.stale) {
+    // Never pin a stale-while-refresh response in the user/filter cache. The
+    // next revision poll should pick up the freshly published shared tables.
+    cache = null;
+    cacheKey = '';
+  }
   if (revision) result.revision = revision;
   if (cache && cacheKey) {
     try {
@@ -177,6 +183,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   if (center && !actor.isGlobalManager) assertCenterAllowed_(actor, center);
   const pageSize = Math.max(10, Math.min(200, Number(filters.pageSize) || 20));
   const requestedPage = Math.max(1, Number(filters.page) || 1);
+  const includeDetails = filters.includeDetails === true;
 
   const revision = clean_(dataRevision) || getPortalDatabaseRevision_();
   const cases = readTableShared_(SHEETS.cases, revision);
@@ -206,19 +213,19 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
   // Detail tables are unnecessary for empty searches (including delete verification).
-  const issuesByWork = total ? groupBy_(readTableShared_(SHEETS.issues, revision), 'Mã công việc') : {};
-  const partsByWork = total ? groupBy_(readTableShared_(SHEETS.parts, revision), 'Mã công việc') : {};
-  const holdsByWork = total ? groupBy_(readTableShared_(SHEETS.holds, revision), 'Mã công việc') : {};
+  const issuesByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.issues, revision), 'Mã công việc') : {};
+  const partsByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.parts, revision), 'Mã công việc') : {};
+  const holdsByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.holds, revision), 'Mã công việc') : {};
   const items = filtered.slice(start, start + pageSize).map(function (item) {
     return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || [], issuesByWork, partsByWork, holdsByWork);
   });
-  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages };
+  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale || workOrders.__cacheStale || transfers.__cacheStale) };
 }
 
 function searchCases(idToken, rawQuery) {
   const query = clean_(rawQuery);
   if (query.length < 2) throw publicError_('Nhập ít nhất 2 ký tự để tìm kiếm.');
-  return listCases(idToken, { query: query, page: 1, pageSize: 200 }).items;
+  return listCases(idToken, { query: query, page: 1, pageSize: 200, includeDetails: true }).items;
 }
 
 function lookupWarranty(idToken, serialNumber) {
@@ -1178,9 +1185,13 @@ function readTable_(sheetName) { return readTableWithRows_(sheetName).rows; }
 function readTableShared_(sheetName, revision) {
   const version = clean_(revision) || getPortalDatabaseRevision_();
   const baseKey = 'portal-table-v2-' + digest_(sheetName + '|' + version);
+  const pointerKey = 'portal-table-current-v2-' + digest_(sheetName);
   const cache = CacheService.getScriptCache();
   const cached = readPortalChunkedCache_(cache, baseKey);
   if (cached) return unpackPortalTable_(cached);
+  const previousVersion = clean_(cache.get(pointerKey));
+  const previousKey = previousVersion && previousVersion !== version ? 'portal-table-v2-' + digest_(sheetName + '|' + previousVersion) : '';
+  const stale = previousKey ? readPortalChunkedCache_(cache, previousKey) : null;
 
   const leaseKey = 'PORTAL_TABLE_LEASE_' + digest_(sheetName);
   const owner = Utilities.getUuid();
@@ -1203,6 +1214,9 @@ function readTableShared_(sheetName, revision) {
   }
 
   if (!ownsLease) {
+    // Keep the application usable while one request refreshes the new revision.
+    // The revision poll will fetch again after the builder publishes its cache.
+    if (stale) return stalePortalRows_(stale);
     for (let attempt = 0; attempt < 50; attempt++) {
       Utilities.sleep(300);
       const ready = readPortalChunkedCache_(cache, baseKey);
@@ -1231,8 +1245,14 @@ function readTableShared_(sheetName, revision) {
 
   try {
     const table = readTableWithRows_(sheetName);
-    writePortalChunkedCache_(cache, baseKey, packPortalTable_(table), 1800);
+    if (writePortalChunkedCache_(cache, baseKey, packPortalTable_(table), 1800)) cache.put(pointerKey, version, 1800);
     return table.rows;
+  } catch (error) {
+    if (stale) {
+      console.warn('Serving previous table snapshot after refresh failure for ' + sheetName + ': ' + String(error && error.message || error));
+      return stalePortalRows_(stale);
+    }
+    throw error;
   } finally {
     const release = LockService.getScriptLock();
     if (release.tryLock(3000)) {
@@ -1263,6 +1283,12 @@ function unpackPortalTable_(packed) {
     packed.h.forEach(function (header, index) { row[header] = values[index + 1]; });
     return row;
   });
+}
+
+function stalePortalRows_(packed) {
+  const rows = unpackPortalTable_(packed);
+  rows.__cacheStale = true;
+  return rows;
 }
 
 function readPortalChunkedCache_(cache, baseKey) {
