@@ -231,7 +231,30 @@
         if(file.size>8*1024*1024)throw new Error('File vượt quá 8 MB.');
         const attachment={name:file.name,base64:await fileToBase64(file)};
         const payload=formData(e.target);delete payload.evidenceFile;payload.attachment=attachment;
-        const result=await call('createCase',[state.token,payload]);showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();e.target.elements.deviceType.dispatchEvent(new Event('change'));$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')
+        const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))))).map(n=>n.toString(16).padStart(2,'0')).join('');
+        const requestKey='pendingCaseRequestId:'+fingerprint;
+        let requestId=sessionStorage.getItem(requestKey);
+        if(!requestId){requestId=crypto.randomUUID();sessionStorage.setItem(requestKey,requestId)}
+        payload.requestId=requestId;
+        // Verify backend support before any upload, including after a lost response.
+        let result;
+        try{result=await call('getCreationStatus',[state.token,requestId])}
+        catch(error){if(/Thao tác không được phép|ACTION_NOT_ALLOWED/.test(error.message+' '+error.code))throw new Error('Cần cập nhật Apps Script lên bản 1.6.4 để tạo hồ sơ có chống trùng. Dữ liệu nhập vẫn được giữ nguyên.');throw error}
+        if(!result.found){
+          try{result=await call('createCase',[state.token,payload])}
+          catch(error){
+            for(let check=0;check<4;check++){
+              btn.textContent='Đang xác nhận kết quả…';
+              await new Promise(resolve=>setTimeout(resolve,2000));
+              try{const saved=await call('getCreationStatus',[state.token,requestId]);if(saved.found){result=saved;break}}catch(_){ }
+            }
+            if(!result.caseId)throw new Error('Chưa xác nhận được kết quả tạo hồ sơ. Mã yêu cầu đã được giữ để tránh tạo trùng. Khi thử lại, hệ thống sẽ kiểm tra hồ sơ đã lưu trước. '+error.message);
+          }
+        }
+        if(!result.caseId||!result.workOrderId)throw new Error('Phản hồi tạo hồ sơ không có mã hồ sơ/công việc. Vui lòng kiểm tra lại.');
+        if(result.cancelled)throw new Error('Yêu cầu này thuộc hồ sơ đã hủy. Vui lòng kiểm tra danh sách trước khi tạo lại.');
+        sessionStorage.removeItem(requestKey);
+        showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();e.target.elements.deviceType.dispatchEvent(new Event('change'));$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')
       }catch(err){showMessage(err.message,true)}finally{busy(btn,false)}});
       $('#caseRefresh').addEventListener('click',()=>loadCases(true));
       $('#caseQuery').addEventListener('keydown',e=>{if(e.key==='Enter')loadCases(true)});
@@ -355,7 +378,7 @@
     function openCaseDrawer(raw){const item=JSON.parse(raw);$('#caseDrawerBody').innerHTML=renderCaseDetail(item);$('#caseDrawerBackdrop').classList.remove('hidden');$('#caseDrawer').classList.remove('hidden');$('#caseDrawer').setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
     function closeCaseDrawer(){$('#caseDrawerBackdrop').classList.add('hidden');$('#caseDrawer').classList.add('hidden');$('#caseDrawer').setAttribute('aria-hidden','true');$('#caseDrawerBody').innerHTML='';document.body.style.overflow=''}
     function navigateToCase(view,query){closeCaseDrawer();showView(view);const input=$(view==='update'?'#updateQuery':'#transferQuery');const button=$(view==='update'?'#updateSearch':'#transferSearch');input.value=query||'';if(input.value)button.click()}
-    async function cancelCaseUI(raw){const item=JSON.parse(raw),reason=prompt('Nhập lý do xóa hồ sơ (ví dụ: nhập sai S/N):','');if(!reason||!reason.trim())return;if(!confirm(`Xóa hồ sơ ${item.caseId}? Hồ sơ sẽ không còn xuất hiện trong danh sách và KPI.`))return;try{await call('cancelCase',[state.token,{caseId:item.caseId,reason:reason.trim()}]);closeCaseDrawer();state.caseCache={};showMessage(`Đã xóa hồ sơ ${item.caseId}.`);await loadCases(true)}catch(error){showMessage(error.message,true)}}
+    async function cancelCaseUI(raw){const item=JSON.parse(raw),reason=prompt('Nhập lý do xóa hồ sơ (ví dụ: nhập sai S/N):','');if(!reason||!reason.trim())return;if(!confirm(`Xóa hồ sơ ${item.caseId}? Hồ sơ sẽ không còn xuất hiện trong danh sách và KPI.`))return;try{const result=await call('cancelCase',[state.token,{caseId:item.caseId,reason:reason.trim()}]);if(result?.cancelled!==true||result.caseId!==item.caseId)throw new Error('Máy chủ chưa xác nhận xóa đúng hồ sơ.');const checked=await call('listCases',[state.token,{query:item.caseId,refresh:true,pageSize:20}]);if(checked.items.some(row=>row.caseId===item.caseId))throw new Error('Hồ sơ vẫn còn trong database sau yêu cầu xóa. Chưa thể xác nhận thành công.');closeCaseDrawer();state.caseCache={};showMessage(`Đã xóa hồ sơ ${item.caseId}.`);await loadCases(true)}catch(error){showMessage(error.message,true)}}
 
     function caseAction(label,enabled,onclick,reason){return `<button type="button" class="case-action ${enabled?'enabled':''}" ${enabled?`onclick='${onclick}'`:'disabled'} title="${esc(enabled?'Thực hiện '+label:reason)}">${esc(label)}</button>`}
     function renderCase(item,mode,position){
@@ -398,7 +421,7 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0){
-      const readOnly=['getBootstrap','getPortalSyncState','listCases','searchCases','lookupWarranty'].includes(name);
+      const readOnly=['getBootstrap','getPortalSyncState','listCases','searchCases','lookupWarranty','getCreationStatus'].includes(name);
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
@@ -415,7 +438,7 @@
         return result.data;
       }catch(error){
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
-        if(retryable&&attempt<3){await new Promise(resolve=>setTimeout(resolve,[500,1400,3000][attempt]));return call(name,args,attempt+1)}
+        if(retryable&&attempt<1){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1)}
         throw error;
       }
     }
@@ -457,7 +480,7 @@
       revision: '',
       busy: false,
       timer: null,
-      pollMs: 15000
+      pollMs: 60000 + Math.floor(Math.random()*15000)
     };
 
     function hasOpenCaseEditor() {

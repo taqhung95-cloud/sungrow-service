@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.3-orphan-projection-cleanup';
+const APP_VERSION = '1.6.4-verified-mutations';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -78,7 +78,7 @@ function getPortalSyncState(idToken) {
   return {
     revision: revision,
     changedAt: new Date(Number(revision)).toISOString(),
-    pollMs: 15000
+    pollMs: 60000
   };
 }
 
@@ -103,6 +103,7 @@ function handlePortalApi_(request) {
     searchCases: searchCases,
     lookupWarranty: lookupWarranty,
     createCase: createCase,
+    getCreationStatus: getCreationStatus,
     cancelCase: cancelCase,
     confirmWarranty: confirmWarranty,
     updateWorkOrder: updateWorkOrder,
@@ -171,14 +172,8 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const cases = readTable_(SHEETS.cases);
   const workOrders = readTable_(SHEETS.workOrders);
   const transfers = readTable_(SHEETS.transfers);
-  const issues = readTable_(SHEETS.issues);
-  const parts = readTable_(SHEETS.parts);
-  const holds = readTable_(SHEETS.holds);
   const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
   const transferByCase = groupBy_(transfers, 'Mã hồ sơ');
-  const issuesByWork = groupBy_(issues, 'Mã công việc');
-  const partsByWork = groupBy_(parts, 'Mã công việc');
-  const holdsByWork = groupBy_(holds, 'Mã công việc');
 
   const filtered = cases.filter(function (item) {
     if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
@@ -200,6 +195,10 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
+  // Detail tables are unnecessary for empty searches (including delete verification).
+  const issuesByWork = total ? groupBy_(readTable_(SHEETS.issues), 'Mã công việc') : {};
+  const partsByWork = total ? groupBy_(readTable_(SHEETS.parts), 'Mã công việc') : {};
+  const holdsByWork = total ? groupBy_(readTable_(SHEETS.holds), 'Mã công việc') : {};
   const items = filtered.slice(start, start + pageSize).map(function (item) {
     return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || [], issuesByWork, partsByWork, holdsByWork);
   });
@@ -271,6 +270,19 @@ function configureWarrantyLookupSheet() {
   return WARRANTY_LOOKUP_SHEET_ID;
 }
 
+function getCreationStatus(idToken, requestId) {
+  const actor = authenticate_(idToken);
+  const id = clean_(requestId);
+  if (!id) throw publicError_('Thiếu mã yêu cầu tạo hồ sơ.');
+  const record = readTable_(SHEETS.cases).find(function (row) {
+    return clean_(row['Mã yêu cầu tạo']) === id && clean_(row['Người tạo']).toLowerCase() === actor.email.toLowerCase();
+  });
+  if (!record) return { found: false };
+  const work = readTable_(SHEETS.workOrders).find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
+  if (!work) throw publicError_('Hồ sơ đã ghi nhưng công việc chưa hoàn tất. Vui lòng kiểm tra hồ sơ ' + record['Mã hồ sơ'] + ', không gửi lại.');
+  return { found: true, caseId: record['Mã hồ sơ'], workOrderId: work['Mã công việc'], cancelled: clean_(record['Trạng thái hồ sơ']) === 'Đã hủy' };
+}
+
 function createCase(idToken, payload) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'createCase');
@@ -290,17 +302,51 @@ function createCase(idToken, payload) {
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
   const quantity = Math.max(1, Number(payload.quantity || 1));
   if (!Number.isFinite(quantity)) throw publicError_('Số lượng không hợp lệ.');
-  const evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
+  const requestId = clean_(payload.requestId);
+  if (!/^[a-zA-Z0-9-]{16,100}$/.test(requestId)) throw publicError_('Vui lòng tải lại giao diện để tạo mã yêu cầu hợp lệ.');
+
+  // Reserve this request before uploading. Drive I/O must not hold the shared
+  // database lock; uncertain uploads are not automatically repeated.
+  const receiptKey = 'CREATE_UPLOAD_' + requestId;
+  const receipts = PropertiesService.getScriptProperties();
+  const reservation = LockService.getScriptLock();
+  reservation.waitLock(20000);
+  let evidenceLink;
+  try {
+    const existing = getCreationStatus(idToken, requestId);
+    if (existing.found) return existing;
+    const raw = receipts.getProperty(receiptKey);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.owner !== actor.email) throw publicError_('Mã yêu cầu thuộc người dùng khác.');
+      if (!saved.link) throw publicError_('File của yêu cầu này đang tải hoặc chưa xác định kết quả. Không gửi lại file; vui lòng kiểm tra với quản lý. Mã: ' + requestId);
+      evidenceLink = saved.link;
+    } else {
+      receipts.setProperty(receiptKey, JSON.stringify({ owner: actor.email, startedAt: new Date().toISOString() }));
+    }
+  } finally {
+    reservation.releaseLock();
+  }
+  if (!evidenceLink) {
+    evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
+    receipts.setProperty(receiptKey, JSON.stringify({ owner: actor.email, link: evidenceLink }));
+  }
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
+    if (requestId) {
+      const existing = getCreationStatus(idToken, requestId);
+      if (existing.found) return existing;
+    }
     ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
+    ensureSheetColumns_(SHEETS.cases, ['Mã yêu cầu tạo']);
     const caseId = makeId_('HS');
     const workOrderId = makeId_('CV');
     const now = new Date();
     appendObject_(SHEETS.cases, {
       'Mã hồ sơ': caseId,
+      'Mã yêu cầu tạo': requestId,
       'Loại thiết bị': deviceType,
       'Số sê-ri (S/N)': serial,
       'Model': model,
@@ -356,7 +402,11 @@ function createCase(idToken, payload) {
         'Ghi chú lỗi': ''
       });
     }
-    audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId });
+    SpreadsheetApp.flush();
+    receipts.deleteProperty(receiptKey);
+    bumpPortalDatabaseRevision_();
+    try { audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId }); }
+    catch (error) { console.error('Hồ sơ đã tạo, lỗi ghi nhật ký: ' + String(error)); }
     syncDashboardProjectionCase_(caseId);
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
@@ -395,7 +445,15 @@ function cancelCaseUnlocked_(idToken, payload) {
     const table = readTableWithRows_(SHEETS.cases);
     const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (!record) throw publicError_('Không tìm thấy hồ sơ cần xóa.');
-    if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Hồ sơ đã được xóa trước đó.');
+    if (!actor.isGlobalManager && actor.centers.indexOf(clean_(record['Trung tâm tiếp nhận khách'])) === -1) {
+      throw publicError_('Chỉ nhân viên của center tiếp nhận mới được xóa hồ sơ này.');
+    }
+    if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') {
+      removeDashboardProjectionCase_(caseId, record);
+      SpreadsheetApp.flush();
+      bumpPortalDatabaseRevision_();
+      return { caseId: caseId, cancelled: true };
+    }
     if (clean_(record['Tình trạng bảo hành']) !== 'Chờ xác nhận') {
       throw publicError_('Không thể xóa hồ sơ sau khi đã xác nhận tình trạng bảo hành.');
     }
@@ -417,6 +475,9 @@ function cancelCaseUnlocked_(idToken, payload) {
       'Ngày cập nhật gần nhất': now
     };
     updateObjectRow_(SHEETS.cases, tableHeaders_(SHEETS.cases), record.__rowNumber, changes);
+    SpreadsheetApp.flush();
+    const saved = readTable_(SHEETS.cases).find(function (row) { return clean_(row['Mã hồ sơ']) === caseId; });
+    if (!saved || clean_(saved['Trạng thái hồ sơ']) !== 'Đã hủy') throw publicError_('Chưa xác nhận được việc xóa hồ sơ trong database. Vui lòng thử lại.');
     try { audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes); }
     catch (auditError) { console.error('Hồ sơ đã hủy nhưng chưa ghi được audit ' + caseId + ': ' + String(auditError && auditError.message || auditError)); }
     try { removeDashboardProjectionCase_(caseId, record); }
@@ -1087,10 +1148,19 @@ function appendObject_(sheetName, object) {
 
 function updateObjectRow_(sheetName, headers, rowNumber, changes) {
   const sheet = spreadsheet_().getSheetByName(sheetName);
-  headers.forEach(function (header, index) {
-    if (!Object.prototype.hasOwnProperty.call(changes, header)) return;
-    sheet.getRange(rowNumber, index + 1).setValue(changes[header] == null ? '' : changes[header]);
-  });
+  const indexes = headers.map(function (header, index) { return Object.prototype.hasOwnProperty.call(changes, header) ? index : -1; }).filter(function (index) { return index >= 0; });
+  // Batch adjacent changed cells without overwriting unrelated cells or formulas.
+  for (let cursor = 0; cursor < indexes.length;) {
+    const first = indexes[cursor];
+    const values = [];
+    let last = first - 1;
+    while (cursor < indexes.length && indexes[cursor] === last + 1) {
+      last = indexes[cursor++];
+      const value = changes[headers[last]];
+      values.push(value == null ? '' : value);
+    }
+    sheet.getRange(rowNumber, first + 1, 1, values.length).setValues([values]);
+  }
 }
 
 function tableHeaders_(sheetName) {

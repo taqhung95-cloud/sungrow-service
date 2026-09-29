@@ -19,8 +19,8 @@
   let ticketSearchController = null;
   let ticketSearchSequence = 0;
   let ticketSearchState = {term:'',rows:null,total:0,loading:false,error:'',page:1,pageSize:20,totalPages:1,statuses:[],year:null};
-  const AUTO_SYNC_MS = 120000;
-  const REVISION_SYNC_MS = 15000;
+  const AUTO_SYNC_MS = 300000;
+  const REVISION_SYNC_MS = 60000 + Math.floor(Math.random()*15000);
   let portalRevision = '';
   let revisionCheckBusy = false;
 
@@ -131,7 +131,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=58#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=59#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -1065,9 +1065,9 @@
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
-  setInterval(() => {if(token && !document.hidden && !activeController)loadLive({comparison:false});},AUTO_SYNC_MS);
+  setInterval(() => {if(token && !document.hidden && !activeController && !q('.sg-main').classList.contains('sg-portal-mode'))loadLive({comparison:false});},AUTO_SYNC_MS);
   setInterval(checkDashboardRevision,REVISION_SYNC_MS);
-  document.addEventListener('visibilitychange',() => {if(!document.hidden && token && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({comparison:false});});
+  document.addEventListener('visibilitychange',() => {if(!document.hidden && token && !q('.sg-main').classList.contains('sg-portal-mode') && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({comparison:false});});
   document.addEventListener('visibilitychange',() => {if(!document.hidden)checkDashboardRevision();});
   window.addEventListener('online',() => {if(token && !activeController)loadLive({comparison:false});});
   window.addEventListener('focus',checkDashboardRevision);

@@ -109,7 +109,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.6\.3-orphan-projection-cleanup/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.6\.4-verified-mutations/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
 assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
@@ -286,7 +286,7 @@ assert.match(entryHtml, /rowsOrBlank\(w\.issues,issueRow\)/, 'Form cập nhật 
 assert.match(entryHtml, /rowsOrBlank\(w\.holds,holdRow\)/, 'Form cập nhật phải nạp các khoảng tạm dừng SLA đã lưu.');
 assert.match(entryHtml, /item\.returnedAt\|\|today\(\)/, 'Form giao trả phải nạp ngày trả đã lưu.');
 assert.match(entryHtml, /item\.carrier\|\|''/, 'Form giao trả phải nạp đơn vị vận chuyển đã lưu.');
-assert.match(entryHtml, /attempt<3/, 'Các request chỉ đọc phải tự retry khi Apps Script lỗi tạm thời.');
+assert.match(entryHtml, /attempt<1/, 'Request chỉ đọc chỉ thử lại một lần để hạn chế tải khi có lỗi.');
 assert.match(entryHtml, /state\.caseLoading/, 'Polling không được chạy chồng với request tải danh sách.');
 assert.match(html, /id="legacyDashboardFrame"/, 'Giao diện final phải giữ dashboard cũ cho quản lý.');
 assert.doesNotMatch(entryHtml, /google\.script\.run|<\?=/, 'GitHub Pages không được phụ thuộc runtime template của Apps Script.');
@@ -339,11 +339,11 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=58#/, 'Iframe nhập liệu phải dùng cache key mới cho nhãn tra cứu bảo hành đầy đủ trong ô S/N.');
+assert.match(liveDataSource, /v=59#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=59/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=60/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -378,4 +378,37 @@ for (const field of ['returnCompany','returnCustomer','returnAddress','returnPho
   assert.match(html, new RegExp(`name="${field}"`), `Form giao trả thiếu trường ${field}.`);
 }
 
-console.log('Validation passed: syntax, HTML script, role guard and KPI smoke tests.');
+// Exercise actual creation logic: a lost response must not upload/append twice,
+// and slow Drive uploads must not hold the database lock.
+const creationRows = { cases: [], works: [], issues: [] };
+const receipts = new Map();
+let locked = false, uploadCount = 0, nextId = 0;
+const creationSandbox = {
+  console, SHEETS: { cases:'cases', workOrders:'works', issues:'issues' },
+  authenticate_: token => ({ email:token }), assertCapability_:()=>{}, assertCenterAllowed_:()=>{},
+  clean_: value => String(value ?? '').trim(), required_: value => value,
+  parseDateRequired_: value => new Date(value), emailOptional_: value => value,
+  publicError_: message => new Error(message),
+  readTable_: name => creationRows[name] || [],
+  appendObject_: (name,row) => creationRows[name].push(row),
+  ensureSheetColumns_:()=>{}, makeId_: prefix => prefix + (++nextId),
+  SpreadsheetApp:{flush:()=>{}}, bumpPortalDatabaseRevision_:()=>{}, audit_:()=>{}, syncDashboardProjectionCase_:()=>{},
+  PropertiesService:{getScriptProperties:()=>({getProperty:key=>receipts.get(key),setProperty:(key,value)=>receipts.set(key,value),deleteProperty:key=>receipts.delete(key)})},
+  LockService:{getScriptLock:()=>({waitLock:()=>{assert.equal(locked,false);locked=true},releaseLock:()=>{locked=false}})},
+  uploadCaseEvidence_:()=>{assert.equal(locked,false,'Drive upload must run outside database lock');uploadCount++;return 'https://drive.google.com/test'}
+};
+vm.createContext(creationSandbox);
+vm.runInContext(extractFunction(codeSource,'getCreationStatus')+'\n'+extractFunction(codeSource,'createCase'),creationSandbox);
+const draft={requestId:'12345678-abcd-1234-abcd-123456789abc',intakeCenter:'Center',receivedAt:'2026-09-29',deviceType:'Inverter',model:'Model',serialNumber:'SN',customerName:'Test',customerAddress:'Test',customerPhone:'123',initialIssue:'Test'};
+const created=creationSandbox.createCase('owner',draft);
+const recovered=creationSandbox.createCase('owner',draft);
+assert.equal(recovered.caseId,created.caseId);
+assert.equal(uploadCount,1);
+assert.equal(creationRows.cases.length,1);
+assert.equal(creationSandbox.getCreationStatus('other',draft.requestId).found,false);
+const pendingId='12345678-abcd-1234-abcd-987654321abc';
+receipts.set('CREATE_UPLOAD_'+pendingId,JSON.stringify({owner:'owner'}));
+assert.throws(()=>creationSandbox.createCase('owner',{...draft,requestId:pendingId}),/đang tải/);
+assert.equal(uploadCount,1);
+assert.equal(locked,false);
+console.log('Validation passed: syntax, role/KPI smoke tests, creation idempotency and upload lock isolation.');
