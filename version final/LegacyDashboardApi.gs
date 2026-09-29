@@ -62,10 +62,13 @@ function getDashboard_(request, actor) {
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.email, scope.slice().sort().join(','), period.key].join(':');
+  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.role, scope.slice().sort().join(','), period.key].join(':');
   const cache = CacheService.getScriptCache();
   const cached = request.refresh === true ? null : safeCacheGet_(cache, cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    cached.actor = { email: actor.email, role: actor.role, centers: scope };
+    return cached;
+  }
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
   const operational = readOperationalRecords_(spreadsheetId, centers);
@@ -75,7 +78,7 @@ function getDashboard_(request, actor) {
   const output = buildDashboard_(records, period, scope, hybrid.sheetName, hybrid.lastRow, spreadsheetId, actor, yearlyTotals);
   output.dataQuality.hybridMerge = hybrid.stats;
   if (request.includeTickets === false) output.tickets = [];
-  safeCachePut_(cache, cacheKey, output, 300);
+  safeCachePut_(cache, cacheKey, output, 1800);
   return output;
 }
 
@@ -99,7 +102,7 @@ function searchTickets_(request, actor) {
     : Array.from({length:currentYear - FIRST_REPORT_YEAR + 1}, function (_, index) { return FIRST_REPORT_YEAR + index; });
   const cache = CacheService.getScriptCache();
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.email, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
+  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
   const cached = safeCacheGet_(cache, cacheKey);
   if (cached) return cached;
 
@@ -123,13 +126,18 @@ function searchTickets_(request, actor) {
   matches.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
   const limit = 200;
   const output = { tickets: matches.slice(0, limit), total: matches.length, truncated: matches.length > limit, fromYear: years[0], toYear: years[years.length - 1] };
-  safeCachePut_(cache, cacheKey, output, 120);
+  safeCachePut_(cache, cacheKey, output, 600);
   return output;
 }
 
 function readOperationalRecords_(spreadsheetId, centers) {
-  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  let spreadsheet = null;
+  const sharedRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const canUseSharedTables = typeof readTableShared_ === 'function' && sharedRevision &&
+    (typeof DATABASE_SPREADSHEET_ID === 'undefined' || spreadsheetId === DATABASE_SPREADSHEET_ID);
   function objects(sheetName) {
+    if (canUseSharedTables) return readTableShared_(sheetName, sharedRevision);
+    if (!spreadsheet) spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet || sheet.getLastRow() < 2) return [];
     const values = sheet.getDataRange().getValues();
@@ -243,7 +251,7 @@ function pageTickets_(request, actor) {
   const requestedPage = Math.max(1, Math.floor(Number(request.page) || 1));
   const statusFilter = clean_(request.status);
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['ticket-page', APP_VERSION, dataRevision, actor.email, scope.slice().sort().join(','), year, digest_(query.toUpperCase()), statusFilter, requestedPage, pageSize].join(':');
+  const cacheKey = ['ticket-page', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), year, digest_(query.toUpperCase()), statusFilter, requestedPage, pageSize].join(':');
   const cache = CacheService.getScriptCache();
   const cached = request.refresh === true ? null : safeCacheGet_(cache, cacheKey);
   if (cached) return cached;
@@ -272,7 +280,7 @@ function pageTickets_(request, actor) {
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
   const output = { tickets: tickets.slice(start, start + pageSize), total: total, page: page, pageSize: pageSize, totalPages: totalPages, statuses: statuses, year: year };
-  safeCachePut_(cache, cacheKey, output, 120);
+  safeCachePut_(cache, cacheKey, output, 600);
   return output;
 }
 

@@ -145,7 +145,7 @@
     const CONFIG = window.SUNGROW_CONFIG || {};
     const EMBEDDED = window.self !== window.top;
     if(EMBEDDED)document.documentElement.classList.add('embedded');
-    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false, caseCache:{} };
+    const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false, caseLoadFailures:0, caseRetryTimer:null, caseCache:{} };
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -332,6 +332,7 @@
     async function loadCases(resetPage=false){
       if(resetPage)state.casePage=1;
       if(state.caseLoading){state.caseReloadPending=true;return}
+      if(state.caseRetryTimer){clearTimeout(state.caseRetryTimer);state.caseRetryTimer=null}
       state.caseLoading=true;
       const box=$('#caseResults');
       const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize,refresh:Boolean(resetPage)};
@@ -340,9 +341,12 @@
       try{
         const response=await call('listCases',[state.token,filters]);
         const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;
-        state.caseCache[cacheKey]=data;renderCasesResponse(data);
+        state.caseLoadFailures=0;state.caseCache[cacheKey]=data;renderCasesResponse(data);
       }catch(err){
-        if(!cached)box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} <button type="button" class="secondary" onclick="loadCases(false)">Thử lại</button></span></td></tr>`;
+        state.caseLoadFailures+=1;
+        const retryDelays=[3000,7000,15000,30000],retryDelay=retryDelays[Math.min(state.caseLoadFailures-1,retryDelays.length-1)];
+        if(state.caseLoadFailures<=retryDelays.length&&state.currentView==='cases')state.caseRetryTimer=setTimeout(()=>{state.caseRetryTimer=null;loadCases(false)},retryDelay);
+        if(!cached)box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} ${state.caseLoadFailures<=retryDelays.length?`Hệ thống sẽ tự thử lại sau ${Math.round(retryDelay/1000)} giây.`:''} <button type="button" class="secondary" onclick="state.caseLoadFailures=0;loadCases(false)">Thử ngay</button></span></td></tr>`;
         else showMessage('Đang hiển thị dữ liệu gần nhất; chưa lấy được bản cập nhật mới.',true);
       }finally{
         state.caseLoading=false;
@@ -437,7 +441,7 @@
         if(!readOnly)state.caseCache={};
         return result.data;
       }catch(error){
-        const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
+        const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
         if(retryable&&attempt<1){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1)}
         throw error;
       }

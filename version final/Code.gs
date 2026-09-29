@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.5-cancellation-validation';
+const APP_VERSION = '1.7.0-shared-read-cache';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -141,7 +141,16 @@ function listCases(idToken, filters) {
     cache = null;
     cacheKey = '';
   }
-  const result = listCasesUncached_(idToken, filters, actor);
+  let result = listCasesUncached_(idToken, filters, actor, revision);
+  const latestRevision = getPortalDatabaseRevision_();
+  if (latestRevision !== revision) {
+    // A mutation completed while the shared snapshot was warming. Do not put
+    // mixed-revision data under the old key; rebuild once from the new version.
+    revision = latestRevision;
+    result = listCasesUncached_(idToken, filters, actor, revision);
+    cache = null;
+    cacheKey = '';
+  }
   if (revision) result.revision = revision;
   if (cache && cacheKey) {
     try {
@@ -156,7 +165,7 @@ function listCases(idToken, filters) {
   return result;
 }
 
-function listCasesUncached_(idToken, filters, authenticatedActor) {
+function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) {
   const actor = authenticatedActor || authenticate_(idToken);
   assertCapability_(actor, 'viewCases');
   filters = filters || {};
@@ -169,9 +178,10 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const pageSize = Math.max(10, Math.min(200, Number(filters.pageSize) || 20));
   const requestedPage = Math.max(1, Number(filters.page) || 1);
 
-  const cases = readTable_(SHEETS.cases);
-  const workOrders = readTable_(SHEETS.workOrders);
-  const transfers = readTable_(SHEETS.transfers);
+  const revision = clean_(dataRevision) || getPortalDatabaseRevision_();
+  const cases = readTableShared_(SHEETS.cases, revision);
+  const workOrders = readTableShared_(SHEETS.workOrders, revision);
+  const transfers = readTableShared_(SHEETS.transfers, revision);
   const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
   const transferByCase = groupBy_(transfers, 'Mã hồ sơ');
 
@@ -196,9 +206,9 @@ function listCasesUncached_(idToken, filters, authenticatedActor) {
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
   // Detail tables are unnecessary for empty searches (including delete verification).
-  const issuesByWork = total ? groupBy_(readTable_(SHEETS.issues), 'Mã công việc') : {};
-  const partsByWork = total ? groupBy_(readTable_(SHEETS.parts), 'Mã công việc') : {};
-  const holdsByWork = total ? groupBy_(readTable_(SHEETS.holds), 'Mã công việc') : {};
+  const issuesByWork = total ? groupBy_(readTableShared_(SHEETS.issues, revision), 'Mã công việc') : {};
+  const partsByWork = total ? groupBy_(readTableShared_(SHEETS.parts, revision), 'Mã công việc') : {};
+  const holdsByWork = total ? groupBy_(readTableShared_(SHEETS.holds, revision), 'Mã công việc') : {};
   const items = filtered.slice(start, start + pageSize).map(function (item) {
     return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || [], issuesByWork, partsByWork, holdsByWork);
   });
@@ -843,7 +853,7 @@ function authenticate_(idToken) {
     return JSON.parse(cached);
   }
   const actor = authenticateUncached_(idToken);
-  cache.put(cacheKey, JSON.stringify(actor), 30);
+  cache.put(cacheKey, JSON.stringify(actor), 300);
   return actor;
 }
 
@@ -922,6 +932,18 @@ function authenticateUncached_(idToken) {
     isGlobalManager: roleDefinition.isGlobalManager,
     capabilities: Object.assign({}, roleDefinition.capabilities)
   };
+}
+
+// Run once from the Apps Script editor after deploying a new backend version.
+// This performs the first Sheet read before end users arrive and returns only
+// counts/timing, never customer data.
+function warmPortalReadCache() {
+  const revision = getPortalDatabaseRevision_();
+  const startedAt = Date.now();
+  const tables = [SHEETS.cases, SHEETS.workOrders, SHEETS.transfers, SHEETS.issues, SHEETS.parts, SHEETS.holds];
+  const counts = {};
+  tables.forEach(function (sheetName) { counts[sheetName] = readTableShared_(sheetName, revision).length; });
+  return { version: APP_VERSION, revision: revision, tables: counts, elapsedMs: Date.now() - startedAt };
 }
 
 function authenticateDashboardManager_(idToken) {
@@ -1146,6 +1168,132 @@ function assertCapability_(actor, capability) {
 }
 
 function readTable_(sheetName) { return readTableWithRows_(sheetName).rows; }
+
+/**
+ * Read-only shared cache for the operational tables. The revision is bumped by
+ * every mutation, so cached rows never need a user-specific key. A short lease
+ * prevents a burst of browser requests from reading the same Sheet together.
+ * Sheet I/O happens outside the script lock so writes are not blocked.
+ */
+function readTableShared_(sheetName, revision) {
+  const version = clean_(revision) || getPortalDatabaseRevision_();
+  const baseKey = 'portal-table-v2-' + digest_(sheetName + '|' + version);
+  const cache = CacheService.getScriptCache();
+  const cached = readPortalChunkedCache_(cache, baseKey);
+  if (cached) return unpackPortalTable_(cached);
+
+  const leaseKey = 'PORTAL_TABLE_LEASE_' + digest_(sheetName);
+  const owner = Utilities.getUuid();
+  const properties = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  let ownsLease = false;
+  if (lock.tryLock(3000)) {
+    try {
+      const secondRead = readPortalChunkedCache_(cache, baseKey);
+      if (secondRead) return unpackPortalTable_(secondRead);
+      const lease = parseJson_(properties.getProperty(leaseKey));
+      const leaseAge = lease && Number(lease.startedAt) ? Date.now() - Number(lease.startedAt) : Infinity;
+      if (!lease || lease.revision !== version || leaseAge > 45000) {
+        properties.setProperty(leaseKey, JSON.stringify({ owner: owner, revision: version, startedAt: Date.now() }));
+        ownsLease = true;
+      }
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  if (!ownsLease) {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      Utilities.sleep(300);
+      const ready = readPortalChunkedCache_(cache, baseKey);
+      if (ready) return unpackPortalTable_(ready);
+      // The previous lock may have belonged to a short write rather than a
+      // cache builder. Periodically attempt to become the builder ourselves.
+      if (attempt % 10 === 9) {
+        const retryLock = LockService.getScriptLock();
+        if (retryLock.tryLock(500)) {
+          try {
+            const lease = parseJson_(properties.getProperty(leaseKey));
+            const leaseAge = lease && Number(lease.startedAt) ? Date.now() - Number(lease.startedAt) : Infinity;
+            if (!lease || lease.revision !== version || leaseAge > 45000) {
+              properties.setProperty(leaseKey, JSON.stringify({ owner: owner, revision: version, startedAt: Date.now() }));
+              ownsLease = true;
+              break;
+            }
+          } finally {
+            retryLock.releaseLock();
+          }
+        }
+      }
+    }
+    if (!ownsLease) throw publicError_('Dữ liệu đang được chuẩn bị cho nhiều người truy cập. Hệ thống sẽ tự thử lại, không cần tải lại trang.');
+  }
+
+  try {
+    const table = readTableWithRows_(sheetName);
+    writePortalChunkedCache_(cache, baseKey, packPortalTable_(table), 1800);
+    return table.rows;
+  } finally {
+    const release = LockService.getScriptLock();
+    if (release.tryLock(3000)) {
+      try {
+        const current = parseJson_(properties.getProperty(leaseKey));
+        if (current && current.owner === owner) properties.deleteProperty(leaseKey);
+      } finally {
+        release.releaseLock();
+      }
+    }
+  }
+}
+
+function packPortalTable_(table) {
+  const headers = table.headers || [];
+  return {
+    h: headers,
+    d: (table.rows || []).map(function (row) {
+      return [row.__rowNumber].concat(headers.map(function (header) { return row[header]; }));
+    })
+  };
+}
+
+function unpackPortalTable_(packed) {
+  if (!packed || !Array.isArray(packed.h) || !Array.isArray(packed.d)) return [];
+  return packed.d.map(function (values) {
+    const row = { __rowNumber: values[0] };
+    packed.h.forEach(function (header, index) { row[header] = values[index + 1]; });
+    return row;
+  });
+}
+
+function readPortalChunkedCache_(cache, baseKey) {
+  try {
+    const count = Number(cache.get(baseKey + ':count'));
+    if (!Number.isInteger(count) || count < 1 || count > 250) return null;
+    const keys = Array.from({ length: count }, function (_, index) { return baseKey + ':part:' + index; });
+    const chunks = cache.getAll(keys);
+    if (keys.some(function (key) { return typeof chunks[key] !== 'string'; })) return null;
+    return JSON.parse(keys.map(function (key) { return chunks[key]; }).join(''));
+  } catch (error) {
+    console.warn('Shared table cache read skipped: ' + String(error && error.message || error));
+    return null;
+  }
+}
+
+function writePortalChunkedCache_(cache, baseKey, value, ttl) {
+  try {
+    const serialized = JSON.stringify(value);
+    const chunks = serialized.match(/[\s\S]{1,12000}/g) || [];
+    if (!chunks.length || chunks.length > 250) return false;
+    const entries = {};
+    chunks.forEach(function (chunk, index) { entries[baseKey + ':part:' + index] = chunk; });
+    cache.putAll(entries, ttl);
+    cache.put(baseKey + ':count', String(chunks.length), ttl);
+    return true;
+  } catch (error) {
+    console.warn('Shared table cache write skipped: ' + String(error && error.message || error));
+    return false;
+  }
+}
 
 function readTableWithRows_(sheetName) {
   const sheet = spreadsheet_().getSheetByName(sheetName);
