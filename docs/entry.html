@@ -281,7 +281,7 @@
       if(state.caseLoading){state.caseReloadPending=true;return}
       state.caseLoading=true;
       const box=$('#caseResults');
-      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize};
+      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize,refresh:Boolean(resetPage)};
       const cacheKey=JSON.stringify(filters),cached=state.caseCache[cacheKey];
       if(cached)renderCasesResponse(cached);else box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
       try{
@@ -325,7 +325,7 @@
     function openCaseDrawer(raw){const item=JSON.parse(raw);$('#caseDrawerBody').innerHTML=renderCaseDetail(item);$('#caseDrawerBackdrop').classList.remove('hidden');$('#caseDrawer').classList.remove('hidden');$('#caseDrawer').setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
     function closeCaseDrawer(){$('#caseDrawerBackdrop').classList.add('hidden');$('#caseDrawer').classList.add('hidden');$('#caseDrawer').setAttribute('aria-hidden','true');$('#caseDrawerBody').innerHTML='';document.body.style.overflow=''}
     function navigateToCase(view,query){closeCaseDrawer();showView(view);const input=$(view==='update'?'#updateQuery':'#transferQuery');const button=$(view==='update'?'#updateSearch':'#transferSearch');input.value=query||'';if(input.value)button.click()}
-    async function cancelCaseUI(raw){const item=JSON.parse(raw),reason=prompt('Nhập lý do xóa hồ sơ (ví dụ: nhập sai S/N):','');if(!reason||!reason.trim())return;if(!confirm(`Xóa hồ sơ ${item.caseId}? Hồ sơ sẽ không còn xuất hiện trong danh sách và KPI.`))return;try{await call('cancelCase',[state.token,{caseId:item.caseId,reason:reason.trim()}]);closeCaseDrawer();showMessage(`Đã xóa hồ sơ ${item.caseId}.`);await refreshCurrent()}catch(error){showMessage(error.message,true)}}
+    async function cancelCaseUI(raw){const item=JSON.parse(raw),reason=prompt('Nhập lý do xóa hồ sơ (ví dụ: nhập sai S/N):','');if(!reason||!reason.trim())return;if(!confirm(`Xóa hồ sơ ${item.caseId}? Hồ sơ sẽ không còn xuất hiện trong danh sách và KPI.`))return;try{await call('cancelCase',[state.token,{caseId:item.caseId,reason:reason.trim()}]);closeCaseDrawer();state.caseCache={};showMessage(`Đã xóa hồ sơ ${item.caseId}.`);await loadCases(true)}catch(error){showMessage(error.message,true)}}
 
     function caseAction(label,enabled,onclick,reason){return `<button type="button" class="case-action ${enabled?'enabled':''}" ${enabled?`onclick='${onclick}'`:'disabled'} title="${esc(enabled?'Thực hiện '+label:reason)}">${esc(label)}</button>`}
     function renderCase(item,mode,position){

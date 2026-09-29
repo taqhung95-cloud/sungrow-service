@@ -1,4 +1,4 @@
-const APP_VERSION = '1.6.1-cancel-cache-sync';
+const APP_VERSION = '1.6.2-force-refresh';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -133,7 +133,7 @@ function listCases(idToken, filters) {
     ).replace(/=+$/g, '');
     cache = CacheService.getScriptCache();
     cacheKey = 'portal-cases-v1-' + digest;
-    const cached = cache.get(cacheKey);
+    const cached = filters && filters.refresh === true ? null : cache.get(cacheKey);
     if (cached) return JSON.parse(cached);
   } catch (cacheError) {
     console.warn('Portal list cache read skipped: ' + String(cacheError && cacheError.message || cacheError));
