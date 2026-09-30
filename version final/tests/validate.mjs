@@ -92,12 +92,21 @@ const validationSandbox = {
   }})})
 };
 vm.createContext(validationSandbox);
+vm.runInContext(extractFunction(codeSource,'allowListValidationValue_'),validationSandbox);
 vm.runInContext(extractFunction(codeSource,'allowCancelledCaseStatus_'),validationSandbox);
+vm.runInContext(extractFunction(codeSource,'allowHistoricalWarrantyStatus_'),validationSandbox);
 validationSandbox.allowCancelledCaseStatus_(['Mã hồ sơ','Trạng thái hồ sơ'],1522);
 assert.equal(JSON.stringify(validationValues),JSON.stringify(['Mới tiếp nhận','Đang xử lý','Đã hoàn tất','Đã hủy']));
 validationSandbox.allowCancelledCaseStatus_(['Mã hồ sơ','Trạng thái hồ sơ'],1522);
 assert.equal(validationWrites,1,'Validation migration must be idempotent');
 assert.ok(codeSource.indexOf('allowCancelledCaseStatus_(headers, record.__rowNumber)') < codeSource.indexOf('updateObjectRow_(SHEETS.cases, headers, record.__rowNumber, changes)'));
+validationValues = ['Trong bảo hành','Ngoài bảo hành','Chờ xác nhận'];
+validationSandbox.allowHistoricalWarrantyStatus_(['Mã hồ sơ','Tình trạng bảo hành'],1522,'Sửa làm hàng good');
+assert.equal(JSON.stringify(validationValues),JSON.stringify(['Trong bảo hành','Ngoài bảo hành','Chờ xác nhận','Sửa làm hàng good']));
+validationSandbox.allowHistoricalWarrantyStatus_(['Mã hồ sơ','Tình trạng bảo hành'],1522,'Sửa làm hàng good');
+assert.equal(validationWrites,2,'Warranty validation migration must be idempotent');
+assert.ok(codeSource.indexOf("allowHistoricalWarrantyStatus_(table.headers, record.__rowNumber, warrantyStatus)") < codeSource.indexOf('updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes)'));
+assert.ok(codeSource.indexOf("if (changes['Tình trạng bảo hành']) allowHistoricalWarrantyStatus_(cases.headers, record.__rowNumber, expected)") < codeSource.indexOf('updateObjectRow_(SHEETS.cases,cases.headers,record.__rowNumber,changes)'));
 const roleConstants = codeSource.slice(codeSource.indexOf('const ROLE_CODES'), codeSource.indexOf('function doGet'));
 const roleSandbox = {
   Object,

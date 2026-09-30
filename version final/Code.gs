@@ -512,12 +512,12 @@ function cancelCaseUnlocked_(idToken, payload) {
   }
 }
 
-// Extend only the authorized case's dropdown, retaining existing choices and
+// Extend only the target cell's dropdown, retaining existing choices and
 // rejection policy. Never clear validation or modify a shared lookup range.
-function allowCancelledCaseStatus_(headers, rowNumber) {
-  const column = headers.indexOf('Trạng thái hồ sơ') + 1;
-  if (!column) throw publicError_('Không tìm thấy cột Trạng thái hồ sơ.');
-  const cell = spreadsheet_().getSheetByName(SHEETS.cases).getRange(rowNumber, column);
+function allowListValidationValue_(sheetName, headers, rowNumber, header, value, invalidMessage) {
+  const column = headers.indexOf(header) + 1;
+  if (!column) throw publicError_('Không tìm thấy cột ' + header + '.');
+  const cell = spreadsheet_().getSheetByName(sheetName).getRange(rowNumber, column);
   const rule = cell.getDataValidation();
   if (!rule) return;
   const type = rule.getCriteriaType();
@@ -525,10 +525,20 @@ function allowCancelledCaseStatus_(headers, rowNumber) {
   let values;
   if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) values = args[0].slice();
   else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) values = args[0].getDisplayValues().reduce(function (all, row) { return all.concat(row); }, []).filter(String);
-  else throw publicError_('Quy tắc trạng thái không phải danh sách. Cần quản lý kiểm tra validation trước khi hủy.');
-  if (values.indexOf('Đã hủy') !== -1) return;
-  values.push('Đã hủy');
+  else throw publicError_(invalidMessage || ('Quy tắc của cột ' + header + ' không phải danh sách.'));
+  if (values.indexOf(value) !== -1) return;
+  values.push(value);
   cell.setDataValidation(rule.copy().requireValueInList(values, args[1] !== false).build());
+}
+
+function allowCancelledCaseStatus_(headers, rowNumber) {
+  allowListValidationValue_(SHEETS.cases, headers, rowNumber, 'Trạng thái hồ sơ', 'Đã hủy',
+    'Quy tắc trạng thái không phải danh sách. Cần quản lý kiểm tra validation trước khi hủy.');
+}
+
+function allowHistoricalWarrantyStatus_(headers, rowNumber, warrantyStatus) {
+  allowListValidationValue_(SHEETS.cases, headers, rowNumber, 'Tình trạng bảo hành', warrantyStatus,
+    'Quy tắc tình trạng bảo hành không phải danh sách. Cần quản lý kiểm tra validation.');
 }
 
 function confirmWarrantyUnlocked_(idToken, payload) {
@@ -557,6 +567,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
   };
+  allowHistoricalWarrantyStatus_(table.headers, record.__rowNumber, warrantyStatus);
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
   syncDashboardProjectionCase_(caseId);
@@ -1115,7 +1126,11 @@ function reconcileHistoricalWarrantyData_(apply) {
       if (!confirmer) changes['Người xác nhận bảo hành'] = 'Dữ liệu lịch sử';
       if (Object.keys(changes).length) {
         report.mismatches.push({caseId:record['Mã hồ sơ'],source:key,current:clean_(record['Tình trạng bảo hành']),expected:expected});
-        if (apply) { updateObjectRow_(SHEETS.cases,cases.headers,record.__rowNumber,changes); report.repairedCases++; }
+        if (apply) {
+          if (changes['Tình trạng bảo hành']) allowHistoricalWarrantyStatus_(cases.headers, record.__rowNumber, expected);
+          updateObjectRow_(SHEETS.cases,cases.headers,record.__rowNumber,changes);
+          report.repairedCases++;
+        }
       }
       const candidates = projectionsById[clean_(record['Mã hồ sơ'])] || projectionsBySource[key] || [];
       if (candidates.length !== 1) {
