@@ -126,13 +126,16 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.7\.1-resilient-sync/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.10\.0-history-integrity/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
-assert.match(extractFunction(codeSource,'listCasesUncached_'), /readTableShared_\(SHEETS\.cases, revision\)/, 'Danh sách hồ sơ phải dùng cache bảng chung theo revision.');
-assert.match(extractFunction(codeSource,'listCasesUncached_'), /total && includeDetails \? groupBy_\(readTableShared_\(SHEETS\.issues/, 'Danh sách nhẹ không được đọc bảng chi tiết khi chưa mở thao tác.');
-assert.match(extractFunction(codeSource,'searchCases'), /includeDetails: true/, 'Tìm kiếm nghiệp vụ phải tải đủ chi tiết khi người dùng mở cập nhật.');
+const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
+assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
+assert.doesNotMatch(listCasesUncachedSource, /SHEETS\.(cases|workOrders|transfers|issues|parts|holds)/, 'Danh sách hồ sơ không được đọc các bảng nghiệp vụ lớn.');
+assert.match(extractFunction(codeSource,'searchCases'), /getCaseDetailForActor_/, 'Tìm kiếm nghiệp vụ chỉ tải chi tiết cho các hồ sơ kết quả.');
+assert.match(extractFunction(codeSource,'getCaseDetailForActor_'), /findTableRowsByField_\(SHEETS\.workOrders/, 'Chi tiết hồ sơ phải đọc theo khóa, không tải toàn bảng công việc.');
 assert.match(extractFunction(codeSource,'listCases'), /latestRevision !== revision/, 'Danh sách phải phát hiện dữ liệu đổi trong lúc làm ấm cache.');
 assert.match(codeSource, /function warmPortalReadCache\(/, 'Backend phải có hàm làm ấm cache trước khi người dùng truy cập.');
+assert.doesNotMatch(extractFunction(codeSource,'warmPortalReadCache'), /SHEETS\.(cases|workOrders|transfers|issues|parts|holds)/, 'Làm ấm cache không được tải lại toàn bộ bảng nghiệp vụ.');
 
 const sharedCacheValues = new Map();
 const sharedProperties = new Map();
@@ -203,7 +206,12 @@ assert.match(codeSource, /function removeOrphanDashboardProjections_\(/, 'Đối
 assert.match(extractFunction(codeSource, 'reconcileDashboardProjection'), /removedOrphans/, 'Kết quả đối soát phải báo số dòng dashboard mồ côi đã xóa.');
 for (const mutation of ['createCase','confirmWarrantyUnlocked_','updateWorkOrderUnlocked_','createTransferUnlocked_','acceptTransferUnlocked_','returnToCustomerUnlocked_']) {
   assert.match(extractFunction(codeSource, mutation), /syncDashboardProjectionCase_\(/, `${mutation} phải đồng bộ case sang Dữ liệu dashboard.`);
+  assert.match(extractFunction(codeSource, mutation), /syncPortalCaseIndexCase_\(/, `${mutation} phải cập nhật chỉ mục hồ sơ.`);
 }
+assert.match(extractFunction(codeSource,'cancelCaseUnlocked_'), /syncPortalCaseIndexCase_\(/, 'Xóa hồ sơ phải cập nhật trạng thái Đã hủy vào chỉ mục.');
+assert.match(codeSource, /getCaseDetail: getCaseDetail/, 'API phải cho phép tải chi tiết một hồ sơ theo yêu cầu.');
+assert.match(entryHtml, /call\('getCaseDetail'/, 'Ngăn chi tiết phải tải dữ liệu đầy đủ khi người dùng bấm mở.');
+assert.match(entryHtml, /'getCaseDetail'.*\.includes\(name\)/, 'Tải chi tiết phải được đánh dấu là thao tác chỉ đọc để có retry an toàn.');
 assert.match(html, /checkPortalRevision/, 'Apps Script UI phải tự kiểm tra dữ liệu mới.');
 assert.match(entryHtml, /checkPortalRevision/, 'GitHub Pages UI phải tự kiểm tra dữ liệu mới.');
 assert.match(entryHtml, /Có dữ liệu mới · Bấm để tải lại/, 'UI phải bảo vệ form đang mở trước khi làm mới dữ liệu.');
@@ -302,6 +310,26 @@ const newCaseWithoutConfirmedIssue = {...operationalOverlay,id:'HS-NEW-PROJECTIO
 const projectedMerge = hybridSandbox.mergeLegacyAndOperational_([projectedIntake],[newCaseWithoutConfirmedIssue],2026);
 assert.equal(projectedMerge.records.length,1,'Projection phải ghép theo Mã hồ sơ dù S/N hoặc model được chỉnh sau đó.');
 assert.equal(projectedMerge.records[0].issues.length,0,'Projection của hồ sơ mới không được giữ hiện tượng ban đầu như lỗi xác nhận.');
+const repair2025 = {...legacyRow,id:'2025-342',legacySourceKey:'2025!342',serialNumber:'A24C2718388',receivedDate:new Date('2025-07-09'),warrantyStatus:'Trong bảo hành',parts:[{pn:'ASG02271',qty:1}]};
+const repair2026 = {...repair2025,id:'2026-167',legacySourceKey:'2026!167',warrantyStatus:'Sửa làm hàng good',parts:[{pn:'BP012029',qty:1},{pn:'B0P01309',qty:1},{pn:'BP007144',qty:1},{pn:'B0P01333',qty:1}]};
+const imported2026 = {...operationalOverlay,id:'HS-OLD-2026-0167',legacySourceKey:'2026!167',hasWorkflowEdits:false,serialNumber:'A24C2718388',receivedDate:new Date('2025-07-09'),warrantyStatus:'Chờ xác nhận',parts:[]};
+const historical2026 = hybridSandbox.mergeLegacyAndOperational_([repair2026],[imported2026],2026);
+assert.equal(historical2026.stats.matchedOverlay,1,'Phải ghép theo dòng nguồn khi năm ngày nhận khác năm của tab.');
+assert.equal(historical2026.records[0].warrantyStatus,'Sửa làm hàng good');
+assert.equal(historical2026.records[0].parts.length,4);
+const historical2025 = hybridSandbox.mergeLegacyAndOperational_([repair2025],[imported2026],2025);
+assert.equal(historical2025.stats.matchedOverlay,0,'Không được ghi đè lượt sửa năm 2025 bằng lượt 2026 cùng SN và ngày nhận.');
+assert.equal(historical2025.records[0].parts[0].pn,'ASG02271');
+const edited2026 = {...imported2026,hasWorkflowEdits:true,status:'Đang theo dõi'};
+const editedHistory = hybridSandbox.mergeLegacyAndOperational_([repair2026],[edited2026],2026).records[0];
+assert.equal(editedHistory.status,'Đang theo dõi');
+assert.equal(editedHistory.warrantyStatus,'Sửa làm hàng good');
+vm.runInContext(extractFunction(legacyApiSource,'historicalWarrantyStatus_')+'\n'+extractFunction(legacyApiSource,'date_'),hybridSandbox);
+assert.equal(hybridSandbox.historicalWarrantyStatus_('Trong bảo hành','Đổi Inverter'),'Trong bảo hành');
+assert.equal(hybridSandbox.historicalWarrantyStatus_('Sửa làm hàng good','Đã sửa chữa'),'Sửa làm hàng good');
+assert.equal(hybridSandbox.date_('09/07/2025').getMonth(),6);
+assert.equal(hybridSandbox.date_('B111-Aug-26').getDate(),11);
+assert.equal(hybridSandbox.date_('31/02/2025'),null);
 assert.match(extractFunction(legacyApiSource,'normalizeRow_'), /projectedCaseId \? \[\] : schema\.issues/, 'Cột Issue của projection không được coi là lỗi xác nhận.');
 const groupedIssues = hybridSandbox.groupConfirmedIssueCategories_([
   {issues:['Hỏng quạt F3 và F4','Nhiệt độ bên trong máy cao','Cảnh báo quạt']},
@@ -412,11 +440,11 @@ assert.doesNotMatch(casesView, /Quản lý hồ sơ thiết bị|\+ Tiếp nhậ
 assert.match(entryHtml, /\.search-field::after\{[^}]*top:50%;[^}]*translateY\(-50%\)/, 'Icon tìm kiếm phải căn giữa bên phải ô nhập.');
 assert.match(entryHtml, /\.case-table-shell\{[^}]*flex:1 1 auto;[^}]*scrollbar-width:thin/, 'Bảng hồ sơ phải dùng vùng cuộn linh hoạt giống dashboard.');
 assert.match(entryHtml, /#cases\.view\.panel\{[^}]*display:flex;[^}]*overflow:hidden/, 'Trang danh sách phải dùng toàn bộ chiều cao khả dụng và chỉ cuộn phần bảng.');
-assert.match(liveDataSource, /v=61#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=62#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=62/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=63/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -471,7 +499,7 @@ const creationSandbox = {
   readTable_: name => creationRows[name] || [],
   appendObject_: (name,row) => creationRows[name].push(row),
   ensureSheetColumns_:()=>{}, makeId_: prefix => prefix + (++nextId),
-  SpreadsheetApp:{flush:()=>{}}, bumpPortalDatabaseRevision_:()=>{}, audit_:()=>{}, syncDashboardProjectionCase_:()=>{},
+  SpreadsheetApp:{flush:()=>{}}, bumpPortalDatabaseRevision_:()=>{}, audit_:()=>{}, syncDashboardProjectionCase_:()=>{}, syncPortalCaseIndexCase_:()=>({ok:true}),
   PropertiesService:{getScriptProperties:()=>({getProperty:key=>receipts.get(key),setProperty:(key,value)=>receipts.set(key,value),deleteProperty:key=>receipts.delete(key)})},
   LockService:{getScriptLock:()=>({waitLock:()=>{assert.equal(locked,false);locked=true},releaseLock:()=>{locked=false}})},
   uploadCaseEvidence_:()=>{assert.equal(locked,false,'Drive upload must run outside database lock');uploadCount++;return 'https://drive.google.com/test'}

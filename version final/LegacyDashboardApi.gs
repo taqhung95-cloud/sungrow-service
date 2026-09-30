@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.9.1-cancelled-filter';
+const APP_VERSION = '1.10.0-history-integrity';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -162,11 +162,14 @@ function readOperationalRecords_(spreadsheetId, centers) {
   const allCases = objects('Hồ sơ thiết bị');
   const cancelledCaseIds = {};
   const cancelledStrongKeys = {};
+  const cancelledSourceKeys = {};
   allCases.filter(function (item) { return clean_(item['Trạng thái hồ sơ']) === 'Đã hủy'; }).forEach(function (item) {
     const caseId = clean_(item['Mã hồ sơ']);
     const serial = normalizeDeviceKey_(item['Số sê-ri (S/N)']);
     const received = date_(item['Ngày nhận từ khách']);
     if (caseId) cancelledCaseIds[caseId] = true;
+    const sourceKey = clean_(item['Mã dòng dữ liệu cũ']);
+    if (sourceKey) cancelledSourceKeys[sourceKey] = true;
     if (serial && received) cancelledStrongKeys['SN|' + serial + '|' + hybridDateKey_(received)] = true;
   });
   const cases = allCases.filter(function (item) { return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy'; });
@@ -174,6 +177,7 @@ function readOperationalRecords_(spreadsheetId, centers) {
     const emptyRecords = [];
     emptyRecords.cancelledCaseIds = cancelledCaseIds;
     emptyRecords.cancelledStrongKeys = cancelledStrongKeys;
+    emptyRecords.cancelledSourceKeys = cancelledSourceKeys;
     return { records: emptyRecords, sheetName: 'Hồ sơ thiết bị', lastRow: 0 };
   }
   const worksByCase = grouped(objects('Công việc trung tâm'), 'Mã hồ sơ');
@@ -201,6 +205,8 @@ function readOperationalRecords_(spreadsheetId, centers) {
       id: caseId || ('operational-' + item.__rowNumber),
       sourceNo: caseId,
       sourceType: clean_(item['Nguồn dữ liệu']),
+      legacySourceKey: clean_(item['Mã dòng dữ liệu cũ']),
+      hasWorkflowEdits: Boolean(clean_(item['Người cập nhật gần nhất']) && clean_(item['Người cập nhật gần nhất']) !== 'Đồng bộ dữ liệu cũ'),
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
@@ -229,6 +235,7 @@ function readOperationalRecords_(spreadsheetId, centers) {
   });
   records.cancelledCaseIds = cancelledCaseIds;
   records.cancelledStrongKeys = cancelledStrongKeys;
+  records.cancelledSourceKeys = cancelledSourceKeys;
   return { records: records, sheetName: 'Hồ sơ thiết bị + dữ liệu nghiệp vụ', lastRow: cases.length + 1 };
 }
 
@@ -306,8 +313,9 @@ function readHybridRecordsForYear_(spreadsheetId, year, centers, operationalReco
   }
   const cancelledCaseIds = operationalRecords && operationalRecords.cancelledCaseIds || {};
   const cancelledStrongKeys = operationalRecords && operationalRecords.cancelledStrongKeys || {};
+  const cancelledSourceKeys = operationalRecords && operationalRecords.cancelledSourceKeys || {};
   legacyRecords = legacyRecords.filter(function (record) {
-    return !cancelledCaseIds[clean_(record.projectedCaseId)] && !cancelledStrongKeys[strongHybridKey_(record)];
+    return !cancelledCaseIds[clean_(record.projectedCaseId)] && !cancelledSourceKeys[record.legacySourceKey] && !(combinedDashboardSource && cancelledStrongKeys[strongHybridKey_(record)]);
   });
   const merged = mergeLegacyAndOperational_(legacyRecords, operationalRecords || [], year);
   return {
@@ -337,7 +345,14 @@ function fallbackHybridKey_(record) {
 
 function overlayOperationalRecord_(legacy, operational) {
   const merged = Object.assign({}, legacy);
+  // An untouched imported row is a snapshot, not a user correction. Keep the
+  // original year's facts when an earlier importer mapped them incorrectly.
+  if (operational.legacySourceKey && !operational.hasWorkflowEdits) {
+    merged.operationalCaseId = operational.id;
+    return merged;
+  }
   ['warrantyConfirmation', 'warrantyStatus', 'center', 'checkDate', 'status', 'sparePartDate', 'returnDate', 'errorCode', 'gsp', 'ma'].forEach(function (field) {
+    if (field === 'warrantyStatus' && operational[field] === 'Chờ xác nhận' && ['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].indexOf(legacy.warrantyStatus) !== -1) return;
     if (operational[field] !== '' && operational[field] !== null && operational[field] !== undefined) merged[field] = operational[field];
   });
   if (operational.deliveryStatus && (!merged.deliveryStatus || !/^chưa\s+giao/i.test(operational.deliveryStatus))) {
@@ -358,6 +373,7 @@ function overlayOperationalRecord_(legacy, operational) {
 function mergeLegacyAndOperational_(legacyRecords, operationalRecords, year) {
   const records = legacyRecords.slice();
   const byCaseId = {};
+  const bySourceKey = {};
   const strong = {};
   const fallback = {};
   function addIndex(map, key, index) {
@@ -366,17 +382,23 @@ function mergeLegacyAndOperational_(legacyRecords, operationalRecords, year) {
     map[key].push(index);
   }
   records.forEach(function (record, index) {
+    addIndex(bySourceKey, record.legacySourceKey, index);
     if (record.projectedCaseId) addIndex(byCaseId, record.projectedCaseId, index);
     addIndex(strong, strongHybridKey_(record), index);
     addIndex(fallback, fallbackHybridKey_(record), index);
   });
   const stats = { legacyRows: records.length, matchedOverlay: 0, appendedNew: 0, duplicateNew: 0, unmatchedHistorical: 0 };
   operationalRecords.forEach(function (operational) {
-    if (!operational.hasData || !operational.receivedDate || operational.receivedDate.getFullYear() !== Number(year)) return;
+    if (!operational.hasData) return;
+    const sourceMatch = /^(\d{4})!(\d+)$/.exec(clean_(operational.legacySourceKey));
+    if (sourceMatch ? Number(sourceMatch[1]) !== Number(year) : (!operational.receivedDate || operational.receivedDate.getFullYear() !== Number(year))) return;
+    const sourceMatches = bySourceKey[operational.legacySourceKey] || [];
     const caseMatches = byCaseId[operational.id] || [];
     const strongMatches = strong[strongHybridKey_(operational)] || [];
     const fallbackMatches = fallback[fallbackHybridKey_(operational)] || [];
-    const matches = caseMatches.length === 1 ? caseMatches : (strongMatches.length === 1 ? strongMatches : (fallbackMatches.length === 1 ? fallbackMatches : []));
+    // With provenance present, a failed source match must not fall back to a
+    // different repair cycle sharing the same serial and intake date.
+    const matches = sourceMatch ? sourceMatches : (caseMatches.length === 1 ? caseMatches : (strongMatches.length === 1 ? strongMatches : (!normalizeDeviceKey_(operational.serialNumber) && fallbackMatches.length === 1 ? fallbackMatches : [])));
     const isNew = /^quy\s*trình\s*mới$/i.test(clean_(operational.sourceType));
     if (matches.length === 1) {
       records[matches[0]] = overlayOperationalRecord_(records[matches[0]], operational);
@@ -700,18 +722,19 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
     projectedCaseId: projectedCaseId,
     sourceNo: clean_(row[schema.sourceNo]),
     sourceType: 'Dữ liệu lịch sử',
+    legacySourceKey: String(year) + '!' + rowNumber,
     deviceType: clean_(row[schema.deviceType]),
     serialNumber: clean_(row[schema.serialNumber]),
     model: clean_(row[schema.model]),
-    gsp: '',
-    ma: '',
+    gsp: clean_(row[schema.gsp]),
+    ma: clean_(row[schema.ma]),
     receivedDate: date_(row[schema.receivedDate]),
     distributor: clean_(row[schema.distributor]),
     workshop: clean_(row[schema.workshop]),
     errorCode: clean_(row[schema.errorCode]),
     issues: issues,
     warrantyConfirmation: clean_(row[schema.warrantyConfirmation]),
-    warrantyStatus: clean_(row[schema.warrantyStatus]),
+    warrantyStatus: historicalWarrantyStatus_(row[schema.warrantyConfirmation], row[schema.warrantyStatus]),
     center: center,
     checkDate: date_(row[schema.checkDate]),
     deliveryStatus: clean_(row[schema.deliveryStatus]),
@@ -863,6 +886,16 @@ function groupConfirmedIssueCategories_(rows) {
     .sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name, 'vi'); }).slice(0, 10);
 }
 
+function historicalWarrantyStatus_(confirmation, status) {
+  const values = [clean_(confirmation), clean_(status)];
+  const statuses = ['Trong bảo hành', 'Ngoài bảo hành', 'Sửa làm hàng good', 'Chờ xác nhận'];
+  for (let i = 0; i < values.length; i++) {
+    const match = statuses.find(function (value) { return value.toLowerCase() === values[i].toLowerCase(); });
+    if (match) return match;
+  }
+  return '';
+}
+
 function groupParts_(rows) {
   const counts = {};
   rows.forEach(function (r) { r.parts.forEach(function (p) { counts[p.pn] = (counts[p.pn] || 0) + p.qty; }); });
@@ -899,6 +932,7 @@ function schemaForHeaders_(headers) {
     sourceNo: get('No.', true), projectedCaseId: get('Mã hồ sơ', false), deviceType: get('Device Type', true), serialNumber: get('S/N', false), model: get('Model', false),
     receivedDate: get('Received date', true), distributor: get('Distributor', false), workshop: get('Where sent to Workshop', false),
     errorCode: get('Error Code', false), warrantyConfirmation: get('Warranty confirmation', false), warrantyStatus: get('Warranty Status', false),
+    gsp: get('GSP', false) === undefined ? get('Column AD', false) : get('GSP', false), ma: get('MA', false),
     center: get('Service Center', true), checkDate: get('Check / Repair date', false), deliveryStatus: get('Delivery Status', false),
     status: get('Status', false), sparePartDate: get('Receive spare part date', false), returnDate: get('Return date', true), note: get('Note', false),
     unnamedAD: 29, unnamedAE: 30,
@@ -948,7 +982,13 @@ function date_(value) {
   if (value instanceof Date && !isNaN(value)) return value;
   if (typeof value === 'number' && isFinite(value)) return new Date(Date.UTC(1899, 11, 30) + Math.round(value * 86400000));
   if (typeof value === 'string' && value.trim()) {
-    const parsed = new Date(value);
+    const text = value.trim().replace(/^B1(?=\d{1,2}-[A-Za-z]{3}-\d{2,4}$)/, '');
+    const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+    if (dmy) {
+      const date = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      return date.getFullYear() === Number(dmy[3]) && date.getMonth() === Number(dmy[2]) - 1 && date.getDate() === Number(dmy[1]) ? date : null;
+    }
+    const parsed = new Date(text);
     return isNaN(parsed) ? null : parsed;
   }
   return null;

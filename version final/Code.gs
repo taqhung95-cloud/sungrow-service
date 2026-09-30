@@ -1,4 +1,4 @@
-const APP_VERSION = '1.7.1-resilient-sync';
+const APP_VERSION = '1.10.0-history-integrity';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -20,7 +20,8 @@ const SHEETS = Object.freeze({
   holds: 'Tạm dừng SLA',
   users: 'Người dùng',
   audit: 'Nhật ký thay đổi',
-  dashboard: 'Dữ liệu dashboard'
+  dashboard: 'Dữ liệu dashboard',
+  caseIndex: 'Chỉ mục hồ sơ'
 });
 
 const CENTERS = Object.freeze([
@@ -33,6 +34,14 @@ const CENTERS = Object.freeze([
 const WARRANTY_STATUSES = Object.freeze(['Trong bảo hành', 'Ngoài bảo hành', 'Sửa làm hàng good']);
 const PRE_WARRANTY_WORKFLOW_STATUSES = Object.freeze(['Đã nhận hàng', 'Đang kiểm tra']);
 const SUNGROW_CENTER = 'Sungrow Service Center';
+const PORTAL_CASE_INDEX_HEADERS = Object.freeze([
+  'Mã hồ sơ', 'Dòng nguồn', 'Loại thiết bị', 'Số sê-ri (S/N)', 'Model',
+  'Trung tâm tiếp nhận khách', 'Trung tâm đang giữ hàng', 'Trạng thái hồ sơ',
+  'Tình trạng bảo hành', 'Ngày nhận từ khách', 'Các trung tâm xử lý',
+  'Mã công việc gần nhất', 'Trung tâm xử lý gần nhất', 'Trạng thái xử lý gần nhất',
+  'Kết quả gần nhất', 'Ngày nhận công việc gần nhất', 'Ngày hoàn tất kỹ thuật gần nhất',
+  'Có luân chuyển', 'Số lượng', 'Tìm kiếm', 'Ngày cập nhật chỉ mục'
+]);
 const ROLE_CODES = Object.freeze({
   serviceManager: 'service_manager',
   centerManager: 'center_manager',
@@ -100,6 +109,7 @@ function handlePortalApi_(request) {
     getBootstrap: getBootstrap,
     getPortalSyncState: getPortalSyncState,
     listCases: listCases,
+    getCaseDetail: getCaseDetail,
     searchCases: searchCases,
     lookupWarranty: lookupWarranty,
     createCase: createCase,
@@ -183,25 +193,13 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   if (center && !actor.isGlobalManager) assertCenterAllowed_(actor, center);
   const pageSize = Math.max(10, Math.min(200, Number(filters.pageSize) || 20));
   const requestedPage = Math.max(1, Number(filters.page) || 1);
-  const includeDetails = filters.includeDetails === true;
-
   const revision = clean_(dataRevision) || getPortalDatabaseRevision_();
-  const cases = readTableShared_(SHEETS.cases, revision);
-  const workOrders = readTableShared_(SHEETS.workOrders, revision);
-  const transfers = readTableShared_(SHEETS.transfers, revision);
-  const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
-  const transferByCase = groupBy_(transfers, 'Mã hồ sơ');
+  const cases = readPortalCaseIndex_(revision);
 
   const filtered = cases.filter(function (item) {
     if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
-    const ownWorks = workByCase[item['Mã hồ sơ']] || [];
-    if (!canSeeCase_(actor, item, ownWorks)) return false;
-    const searchable = [
-      item['Mã hồ sơ'], item['Số sê-ri (S/N)'], item.Model, senderFromCase_(item), item['Dự án/Địa điểm'],
-      item['Tên khách hàng'], item['Số điện thoại khách hàng'], item['Email khách hàng'],
-      item['Tên công ty gửi hàng'], item['Tên người gửi hàng'], item['Số điện thoại gửi hàng'],
-      item['Email gửi hàng'], item['Đơn vị vận chuyển'], item['Mã vận đơn']
-    ].join(' ').toLowerCase();
+    if (!canSeeIndexedCase_(actor, item)) return false;
+    const searchable = clean_(item['Tìm kiếm']).toLowerCase();
     if (query && searchable.indexOf(query) === -1) return false;
     if (status && item['Trạng thái hồ sơ'] !== status) return false;
     if (warrantyStatus && item['Tình trạng bảo hành'] !== warrantyStatus) return false;
@@ -212,20 +210,22 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
-  // Detail tables are unnecessary for empty searches (including delete verification).
-  const issuesByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.issues, revision), 'Mã công việc') : {};
-  const partsByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.parts, revision), 'Mã công việc') : {};
-  const holdsByWork = total && includeDetails ? groupBy_(readTableShared_(SHEETS.holds, revision), 'Mã công việc') : {};
-  const items = filtered.slice(start, start + pageSize).map(function (item) {
-    return publicCase_(actor, item, workByCase[item['Mã hồ sơ']] || [], transferByCase[item['Mã hồ sơ']] || [], issuesByWork, partsByWork, holdsByWork);
-  });
-  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale || workOrders.__cacheStale || transfers.__cacheStale) };
+  const items = filtered.slice(start, start + pageSize).map(function (item) { return publicIndexedCase_(actor, item); });
+  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale) };
 }
 
 function searchCases(idToken, rawQuery) {
   const query = clean_(rawQuery);
   if (query.length < 2) throw publicError_('Nhập ít nhất 2 ký tự để tìm kiếm.');
-  return listCases(idToken, { query: query, page: 1, pageSize: 200, includeDetails: true }).items;
+  const actor = authenticate_(idToken);
+  const matches = listCases(idToken, { query: query, page: 1, pageSize: 20 }).items;
+  return matches.map(function (item) { return getCaseDetailForActor_(actor, item.caseId); });
+}
+
+function getCaseDetail(idToken, caseId) {
+  const actor = authenticate_(idToken);
+  assertCapability_(actor, 'viewCases');
+  return getCaseDetailForActor_(actor, required_(caseId, 'mã hồ sơ'));
 }
 
 function lookupWarranty(idToken, serialNumber) {
@@ -425,6 +425,8 @@ function createCase(idToken, payload) {
     try { audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId }); }
     catch (error) { console.error('Hồ sơ đã tạo, lỗi ghi nhật ký: ' + String(error)); }
     syncDashboardProjectionCase_(caseId);
+    syncPortalCaseIndexCase_(caseId);
+    bumpPortalDatabaseRevision_();
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
     lock.releaseLock();
@@ -467,6 +469,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     }
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') {
       removeDashboardProjectionCase_(caseId, record);
+      syncPortalCaseIndexCase_(caseId);
       SpreadsheetApp.flush();
       bumpPortalDatabaseRevision_();
       return { caseId: caseId, cancelled: true };
@@ -501,6 +504,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     catch (auditError) { console.error('Hồ sơ đã hủy nhưng chưa ghi được audit ' + caseId + ': ' + String(auditError && auditError.message || auditError)); }
     try { removeDashboardProjectionCase_(caseId, record); }
     catch (projectionError) { console.error('Hồ sơ đã hủy nhưng không thể xóa projection ' + caseId + ': ' + String(projectionError && projectionError.message || projectionError)); }
+    syncPortalCaseIndexCase_(caseId);
     bumpPortalDatabaseRevision_();
     return { caseId: caseId, cancelled: true };
   } finally {
@@ -556,6 +560,8 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
   syncDashboardProjectionCase_(caseId);
+  syncPortalCaseIndexCase_(caseId);
+  bumpPortalDatabaseRevision_();
   SpreadsheetApp.flush();
   return { ok: true, warrantyStatus: warrantyStatus };
 }
@@ -676,6 +682,8 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   appendWorkOrderHolds_(actor, workOrderId, payload.holds || []);
   audit_(actor, 'Cập nhật xử lý', 'Công việc', workOrderId, record['Trung tâm xử lý'], record, changes);
   syncDashboardProjectionCase_(record['Mã hồ sơ']);
+  syncPortalCaseIndexCase_(record['Mã hồ sơ']);
+  bumpPortalDatabaseRevision_();
   return { ok: true };
 }
 
@@ -745,6 +753,8 @@ function createTransferUnlocked_(idToken, payload) {
     });
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
   syncDashboardProjectionCase_(caseId);
+  syncPortalCaseIndexCase_(caseId);
+  bumpPortalDatabaseRevision_();
   return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
 }
 
@@ -795,6 +805,8 @@ function acceptTransferUnlocked_(idToken, payload) {
   });
   audit_(actor, 'Xác nhận nhận luân chuyển', 'Luân chuyển', transferId, transfer['Trung tâm nhận'], transfer, { receivedAt: receivedAt });
   syncDashboardProjectionCase_(transfer['Mã hồ sơ']);
+  syncPortalCaseIndexCase_(transfer['Mã hồ sơ']);
+  bumpPortalDatabaseRevision_();
   return { ok: true };
 }
 
@@ -846,6 +858,8 @@ function returnToCustomerUnlocked_(idToken, payload) {
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Trả khách hàng', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, changes);
   syncDashboardProjectionCase_(caseId);
+  syncPortalCaseIndexCase_(caseId);
+  bumpPortalDatabaseRevision_();
   return { ok: true };
 }
 
@@ -947,16 +961,298 @@ function authenticateUncached_(idToken) {
 function warmPortalReadCache() {
   const revision = getPortalDatabaseRevision_();
   const startedAt = Date.now();
-  const tables = [SHEETS.cases, SHEETS.workOrders, SHEETS.transfers, SHEETS.issues, SHEETS.parts, SHEETS.holds];
-  const counts = {};
-  tables.forEach(function (sheetName) { counts[sheetName] = readTableShared_(sheetName, revision).length; });
-  return { version: APP_VERSION, revision: revision, tables: counts, elapsedMs: Date.now() - startedAt };
+  const rows = readPortalCaseIndex_(revision);
+  return { version: APP_VERSION, revision: revision, indexedCases: rows.length, elapsedMs: Date.now() - startedAt };
 }
 
 function authenticateDashboardManager_(idToken) {
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'viewDashboard');
   return { email: actor.email, role: 'service_manager', centers: actor.centers.slice() };
+}
+
+function ensurePortalCaseIndexSheet_() {
+  const spreadsheet = spreadsheet_();
+  let sheet = spreadsheet.getSheetByName(SHEETS.caseIndex);
+  if (!sheet) sheet = spreadsheet.insertSheet(SHEETS.caseIndex);
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty('PORTAL_CASE_INDEX_READY') !== '1') {
+    if (sheet.getMaxColumns() < PORTAL_CASE_INDEX_HEADERS.length) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), PORTAL_CASE_INDEX_HEADERS.length - sheet.getMaxColumns());
+    }
+    sheet.getRange(1, 1, 1, PORTAL_CASE_INDEX_HEADERS.length).setValues([PORTAL_CASE_INDEX_HEADERS.slice()]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function portalCaseIndexObject_(caseRecord, works, transfers) {
+  const latest = works.length ? works[works.length - 1] : {};
+  const workCenters = Array.from(new Set(works.map(function (work) { return clean_(work['Trung tâm xử lý']); }).filter(Boolean)));
+  const searchable = [
+    caseRecord['Mã hồ sơ'], caseRecord['Số sê-ri (S/N)'], caseRecord.Model,
+    senderFromCase_(caseRecord), caseRecord['Dự án/Địa điểm'], caseRecord['Tên khách hàng'],
+    caseRecord['Số điện thoại khách hàng'], caseRecord['Email khách hàng'],
+    caseRecord['Tên công ty gửi hàng'], caseRecord['Tên người gửi hàng'],
+    caseRecord['Số điện thoại gửi hàng'], caseRecord['Email gửi hàng'],
+    caseRecord['Đơn vị vận chuyển'], caseRecord['Mã vận đơn']
+  ].map(clean_).filter(Boolean).join(' ');
+  return {
+    'Mã hồ sơ': clean_(caseRecord['Mã hồ sơ']),
+    'Dòng nguồn': Number(caseRecord.__rowNumber || 0),
+    'Loại thiết bị': clean_(caseRecord['Loại thiết bị']),
+    'Số sê-ri (S/N)': clean_(caseRecord['Số sê-ri (S/N)']),
+    'Model': clean_(caseRecord.Model),
+    'Trung tâm tiếp nhận khách': clean_(caseRecord['Trung tâm tiếp nhận khách']),
+    'Trung tâm đang giữ hàng': clean_(caseRecord['Trung tâm đang giữ hàng']),
+    'Trạng thái hồ sơ': clean_(caseRecord['Trạng thái hồ sơ']),
+    'Tình trạng bảo hành': clean_(caseRecord['Tình trạng bảo hành']),
+    'Ngày nhận từ khách': caseRecord['Ngày nhận từ khách'] || '',
+    'Các trung tâm xử lý': workCenters.join('|'),
+    'Mã công việc gần nhất': clean_(latest['Mã công việc']),
+    'Trung tâm xử lý gần nhất': clean_(latest['Trung tâm xử lý']),
+    'Trạng thái xử lý gần nhất': clean_(latest['Trạng thái xử lý']),
+    'Kết quả gần nhất': clean_(latest['Kết quả xử lý']),
+    'Ngày nhận công việc gần nhất': latest['Ngày trung tâm nhận hàng'] || '',
+    'Ngày hoàn tất kỹ thuật gần nhất': latest['Ngày hoàn tất kỹ thuật'] || '',
+    'Có luân chuyển': transfers.length > 0,
+    'Số lượng': Math.max(1, Number(caseRecord['Số lượng']) || 1),
+    'Tìm kiếm': searchable,
+    'Ngày cập nhật chỉ mục': new Date()
+  };
+}
+
+function portalCaseIndexValues_(object) {
+  return PORTAL_CASE_INDEX_HEADERS.map(function (header) { return object[header] == null ? '' : object[header]; });
+}
+
+function rebuildPortalCaseIndex() {
+  const startedAt = Date.now();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    SpreadsheetApp.flush();
+    const cases = readTable_(SHEETS.cases);
+    const worksByCase = groupBy_(readTable_(SHEETS.workOrders), 'Mã hồ sơ');
+    const transfersByCase = groupBy_(readTable_(SHEETS.transfers), 'Mã hồ sơ');
+    const rows = cases.filter(function (item) { return clean_(item['Mã hồ sơ']); }).map(function (item) {
+      const caseId = clean_(item['Mã hồ sơ']);
+      return portalCaseIndexValues_(portalCaseIndexObject_(item, worksByCase[caseId] || [], transfersByCase[caseId] || []));
+    });
+    const sheet = ensurePortalCaseIndexSheet_();
+    if (sheet.getMaxRows() < rows.length + 1) sheet.insertRowsAfter(sheet.getMaxRows(), rows.length + 1 - sheet.getMaxRows());
+    if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(sheet.getLastColumn(), PORTAL_CASE_INDEX_HEADERS.length)).clearContent();
+    if (rows.length) sheet.getRange(2, 1, rows.length, PORTAL_CASE_INDEX_HEADERS.length).setValues(rows);
+    sheet.getRange(2, 10, Math.max(1, rows.length), 1).setNumberFormat('yyyy-mm-dd');
+    SpreadsheetApp.flush();
+    PropertiesService.getScriptProperties().setProperty('PORTAL_CASE_INDEX_READY', '1');
+    const revision = bumpPortalDatabaseRevision_();
+    const result = { version: APP_VERSION, revision: revision, indexed: rows.length, elapsedMs: Date.now() - startedAt };
+    console.log(JSON.stringify(result));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Read-only audit and explicit repair for warranty facts imported from old tabs.
+function auditHistoricalWarrantyData() { return reconcileHistoricalWarrantyData_(false); }
+function repairHistoricalWarrantyData() { return reconcileHistoricalWarrantyData_(true); }
+
+function historicalWarrantyValue_(value) {
+  const text = clean_(value).toLowerCase();
+  return WARRANTY_STATUSES.find(function (status) { return status.toLowerCase() === text; }) || '';
+}
+
+function reconcileHistoricalWarrantyData_(apply) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  const report = { applied: Boolean(apply), checked: 0, mismatches: [], skipped: [], repairedCases: 0, repairedProjections: 0 };
+  try {
+    const spreadsheet = spreadsheet_();
+    const sources = {};
+    ['2024', '2025', '2026'].forEach(function (year) {
+      const sheet = spreadsheet.getSheetByName(year);
+      if (sheet) sources[year] = sheet.getDataRange().getValues();
+    });
+    const cases = readTableWithRows_(SHEETS.cases);
+    const projection = readTableWithRows_(SHEETS.dashboard);
+    const projectionsBySource = {};
+    const projectionsById = groupBy_(projection.rows, 'Mã hồ sơ');
+    projection.rows.forEach(function (row) {
+      const match = /\[Nguồn (\d{4}), dòng (\d+),/.exec(clean_(row.Note));
+      if (!match) return;
+      const key = match[1] + '!' + match[2];
+      if (!projectionsBySource[key]) projectionsBySource[key] = [];
+      projectionsBySource[key].push(row);
+    });
+    cases.rows.forEach(function (record) {
+      const key = clean_(record['Mã dòng dữ liệu cũ']);
+      const match = /^(\d{4})!(\d+)$/.exec(key);
+      if (!match || clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') return;
+      report.checked++;
+      const values = sources[match[1]];
+      const source = values && values[Number(match[2]) - 1];
+      if (!source) { report.skipped.push({caseId:record['Mã hồ sơ'],source:key,reason:'missing_source'}); return; }
+      const headers = values[0].map(function (value) { return clean_(value).toLowerCase(); });
+      const serialColumn = headers.indexOf('s/n');
+      const confirmationColumn = headers.indexOf('warranty confirmation');
+      const statusColumn = headers.indexOf('warranty status');
+      if (serialColumn < 0 || normalizeProjectionKey_(source[serialColumn]) !== normalizeProjectionKey_(record['Số sê-ri (S/N)'])) {
+        report.skipped.push({caseId:record['Mã hồ sơ'],source:key,reason:'source_identity_changed'}); return;
+      }
+      const expected = historicalWarrantyValue_(source[confirmationColumn]) || historicalWarrantyValue_(source[statusColumn]);
+      if (!expected) return;
+      const confirmer = clean_(record['Người xác nhận bảo hành']);
+      const editor = clean_(record['Người cập nhật gần nhất']);
+      if ((confirmer && confirmer !== 'Dữ liệu lịch sử') || (editor && editor !== 'Đồng bộ dữ liệu cũ')) {
+        report.skipped.push({caseId:record['Mã hồ sơ'],source:key,reason:'user_edited'}); return;
+      }
+      const changes = {};
+      if (clean_(record['Tình trạng bảo hành']) !== expected) changes['Tình trạng bảo hành'] = expected;
+      if (!confirmer) changes['Người xác nhận bảo hành'] = 'Dữ liệu lịch sử';
+      if (Object.keys(changes).length) {
+        report.mismatches.push({caseId:record['Mã hồ sơ'],source:key,current:clean_(record['Tình trạng bảo hành']),expected:expected});
+        if (apply) { updateObjectRow_(SHEETS.cases,cases.headers,record.__rowNumber,changes); report.repairedCases++; }
+      }
+      const candidates = projectionsById[clean_(record['Mã hồ sơ'])] || projectionsBySource[key] || [];
+      if (candidates.length !== 1) {
+        report.skipped.push({caseId:record['Mã hồ sơ'],source:key,reason:'projection_missing_or_ambiguous'}); return;
+      }
+      const row = candidates[0];
+      if (normalizeProjectionKey_(row['S/N']) !== normalizeProjectionKey_(record['Số sê-ri (S/N)'])) return;
+      if (clean_(row['Warranty confirmation']) !== expected && apply) {
+        updateObjectRow_(SHEETS.dashboard,projection.headers,row.__rowNumber,{'Warranty confirmation':expected});
+        report.repairedProjections++;
+      }
+    });
+    if (apply) { SpreadsheetApp.flush(); bumpPortalDatabaseRevision_(); }
+    console.log(JSON.stringify(report));
+  } finally { lock.releaseLock(); }
+  return report;
+}
+
+function syncPortalCaseIndexCase_(caseId) {
+  caseId = clean_(caseId);
+  if (!caseId) return { ok: false, reason: 'missing_case_id' };
+  try {
+    const record = findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0] || null;
+    if (!record) return { ok: false, reason: 'missing_case' };
+    const works = findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
+    const transfers = findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId]);
+    const sheet = ensurePortalCaseIndexSheet_();
+    let targetRow = 0;
+    if (sheet.getLastRow() >= 2) {
+      const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
+      for (let index = 0; index < ids.length; index++) if (clean_(ids[index][0]) === caseId) { targetRow = index + 2; break; }
+    }
+    if (!targetRow) targetRow = Math.max(2, sheet.getLastRow() + 1);
+    sheet.getRange(targetRow, 1, 1, PORTAL_CASE_INDEX_HEADERS.length).setValues([portalCaseIndexValues_(portalCaseIndexObject_(record, works, transfers))]);
+    sheet.getRange(targetRow, 10).setNumberFormat('yyyy-mm-dd');
+    return { ok: true, row: targetRow };
+  } catch (error) {
+    console.error('Không thể cập nhật chỉ mục hồ sơ ' + caseId + ': ' + String(error && error.message || error));
+    return { ok: false, reason: String(error && error.message || error) };
+  }
+}
+
+function readPortalCaseIndex_(revision) {
+  if (PropertiesService.getScriptProperties().getProperty('PORTAL_CASE_INDEX_READY') !== '1') {
+    throw publicError_('Chỉ mục hồ sơ chưa sẵn sàng. Quản trị viên cần chạy hàm rebuildPortalCaseIndex một lần.');
+  }
+  return readTableShared_(SHEETS.caseIndex, revision, false);
+}
+
+function indexedWorkCenters_(item) {
+  return clean_(item['Các trung tâm xử lý']).split('|').map(clean_).filter(Boolean);
+}
+
+function canSeeIndexedCase_(actor, item) {
+  if (actor.isGlobalManager) return true;
+  if (actor.centers.indexOf(clean_(item['Trung tâm tiếp nhận khách'])) !== -1) return true;
+  if (actor.centers.indexOf(clean_(item['Trung tâm đang giữ hàng'])) !== -1) return true;
+  return indexedWorkCenters_(item).some(function (center) { return actor.centers.indexOf(center) !== -1; });
+}
+
+function publicIndexedCase_(actor, item) {
+  const isManager = actor.isGlobalManager;
+  const intakeCenter = clean_(item['Trung tâm tiếp nhận khách']);
+  const currentCenter = clean_(item['Trung tâm đang giữ hàng']);
+  const isIntake = isManager || actor.centers.indexOf(intakeCenter) !== -1;
+  const canDelete = clean_(item['Tình trạng bảo hành']) === 'Chờ xác nhận' &&
+    clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy' && !bool_(item['Có luân chuyển']) &&
+    currentCenter === intakeCenter && isIntake;
+  const latestWork = clean_(item['Mã công việc gần nhất']) && (isManager || actor.centers.indexOf(clean_(item['Trung tâm xử lý gần nhất'])) !== -1) ? [{
+    workOrderId: clean_(item['Mã công việc gần nhất']),
+    center: clean_(item['Trung tâm xử lý gần nhất']),
+    receivedAt: iso_(item['Ngày nhận công việc gần nhất']),
+    workflowStatus: clean_(item['Trạng thái xử lý gần nhất']),
+    technicalCompletedAt: iso_(item['Ngày hoàn tất kỹ thuật gần nhất']),
+    outcome: clean_(item['Kết quả gần nhất']), issues: [], parts: [], holds: []
+  }] : [];
+  return {
+    caseId: clean_(item['Mã hồ sơ']), deviceType: clean_(item['Loại thiết bị']),
+    serialNumber: clean_(item['Số sê-ri (S/N)']), model: clean_(item.Model),
+    quantity: Math.max(1, Number(item['Số lượng']) || 1), intakeCenter: intakeCenter,
+    currentCenter: currentCenter, caseStatus: clean_(item['Trạng thái hồ sơ']),
+    warrantyStatus: clean_(item['Tình trạng bảo hành']), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
+    canDelete: canDelete, workOrders: latestWork, transfers: []
+  };
+}
+
+function objectFromSheetRow_(sheetName, rowNumber) {
+  const sheet = spreadsheet_().getSheetByName(sheetName);
+  if (!sheet || rowNumber < 2 || rowNumber > sheet.getLastRow()) return null;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(clean_);
+  const values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+  const object = { __rowNumber: rowNumber };
+  headers.forEach(function (header, index) { object[header] = values[index]; });
+  return object;
+}
+
+function findTableRowsByField_(sheetName, field, wantedValues) {
+  const sheet = spreadsheet_().getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2 || !wantedValues.length) return [];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(clean_);
+  const column = headers.indexOf(field) + 1;
+  if (!column) return [];
+  const wanted = wantedValues.reduce(function (map, value) { map[clean_(value)] = true; return map; }, {});
+  const keys = sheet.getRange(2, column, sheet.getLastRow() - 1, 1).getDisplayValues();
+  const rowNumbers = [];
+  keys.forEach(function (row, index) { if (wanted[clean_(row[0])]) rowNumbers.push(index + 2); });
+  if (!rowNumbers.length) return [];
+  return sheet.getRangeList(rowNumbers.map(function (row) { return 'A' + row + ':' + columnLetter_(headers.length) + row; })).getRanges().map(function (range, rangeIndex) {
+    const values = range.getValues()[0];
+    const object = { __rowNumber: rowNumbers[rangeIndex] };
+    headers.forEach(function (header, index) { object[header] = values[index]; });
+    return object;
+  });
+}
+
+function columnLetter_(column) {
+  let result = '';
+  while (column > 0) { column--; result = String.fromCharCode(65 + (column % 26)) + result; column = Math.floor(column / 26); }
+  return result;
+}
+
+function getCaseDetailForActor_(actor, caseId) {
+  const revision = getPortalDatabaseRevision_();
+  const indexed = readPortalCaseIndex_(revision).find(function (item) { return clean_(item['Mã hồ sơ']) === clean_(caseId); });
+  if (!indexed || clean_(indexed['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không tìm thấy hồ sơ hoặc hồ sơ đã bị hủy.');
+  let record = objectFromSheetRow_(SHEETS.cases, Number(indexed['Dòng nguồn']));
+  if (!record || clean_(record['Mã hồ sơ']) !== clean_(caseId)) {
+    record = findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0] || null;
+  }
+  if (!record) throw publicError_('Không tìm thấy dữ liệu nguồn của hồ sơ.');
+  if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Hồ sơ đã bị hủy.');
+  const works = findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
+  if (!canSeeCase_(actor, record, works)) throw publicError_('Bạn không có quyền xem hồ sơ này.');
+  const transfers = findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId]);
+  const workIds = works.map(function (work) { return clean_(work['Mã công việc']); }).filter(Boolean);
+  const issues = findTableRowsByField_(SHEETS.issues, 'Mã công việc', workIds);
+  const parts = findTableRowsByField_(SHEETS.parts, 'Mã công việc', workIds);
+  const holds = findTableRowsByField_(SHEETS.holds, 'Mã công việc', workIds);
+  return publicCase_(actor, record, works, transfers, groupBy_(issues, 'Mã công việc'), groupBy_(parts, 'Mã công việc'), groupBy_(holds, 'Mã công việc'));
 }
 
 function canSeeCase_(actor, item, workOrders) {
@@ -1182,7 +1478,7 @@ function readTable_(sheetName) { return readTableWithRows_(sheetName).rows; }
  * prevents a burst of browser requests from reading the same Sheet together.
  * Sheet I/O happens outside the script lock so writes are not blocked.
  */
-function readTableShared_(sheetName, revision) {
+function readTableShared_(sheetName, revision, allowStale) {
   const version = clean_(revision) || getPortalDatabaseRevision_();
   const baseKey = 'portal-table-v2-' + digest_(sheetName + '|' + version);
   const pointerKey = 'portal-table-current-v2-' + digest_(sheetName);
@@ -1191,7 +1487,7 @@ function readTableShared_(sheetName, revision) {
   if (cached) return unpackPortalTable_(cached);
   const previousVersion = clean_(cache.get(pointerKey));
   const previousKey = previousVersion && previousVersion !== version ? 'portal-table-v2-' + digest_(sheetName + '|' + previousVersion) : '';
-  const stale = previousKey ? readPortalChunkedCache_(cache, previousKey) : null;
+  const stale = previousKey && allowStale !== false ? readPortalChunkedCache_(cache, previousKey) : null;
 
   const leaseKey = 'PORTAL_TABLE_LEASE_' + digest_(sheetName);
   const owner = Utilities.getUuid();

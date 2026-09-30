@@ -131,7 +131,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=61#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=62#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -597,7 +597,7 @@
     detail.classList.remove('sg-hidden');
     const warrantyConfirmed = ['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].includes(ticket.warrantyStatus);
     const parts = Array.isArray(ticket.parts) ? ticket.parts.filter(part => part.pn && Number(part.qty) > 0) : [];
-    const partsHtml = warrantyConfirmed ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<div class="sg-parts-inline">' + parts.map(part => '<div class="sg-part-chip"><strong>' + esc(part.pn) + '</strong><span>Số lượng: ' + esc(part.qty) + '</span></div>').join('') + '</div>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
+    const partsHtml = (warrantyConfirmed || parts.length) ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<div class="sg-parts-inline">' + parts.map(part => '<div class="sg-part-chip"><strong>' + esc(part.pn) + '</strong><span>Số lượng: ' + esc(part.qty) + '</span></div>').join('') + '</div>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
     detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>' + partsHtml;
     detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
