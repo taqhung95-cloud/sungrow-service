@@ -136,6 +136,12 @@ assert.match(extractFunction(codeSource,'getCaseDetailForActor_'), /findTableRow
 assert.match(extractFunction(codeSource,'listCases'), /latestRevision !== revision/, 'Danh sách phải phát hiện dữ liệu đổi trong lúc làm ấm cache.');
 assert.match(codeSource, /function warmPortalReadCache\(/, 'Backend phải có hàm làm ấm cache trước khi người dùng truy cập.');
 assert.doesNotMatch(extractFunction(codeSource,'warmPortalReadCache'), /SHEETS\.(cases|workOrders|transfers|issues|parts|holds)/, 'Làm ấm cache không được tải lại toàn bộ bảng nghiệp vụ.');
+assert.match(codeSource, /function auditHistoricalDashboardProjection\(/, 'Phải có đối soát chỉ đọc cho toàn bộ projection lịch sử.');
+const projectionRepairSource = extractFunction(codeSource,'reconcileHistoricalDashboardProjection_');
+for (const field of ['Warranty confirmation','Issue 4','Replace PN Board 4','Qty 4','Return date']) {
+  assert.match(projectionRepairSource, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')), `Đối soát projection phải bao phủ ${field}.`);
+}
+assert.match(projectionRepairSource, /reason:'user_edited'/, 'Đối soát không được ghi đè dữ liệu lịch sử đã được người dùng cập nhật.');
 
 const sharedCacheValues = new Map();
 const sharedProperties = new Map();

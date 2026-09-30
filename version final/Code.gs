@@ -1058,6 +1058,8 @@ function rebuildPortalCaseIndex() {
 // Read-only audit and explicit repair for warranty facts imported from old tabs.
 function auditHistoricalWarrantyData() { return reconcileHistoricalWarrantyData_(false); }
 function repairHistoricalWarrantyData() { return reconcileHistoricalWarrantyData_(true); }
+function auditHistoricalDashboardProjection() { return reconcileHistoricalDashboardProjection_(false); }
+function repairHistoricalDashboardProjection() { return reconcileHistoricalDashboardProjection_(true); }
 
 function historicalWarrantyValue_(value) {
   const text = clean_(value).toLowerCase();
@@ -1130,6 +1132,97 @@ function reconcileHistoricalWarrantyData_(apply) {
     console.log(JSON.stringify(report));
   } finally { lock.releaseLock(); }
   return report;
+}
+
+function reconcileHistoricalDashboardProjection_(apply) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  const fields = [
+    'Device Type', 'S/N', 'Model', 'Received date', 'Distributor', 'Where sent to Workshop',
+    'Error Code', 'Issue 1', 'Issue 2', 'Issue 3', 'Issue 4', 'Warranty confirmation',
+    'Warranty Status', 'Service Center', 'Check / Repair date', 'Delivery Status', 'Status',
+    'Receive spare part date', 'Replace PN Board 1', 'Qty 1', 'Replace PN Board 2', 'Qty 2',
+    'Replace PN Board 3', 'Qty 3', 'Replace PN Board 4', 'Qty 4', 'Return date'
+  ];
+  const dateFields = { 'Received date':true, 'Check / Repair date':true, 'Receive spare part date':true, 'Return date':true };
+  const report = { applied:Boolean(apply), checked:0, mismatchedRows:0, repairedRows:0, mismatchedCells:0, skipped:[], samples:[] };
+  try {
+    const spreadsheet = spreadsheet_();
+    const casesBySource = groupBy_(readTable_(SHEETS.cases), 'Mã dòng dữ liệu cũ');
+    const projection = readTableWithRows_(SHEETS.dashboard);
+    const projectionsBySource = {};
+    projection.rows.forEach(function (row) {
+      const match = /\[Nguồn (\d{4}), dòng (\d+),/.exec(clean_(row.Note));
+      if (!match) return;
+      const key = match[1] + '!' + match[2];
+      if (!projectionsBySource[key]) projectionsBySource[key] = [];
+      projectionsBySource[key].push(row);
+    });
+    ['2024','2025','2026'].forEach(function (year) {
+      const sourceSheet = spreadsheet.getSheetByName(year);
+      if (!sourceSheet || sourceSheet.getLastRow() < 2) return;
+      const values = sourceSheet.getDataRange().getValues();
+      const sourceHeaders = values[0].map(clean_);
+      const indexes = {};
+      fields.forEach(function (field) { indexes[field] = sourceHeaders.findIndex(function (header) { return header.toLowerCase() === field.toLowerCase(); }); });
+      values.slice(1).forEach(function (source, offset) {
+        if (!source.some(function (value) { return value !== '' && value !== null; })) return;
+        const sourceRow = offset + 2;
+        const key = year + '!' + sourceRow;
+        report.checked++;
+        const targets = projectionsBySource[key] || [];
+        if (targets.length !== 1) { report.skipped.push({source:key,reason:'projection_missing_or_ambiguous'}); return; }
+        const cases = casesBySource[key] || [];
+        const edited = cases.some(function (record) {
+          const editor = clean_(record['Người cập nhật gần nhất']);
+          const confirmer = clean_(record['Người xác nhận bảo hành']);
+          return (editor && editor !== 'Đồng bộ dữ liệu cũ') || (confirmer && confirmer !== 'Dữ liệu lịch sử');
+        });
+        if (edited) { report.skipped.push({source:key,reason:'user_edited'}); return; }
+        const target = targets[0];
+        const changes = {};
+        fields.forEach(function (field) {
+          const index = indexes[field];
+          if (index < 0 || projection.headers.indexOf(field) === -1) return;
+          let expected = source[index];
+          if (dateFields[field]) expected = historicalProjectionDate_(expected) || '';
+          if (historicalProjectionComparable_(target[field], dateFields[field]) === historicalProjectionComparable_(expected, dateFields[field])) return;
+          changes[field] = expected;
+        });
+        const names = Object.keys(changes);
+        if (!names.length) return;
+        report.mismatchedRows++;
+        report.mismatchedCells += names.length;
+        if (report.samples.length < 200) report.samples.push({source:key,fields:names});
+        if (apply) {
+          updateObjectRow_(SHEETS.dashboard, projection.headers, target.__rowNumber, changes);
+          report.repairedRows++;
+        }
+      });
+    });
+    if (apply) { SpreadsheetApp.flush(); bumpPortalDatabaseRevision_(); }
+    console.log(JSON.stringify(report));
+  } finally { lock.releaseLock(); }
+  return report;
+}
+
+function historicalProjectionDate_(value) {
+  if (value instanceof Date && !isNaN(value)) return value;
+  if (typeof value === 'number' && isFinite(value)) return new Date(Date.UTC(1899, 11, 30) + Math.round(value * 86400000));
+  const text = clean_(value).replace(/^B1(?=\d{1,2}-[A-Za-z]{3}-\d{2,4}$)/, '');
+  const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+  if (dmy) {
+    const date = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+    return date.getFullYear() === Number(dmy[3]) && date.getMonth() === Number(dmy[2]) - 1 && date.getDate() === Number(dmy[1]) ? date : null;
+  }
+  const parsed = text ? new Date(text) : null;
+  return parsed && !isNaN(parsed) ? parsed : null;
+}
+
+function historicalProjectionComparable_(value, isDate) {
+  if (!isDate) return clean_(value);
+  const date = historicalProjectionDate_(value);
+  return date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
 }
 
 function syncPortalCaseIndexCase_(caseId) {

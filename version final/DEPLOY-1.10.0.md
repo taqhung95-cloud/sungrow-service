@@ -11,11 +11,16 @@ spare-part facts from the 2024/2025/2026 source tabs.
 3. Run `repairHistoricalWarrantyData`. It only repairs imported historical
    cases that have not subsequently been edited by a user. It also repairs the
    matching `Warranty confirmation` value in `Dữ liệu dashboard`.
-4. Run `rebuildPortalCaseIndex` once. Confirm the result reports version
+4. Run `auditHistoricalDashboardProjection`, then
+   `repairHistoricalDashboardProjection`. These compare every mapped legacy row
+   against its exact `year!row` source and repair core device fields, issues,
+   warranty, status, dates, and all four spare-part/quantity pairs. Rows changed
+   by a user are reported in `skipped` and are not overwritten.
+5. Run `rebuildPortalCaseIndex` once. Confirm the result reports version
    `1.10.0-history-integrity`, an `indexed` count, and no exception.
-5. Optionally run `warmPortalReadCache`; it now warms only the lightweight case
+6. Optionally run `warmPortalReadCache`; it now warms only the lightweight case
    index.
-6. Reload the GitHub Pages application after Pages publishes cache key 63.
+7. Reload the GitHub Pages application after Pages publishes cache key 63.
 
 Expected regression check:
 
