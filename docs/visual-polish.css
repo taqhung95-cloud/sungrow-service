@@ -1286,3 +1286,15 @@
 /* v25 review round 2: keep the calculator content-sized instead of stretching into empty space. */
 #sg-preview .sg-fail-rate{flex:0 0 auto!important;min-height:0!important}
 #sg-preview .sg-fail-layout{flex:0 0 auto!important;min-height:0!important;align-items:center!important}
+
+/* v29: explicit loading state for the all-years device index. */
+#sg-preview .sg-ticket-loading{
+ min-height:240px;display:flex;align-items:center;justify-content:center;gap:12px;
+ color:#65727b;font-size:12px;background:#fff
+}
+#sg-preview .sg-ticket-spinner{
+ width:24px;height:24px;border:3px solid #eceff1;border-top-color:var(--sg-orange);
+ border-radius:50%;animation:sg-ticket-spin .75s linear infinite;flex:0 0 auto
+}
+@keyframes sg-ticket-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#sg-preview .sg-ticket-spinner{animation-duration:1.8s}}

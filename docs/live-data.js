@@ -18,7 +18,7 @@
   let ticketSearchTimer = null;
   let ticketSearchController = null;
   let ticketSearchSequence = 0;
-  let ticketSearchState = {term:'',rows:null,total:0,loading:false,error:'',page:1,pageSize:20,totalPages:1,statuses:[],year:null};
+  let ticketSearchState = {term:'',rows:null,total:0,loading:false,error:'',page:1,pageSize:20,totalPages:1,statuses:[],fromYear:null,toYear:null};
   const AUTO_SYNC_MS = 300000;
   const REVISION_SYNC_MS = 60000 + Math.floor(Math.random()*15000);
   let portalRevision = '';
@@ -434,6 +434,9 @@
     }).join('');
     return '<table class="sg-device-table">' + columns + '<thead><tr><th>GSP</th><th>MA</th><th>Thiết bị / S/N</th><th>Lỗi ghi nhận</th><th>Trung tâm</th><th>Trạng thái xử lý</th><th>Thời gian xử lý</th><th aria-label="Xem chi tiết"></th></tr></thead><tbody>' + body + (rows.length?'':'<tr><td colspan="8">'+esc(emptyMessage || 'Không có dữ liệu phù hợp.')+'</td></tr>') + '</tbody></table>';
   }
+  function ticketLoading() {
+    return '<div class="sg-ticket-loading" role="status" aria-live="polite"><span class="sg-ticket-spinner" aria-hidden="true"></span><span>Đang tải danh sách thiết bị…</span></div>';
+  }
   function syncTicketStatusOptions(source) {
     const select = q('#sg-status');
     const selected = select.value;
@@ -501,18 +504,23 @@
     const rows = Array.isArray(ticketSearchState.rows) ? ticketSearchState.rows : [];
     syncTicketStatusOptions(ticketSearchState.statuses.length ? ticketSearchState.statuses : (live.tickets || []));
     q('#sg-ticket-page-size').value = String(ticketSearchState.pageSize || 20);
-    q('#sg-tickets-table').innerHTML = ticketSearchState.loading ? ticketTable([], 'Đang tải danh sách thiết bị…') : ticketTable(rows);
+    q('#sg-tickets-table').setAttribute('aria-busy',ticketSearchState.loading?'true':'false');
+    q('#sg-tickets-table').innerHTML = ticketSearchState.loading ? ticketLoading() : ticketTable(rows);
     if (ticketSearchState.loading) q('#sg-result-count').textContent = 'Đang tải danh sách thiết bị…';
     else if (ticketSearchState.error) q('#sg-result-count').textContent = ticketSearchState.error;
     else {
       const first = ticketSearchState.total ? (ticketSearchState.page - 1) * ticketSearchState.pageSize + 1 : 0;
       const last = Math.min(ticketSearchState.page * ticketSearchState.pageSize, ticketSearchState.total);
-      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · năm ${ticketSearchState.year || live.period.year}${ticketSearchState.fallback?' · dữ liệu gần nhất; chờ cập nhật API phân trang':''}`;
+      const range = ticketSearchState.fromYear && ticketSearchState.toYear
+        ? (ticketSearchState.fromYear === ticketSearchState.toYear ? String(ticketSearchState.fromYear) : ticketSearchState.fromYear + '–' + ticketSearchState.toYear)
+        : 'toàn bộ năm';
+      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · dữ liệu ${range}${ticketSearchState.fallback?' · chế độ dự phòng theo kỳ đang chọn':''}`;
     }
     renderTicketPager();
   }
 
   function renderTicketPager() {
+    if (ticketSearchState.loading) { q('#sg-ticket-pages').innerHTML = ''; return; }
     const total = ticketSearchState.totalPages || 1;
     const current = ticketSearchState.page || 1;
     const pages = [];
@@ -532,7 +540,7 @@
     if (!live || !token) return;
     const term = (q('#sg-search').value || '').trim().toLowerCase();
     if (term.length === 1) {
-      ticketSearchState = Object.assign({}, ticketSearchState, {term:term,rows:[],total:0,totalPages:1,page:1,loading:false,error:'Nhập ít nhất 2 ký tự để tìm trong năm đang chọn.'});
+      ticketSearchState = Object.assign({}, ticketSearchState, {term:term,rows:[],total:0,totalPages:1,page:1,loading:false,error:'Nhập ít nhất 2 ký tự để tìm trong toàn bộ dữ liệu.'});
       renderTickets();
       return;
     }
@@ -546,15 +554,15 @@
     const controller = new AbortController();
     ticketSearchController = controller;
     try {
-      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,year:Number(live.period?.year)||Number(String(live.period?.key||'').slice(0,4)),status:q('#sg-status').value,page:page,pageSize:pageSize,refresh:Boolean(term)},controller.signal,2);
+      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,status:q('#sg-status').value,page:page,pageSize:pageSize},controller.signal,2);
       if (sequence !== ticketSearchSequence) return;
-      ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],year:data.year,fallback:false};
+      ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],fromYear:Number(data.fromYear)||null,toYear:Number(data.toYear)||null,fallback:false};
     } catch (error) {
       if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
       const center=q('#sg-center').value,statusFilter=q('#sg-status').value;
       let fallbackRows=(live.tickets||[]).filter(function(ticket){const identity=[ticket.serialNumber,ticket.model].join(' ').toLowerCase();return(center==='all'||ticket.center===center)&&(!term||identity.includes(term))&&(statusFilter==='all'||ticketStatus(ticket)===statusFilter)});
       const fallbackTotal=fallbackRows.length,fallbackPages=Math.max(1,Math.ceil(fallbackTotal/pageSize)),fallbackPage=Math.min(page,fallbackPages),fallbackStart=(fallbackPage-1)*pageSize;
-      ticketSearchState=Object.assign({},ticketSearchState,{rows:fallbackRows.slice(fallbackStart,fallbackStart+pageSize),total:fallbackTotal,page:fallbackPage,totalPages:fallbackPages,loading:false,error:'',statuses:Array.from(new Set((live.tickets||[]).map(ticketStatus).filter(Boolean))),year:live.period.year,fallback:true});
+      ticketSearchState=Object.assign({},ticketSearchState,{rows:fallbackRows.slice(fallbackStart,fallbackStart+pageSize),total:fallbackTotal,page:fallbackPage,totalPages:fallbackPages,loading:false,error:'',statuses:Array.from(new Set((live.tickets||[]).map(ticketStatus).filter(Boolean))),fromYear:live.period.year,toYear:live.period.year,fallback:true});
     } finally {
       if (ticketSearchController === controller) ticketSearchController = null;
       if (sequence === ticketSearchSequence) renderTickets();
