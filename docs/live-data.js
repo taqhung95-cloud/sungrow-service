@@ -358,7 +358,7 @@
         const index=Math.min(month,series.values.length-1),value=series.values[index];
         return sum+(value===null||value===undefined?0:Number(value));
       },0));
-      const allSeries=[{name:'Tích lũy có ngày nhận',color:'#172b3a',values:cumulativeValues,total:Number(cumulative||0),through:12}].concat(yearSeries);
+      const allSeries=[{name:'Tích lũy',color:'#172b3a',values:cumulativeValues,total:Number(cumulative||0),through:12}].concat(yearSeries);
       const max=Math.max(1,...allSeries.flatMap(function(series){return series.values.filter(function(value){return value!==null&&value!==undefined;});}));
       const x=function(index){return left+index/12*plotW;},y=function(value){return top+plotH-Number(value||0)/max*plotH;};
       const lines=allSeries.map(function(series){

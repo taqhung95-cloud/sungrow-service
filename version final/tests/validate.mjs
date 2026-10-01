@@ -459,7 +459,7 @@ assert.match(liveDataSource, /v=62#/, 'Iframe nhập liệu phải dùng cache k
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=65/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=66/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -485,7 +485,8 @@ assert.match(liveDataSource, /idToken:token,query:term[\s\S]*action:'tickets\.pa
 assert.doesNotMatch(liveDataSource, /refresh:Boolean\(term\)/, 'Tìm kiếm không được phá cache và quét lại Sheet ở mỗi lần nhập.');
 assert.match(liveDataSource, /function ticketLoading\(\)/, 'Danh sách thiết bị phải có trạng thái loading riêng.');
 assert.match(liveDataSource, /sg-ticket-spinner/, 'Trạng thái loading phải hiển thị vòng xoay trực quan.');
-assert.match(liveDataSource, /Tích lũy có ngày nhận/, 'Biểu đồ phải nói rõ tích lũy chỉ gồm hồ sơ có ngày nhận hợp lệ.');
+assert.match(liveDataSource, /name:'Tích lũy'/, 'Nhãn tích lũy phải ngắn gọn để không tràn khỏi ô chú giải.');
+assert.match(liveDataSource, /hồ sơ chưa cộng vào biểu đồ do thiếu, sai hoặc lệch năm ngày nhận/, 'Ghi chú phải giải thích rõ phạm vi số liệu tích lũy.');
 assert.match(liveDataSource, /<th>GSP<\/th><th>MA<\/th><th>Thiết bị \/ S\/N<\/th>/, 'GSP và MA phải đứng trước cột Thiết bị / S/N.');
 assert.match(liveDataSource, /sg-parts-inline/, 'Linh kiện sử dụng phải hiển thị theo bố cục ngang gọn.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
