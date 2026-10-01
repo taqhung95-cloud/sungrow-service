@@ -2,6 +2,12 @@
 
 Dashboard theo dõi hiệu quả vận hành theo tháng và năm cho Sungrow Service Center, DAT Center, XBSolar Center và BKE Center.
 
+## Tài liệu hiện hành
+
+- Bắt đầu task mới tại [AGENTS.md](AGENTS.md).
+- Quy tắc dữ liệu, kiến trúc và cách deploy production nằm tại [CURRENT-IMPLEMENTATION.md](CURRENT-IMPLEMENTATION.md).
+- Các file `DEPLOY-*.md` cũ chỉ là lịch sử theo release; không thay thế tài liệu hiện hành.
+
 ## Chạy thử giao diện
 
 Mở `docs/index.html` để xem giao diện mẫu. Khi chưa cấu hình API, dashboard vẫn hiển thị dữ liệu minh họa và trạng thái **Chưa cấu hình API**.

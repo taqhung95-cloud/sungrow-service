@@ -5,7 +5,8 @@
 ## Nguồn đã đồng bộ
 
 - Baseline nhập liệu: `data-entry-app` v0.3.9-pilot.
-- Bản production hiện tại: v1.2.2-transfer-routing.
+- Backend production hiện tại: `1.10.2-ticket-coverage`.
+- Quy tắc và quy trình deploy mới nhất: [`../CURRENT-IMPLEMENTATION.md`](../CURRENT-IMPLEMENTATION.md).
 - Spreadsheet production duy nhất: `Sungrow Service Center - Database Production`.
 - Spreadsheet ID: `1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI`.
 - Vị trí Drive: `1B9khxWST5ba9tXTJFT3HUwpkt75QDVK5`.
