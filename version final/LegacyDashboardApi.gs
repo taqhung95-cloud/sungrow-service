@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.10.1-all-ticket-history';
+const APP_VERSION = '1.10.2-ticket-coverage';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -58,6 +58,7 @@ function getDashboard_(request, actor) {
   const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
   if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
   const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
+  const includeUnassigned = actor.role === 'service_manager' && requestedCenter === 'all';
 
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
@@ -73,8 +74,8 @@ function getDashboard_(request, actor) {
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
   const operational = readOperationalRecords_(spreadsheetId, centers);
   const hybrid = readHybridRecordsForYear_(spreadsheetId, period.year, centers, operational.records);
-  const records = hybrid.records.filter(function (r) { return r.hasData && scope.includes(r.center); });
-  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records, hybrid.records);
+  const records = hybrid.records.filter(function (r) { return r.hasData && recordInScope_(r, scope, includeUnassigned, centers); });
+  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records, hybrid.records, includeUnassigned);
   const output = buildDashboard_(records, period, scope, hybrid.sheetName, hybrid.lastRow, spreadsheetId, actor, yearlyTotals);
   output.dataQuality.hybridMerge = hybrid.stats;
   if (request.includeTickets === false) output.tickets = [];
@@ -95,6 +96,7 @@ function searchTickets_(request, actor) {
   const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
   if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
   const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
+  const includeUnassigned = actor.role === 'service_manager' && requestedCenter === 'all';
   const currentYear = new Date().getFullYear();
   const requestedYear = Number(request.year);
   const years = Number.isInteger(requestedYear) && requestedYear >= FIRST_REPORT_YEAR && requestedYear <= currentYear
@@ -114,7 +116,7 @@ function searchTickets_(request, actor) {
   for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
     const hybrid = readHybridRecordsForYear_(spreadsheetId, years[yearIndex], centers, operational.records);
     hybrid.records.forEach(function (record) {
-      if (!record.hasData || !scope.includes(record.center)) return;
+      if (!record.hasData || !recordInScope_(record, scope, includeUnassigned, centers)) return;
       const searchable = [record.serialNumber, record.model].join(' ');
       const textMatch = searchable.toLowerCase().includes(lowerQuery);
       const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
@@ -252,13 +254,14 @@ function pageTickets_(request, actor) {
   const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
   if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
   const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
+  const includeUnassigned = actor.role === 'service_manager' && requestedCenter === 'all';
   const pageSize = [20, 50, 100].includes(Number(request.pageSize)) ? Number(request.pageSize) : 20;
   const requestedPage = Math.max(1, Math.floor(Number(request.page) || 1));
   const statusFilter = clean_(request.status);
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
   const cache = CacheService.getScriptCache();
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const indexKey = ['ticket-index', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(',')].join(':');
+  const indexKey = ['ticket-index', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), includeUnassigned ? 'with-unassigned' : 'assigned-only'].join(':');
   let index = safeCacheGet_(cache, indexKey);
   if (!index) {
     // Prevent a cache miss from making every concurrent viewer scan the same
@@ -283,7 +286,7 @@ function pageTickets_(request, actor) {
           }
         }
         const tickets = records.filter(function (record) {
-          return record.hasData && scope.includes(record.center);
+          return record.hasData && recordInScope_(record, scope, includeUnassigned, centers);
         }).map(publicTicket_).sort(function (a, b) {
           return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id));
         });
@@ -472,7 +475,9 @@ function yearlyTotalFromRecords_(records, year) {
   }, 0);
   return {
     year: year,
+    sourceRecords: records.length,
     received: received,
+    unallocatedReceived: Math.max(0, records.length - received),
     returned: returned,
     monthlyReceived: monthlyReceived,
     monthlyCumulative: monthlyCumulative,
@@ -483,14 +488,14 @@ function yearlyTotalFromRecords_(records, year) {
   };
 }
 
-function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, operationalRecords, selectedYearRecords) {
+function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, operationalRecords, selectedYearRecords, includeUnassigned) {
   const lastYear = Math.max(new Date().getFullYear(), selectedYear);
   const totals = [];
   for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
     const yearRecords = year === selectedYear && selectedYearRecords
       ? selectedYearRecords
       : readHybridRecordsForYear_(spreadsheetId, year, centers, operationalRecords).records;
-    const scoped = yearRecords.filter(function (record) { return record.hasData && scope.includes(record.center); });
+    const scoped = yearRecords.filter(function (record) { return record.hasData && recordInScope_(record, scope, includeUnassigned, centers); });
     totals.push(yearlyTotalFromRecords_(scoped, year));
   }
   return totals;
@@ -718,7 +723,9 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     cumulative: {
       fromYear: yearlyTotals.length ? yearlyTotals[0].year : FIRST_REPORT_YEAR,
       toYear: yearlyTotals.length ? yearlyTotals[yearlyTotals.length - 1].year : period.year,
-      received: yearlyTotals.reduce(function (sum, item) { return sum + item.received; }, 0)
+      records: yearlyTotals.reduce(function (sum, item) { return sum + Number(item.sourceRecords || item.received || 0); }, 0),
+      received: yearlyTotals.reduce(function (sum, item) { return sum + item.received; }, 0),
+      unallocatedReceived: yearlyTotals.reduce(function (sum, item) { return sum + Number(item.unallocatedReceived || 0); }, 0)
     },
     evaluation: {
       minimumSampleSize: 5,
@@ -950,6 +957,13 @@ function resolveCenter_(value, centers) {
   const input = clean_(value).toLowerCase();
   const found = centers.find(function (c) { return [c.name].concat(c.aliases || []).some(function (a) { return String(a).toLowerCase() === input; }); });
   return found ? found.name : (clean_(value) || 'Chưa xác định');
+}
+
+function recordInScope_(record, scope, includeUnassigned, centers) {
+  if (scope.includes(record.center)) return true;
+  if (!includeUnassigned) return false;
+  const normalized = clean_(record.center).toLowerCase();
+  return !centers.some(function (center) { return clean_(center.name).toLowerCase() === normalized; });
 }
 
 function schemaForHeaders_(headers) {

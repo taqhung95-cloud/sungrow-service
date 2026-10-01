@@ -135,7 +135,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.10\.1-all-ticket-history/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.10\.2-ticket-coverage/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
 assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
@@ -459,7 +459,7 @@ assert.match(liveDataSource, /v=62#/, 'Iframe nhập liệu phải dùng cache k
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=64/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=65/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -476,6 +476,8 @@ assert.match(ticketPageSource, /ticket-index/, 'Danh sách thiết bị phải d
 assert.match(ticketPageSource, /for \(let year = FIRST_REPORT_YEAR; year <= lastYear; year\+\+\)/, 'Chỉ mục thiết bị phải bao phủ toàn bộ các năm dữ liệu.');
 assert.match(ticketPageSource, /LockService\.getScriptLock\(\)/, 'Chỉ một request được phép xây chỉ mục khi nhiều người truy cập đồng thời.');
 assert.doesNotMatch(ticketPageSource, /request\.year/, 'Danh sách thiết bị không được giới hạn theo năm đang chọn trên dashboard.');
+assert.match(ticketPageSource, /recordInScope_\(record, scope, includeUnassigned, centers\)/, 'Tất cả trung tâm phải giữ cả hồ sơ có center chưa chuẩn hóa cho quản lý toàn hệ thống.');
+assert.match(legacyApiSource, /unallocatedReceived/, 'KPI tích lũy phải công khai số hồ sơ thiếu hoặc lệch ngày nhận.');
 assert.match(legacyApiSource, /cancelledStrongKeys/, 'Dashboard phải loại projection của hồ sơ đã hủy theo S/N và ngày nhận.');
 assert.match(legacyApiSource, /canUseSharedTables\) return readTableShared_\(sheetName, sharedRevision\)/, 'Dashboard phải dùng chung cache bảng nghiệp vụ với danh sách hồ sơ.');
 assert.doesNotMatch(legacyApiSource, /\['dash',[^\n]*actor\.email/, 'Cache dashboard không được tách theo email khi role và phạm vi center giống nhau.');
@@ -483,6 +485,7 @@ assert.match(liveDataSource, /idToken:token,query:term[\s\S]*action:'tickets\.pa
 assert.doesNotMatch(liveDataSource, /refresh:Boolean\(term\)/, 'Tìm kiếm không được phá cache và quét lại Sheet ở mỗi lần nhập.');
 assert.match(liveDataSource, /function ticketLoading\(\)/, 'Danh sách thiết bị phải có trạng thái loading riêng.');
 assert.match(liveDataSource, /sg-ticket-spinner/, 'Trạng thái loading phải hiển thị vòng xoay trực quan.');
+assert.match(liveDataSource, /Tích lũy có ngày nhận/, 'Biểu đồ phải nói rõ tích lũy chỉ gồm hồ sơ có ngày nhận hợp lệ.');
 assert.match(liveDataSource, /<th>GSP<\/th><th>MA<\/th><th>Thiết bị \/ S\/N<\/th>/, 'GSP và MA phải đứng trước cột Thiết bị / S/N.');
 assert.match(liveDataSource, /sg-parts-inline/, 'Linh kiện sử dụng phải hiển thị theo bố cục ngang gọn.');
 assert.match(liveDataSource, /yearSelect\.id = 'sg-period-year'/, 'Dashboard phải có bộ chọn năm độc lập.');
