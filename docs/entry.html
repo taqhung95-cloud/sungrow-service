@@ -582,7 +582,7 @@
     function decorate(root){
       const nodes=[];
       if(root&&root.nodeType===1) nodes.push(root);
-      if(root&&root.querySelectorAll) nodes.push(...root.querySelectorAll('td,.empty,button,[role="status"]'));
+      if(root&&root.querySelectorAll) nodes.push(...root.querySelectorAll('.empty-row td,.empty,button,[role="status"]'));
       nodes.forEach(function(node){
         if(!loadingText.test((node.textContent||'').trim())){
           const staleSpinner=node.querySelector(':scope > .loading-spinner');
