@@ -367,9 +367,11 @@
         const pointText=points.map(function(point){return point[0].toFixed(1)+','+point[1].toFixed(1);}).join(' ');
         return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+'</g>';
       }).join('');
-      const legend=allSeries.map(function(series){return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';}).join('');
-      const coverageNote=unallocatedReceived?'<div class="sg-annual-coverage-note">'+unallocatedReceived.toLocaleString('vi-VN')+' hồ sơ chưa cộng vào biểu đồ do thiếu, sai hoặc lệch năm ngày nhận.</div>':'';
-      return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>'+coverageNote;
+      const legend=allSeries.map(function(series){
+        const coverage=series.name==='Tích lũy'&&unallocatedReceived?' · '+unallocatedReceived.toLocaleString('vi-VN')+' hồ sơ chưa tính do thiếu, sai hoặc lệch năm ngày nhận':'';
+        return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị'+esc(coverage)+'"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';
+      }).join('');
+      return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
     };
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {

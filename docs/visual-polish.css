@@ -1298,4 +1298,3 @@
 }
 @keyframes sg-ticket-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){#sg-preview .sg-ticket-spinner{animation-duration:1.8s}}
-#sg-preview .sg-annual-coverage-note{margin-top:5px;color:#9a5a22;font-size:9.5px;line-height:1.35}
