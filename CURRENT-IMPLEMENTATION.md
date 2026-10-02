@@ -2,7 +2,22 @@
 
 Tài liệu này mô tả quy tắc dữ liệu và cách triển khai của phiên bản production hiện tại. Đây là điểm bắt đầu cho các task mới, thay cho việc đọc lại toàn bộ lịch sử thay đổi.
 
-Cập nhật lần cuối: `2026-10-01`.
+Cập nhật lần cuối: `2026-10-02`.
+
+## Thay đổi local chờ triển khai ngày 02/10/2026
+
+Production đang ghi nhận phiên bản 1.10.2 và cache 69/64 như phần bên dưới. Bản local chuẩn bị: backend `1.10.3-case-corrections`, cache frontend `71/66`, form-drafts.js v1; chưa push, deploy hay nhập XBSolar. Người dùng đã cho phép triển khai và nhập ngày 02/10; hiện bị chặn bởi lỗi khởi tạo kênh trình duyệt (“windows sandbox … setup refresh had errors”) và chưa có phiên clasp. Không push frontend trước backend, không ghi Sheet trực tiếp để vượt kiểm soát.
+
+Gói JSON đã được tải và đọc lại metadata tại đúng thư mục Drive riêng đang chứa database production; không chia sẻ file. Checkpoint và Script Properties nằm ngoài Git trong `../analysis/xbsolar/deployment-checkpoint.json` và `deployment-properties.txt`. Ba bảng live hồ sơ/công việc/linh kiện vừa được đối chiếu chỉ đọc vẫn khớp fingerprint snapshot. Đây chưa phải commit preflight: Preview phải đọc lại đủ 6 bảng khi thực thi.
+
+- Quản lý toàn hệ thống có nút **Sửa thông tin hồ sơ** trong màn hình cập nhật: SN, model, số lượng, ngày nhận/sẵn sàng/trả, khách hàng, đơn vị gửi, ghi chú và Drive.
+- API `correctCase` bắt buộc lý do và revision mới nhất; xác thực quyền trong ScriptLock; chỉ sửa các cột cho phép. Giữ nguyên ID hồ sơ, provenance, công việc và quan hệ luân chuyển. Chặn SN/ngày nhận trùng khi đổi định danh, ngày sai thứ tự và ghi đè từ trang cũ.
+- Ghi nhật ký trước/sau, đồng bộ projection/index và tăng revision. Nếu đồng bộ không hoàn tất, trả thông báo dữ liệu đã lưu để người dùng kiểm tra trước khi tiếp tục. Hồ sơ lịch sử còn thiếu ngày vẫn được sửa thông tin khác.
+- Linh kiện và lỗi tiếp tục sửa qua **Cập nhật công việc**, sử dụng ID dòng hiện hữu. Linh kiện có tên nhưng chưa có PN vẫn được giữ/sửa; không loại bỏ khi lưu. Không tạo case mới để sửa dữ liệu.
+- Kiểm thử bổ sung: `node "version final/tests/case-corrections.mjs"`; kiểm thử regression hiện hành vẫn bắt buộc.
+- Bổ sung nháp trình duyệt theo email đã xác thực + thao tác + ID hồ sơ/công việc: giữ khi submit thất bại, khôi phục khi nguồn còn khớp, không tự gửi database; nguồn đã đổi chỉ cho đối chiếu/xóa nháp cũ. Nháp hết hạn sau 7 ngày, không lưu token hoặc nội dung file; file đính kèm phải chọn lại sau tải trang. Cache/index cho nhiều người và chống tạo trùng hiện hành vẫn giữ nguyên. Kiểm thử `form-drafts.mjs` kiểm tra account, reload, nguồn đổi, linh kiện có tên thiếu PN, quota và xóa sau thành công.
+- Audit XBSolar đọc lại live ngày 02/10 phát hiện SN A2011057375 có ba lượt XB đang trỏ cùng HS-OLD-2024-0526. Người dùng đã xác nhận ba lần xử lý riêng; lượt đầu Sungrow → XB giữ ID production, hai lượt sau riêng. Mapping mới: 605 append, 106 merge, 0 hold; không dùng kết quả 603/108 cũ để ghi. Hai dòng linh kiện trùng dùng lại ID production, không append mù. Writer migration đã hoàn thiện và kiểm thử local, chưa deploy/chạy production; helper append cũ đang khóa.
+- Người dùng chốt 19 case chỉ có Test là **Hoàn tất kỹ thuật**, XB bổ sung linh kiện và chi tiết/kết quả xử lý sau. Giữ ngày hiện hữu và linh kiện trống; không tự gán Đã sửa chữa/Không sửa chữa. Output migration mới nhất nằm ở `analysis/xbsolar/output-v12/converted.json` ngoài thư mục production-auth-audit; Google Sheet kết quả đã có ghi chú và 19 dòng follow-up.
 
 ## 1. Phiên bản và kiến trúc hiện tại
 
@@ -368,6 +383,18 @@ Repair phải:
 - UI loading: có spinner khi tải thật; không có spinner cạnh nhãn nghiệp vụ `Đang xử lý`.
 
 ## 16. Khi nào cập nhật tài liệu này
+
+### Chuẩn bị migration XBSolar — 02/10/2026
+
+Bản local dựa trên remote HEAD mới nhất 84f77af505d3f03f589857ec46152b49c6b1955b. 711 hồ sơ XB được lập gói: **605 thêm mới, 106 hợp nhất, 0 tạm giữ**. A2011057375 có lượt đầu Sungrow → XB và hai lượt XB độc lập; không gộp ba lần thành một. Ba cặp ID giữ lượt 2025 độc lập, ghép XB vào ID 2026 theo xác nhận. A2542704238 là XB → Sungrow → XB trả khách; không dùng ngày máy gốc chuyển Mekong làm ngày trả khách. Hai linh kiện đã tồn tại giữ ID và số lượng, không nhập trùng. 19 hồ sơ hoàn tất kỹ thuật có ghi chú XB bổ sung chi tiết sau.
+
+Đã xây writer local trên backend ứng viên 1.10.3-case-corrections: XBSolarMigrationPlan.gs và XBSolarMigration.gs, chỉ lệnh Editor riêng tư; preflight toàn bộ nguồn live/hash/schema, backup Drive, journal theo hồ sơ, ScriptLock và khóa ghi tạm thời, batch nguồn nguyên tử, đọc lại, audit, projection/index/revision, resume chống lặp và rollback có kiểm tra xung đột. Giữ các ID cũ và provenance; rollback hồ sơ mới bằng hủy mềm. Các tab lịch sử không bị ghi.
+
+HS-OLD-2025-0459 / A2010216461 có quản lý chỉnh sửa: giữ toàn bộ giá trị hồ sơ/công việc đã sửa, chỉ nối ghi chú và thêm lịch sử nguồn. Khác biệt về ngày, trạng thái và bảo hành được ghi trong báo cáo để quản lý đối soát. Hai công việc cũ HS-OLD-2024-0015/0017 có ngày chuyển 02/01/2024 trước ngày nhận 19/01/2024; preview báo riêng, giữ nguyên hai giá trị nguồn, không tự sửa lịch sử Sungrow. Migration chặn lỗi thứ tự ngày mới.
+
+**Chưa deploy hoặc nhập production.** Preview phải khớp live mới nhất; gói cũ sẽ bị chặn nếu nguồn đã thay đổi. Backend/frontend phải deploy đồng bộ bản mới nhất. Các chức năng khác giữ nguyên ngoài quyền quản lý sửa thông tin hồ sơ và khóa ghi tạm thời khi nhập. Helper applyXBSolarImport() cũ vẫn khóa, không đưa vào deployment/API allowlist.
+
+Hướng dẫn: [XBSOLAR-MIGRATION-CONTROLS.md](version%20final/XBSOLAR-MIGRATION-CONTROLS.md). Gói/snapshot/báo cáo riêng tư ở ../analysis/xbsolar/ (Git ignore). Khi triển khai phải hoàn tất smoke test account quản lý và center trước khi chạy nhập.
 
 Cập nhật cùng commit khi thay đổi một trong các mục sau:
 

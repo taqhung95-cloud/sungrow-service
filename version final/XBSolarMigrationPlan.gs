@@ -1,0 +1,69 @@
+/** Pure migration planner. Does not change production, historical tabs or portal APIs. */
+var XBSolarMigrationPlan = (function () {
+  var CASE='Hồ sơ thiết bị',WORK='Công việc trung tâm',PART='Linh kiện sử dụng',FAULT='Lỗi thiết bị',TRANSFER='Luân chuyển thiết bị',HOLD='Tạm dừng SLA';
+  var keys={};keys[CASE]='Mã hồ sơ';keys[WORK]='Mã công việc';keys[PART]='Mã sử dụng linh kiện';keys[FAULT]='Mã ghi nhận lỗi';keys[TRANSFER]='Mã luân chuyển';keys[HOLD]='Mã tạm dừng';
+  function copy(x){return JSON.parse(JSON.stringify(x));}
+  function text(v){return v==null?'':String(v).trim();}
+  function day(v){var s=text(v),m,d;if(!s)return '';if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/)))d=m[1]+'-'+m[2]+'-'+m[3];else if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))){var month=Number(m[2])>12?m[1]:m[2],date=Number(m[2])>12?m[2]:m[1];d=m[3]+'-'+('0'+month).slice(-2)+'-'+('0'+date).slice(-2);}else throw Error('Ngày không hợp lệ: '+s);if(new Date(d+'T00:00:00Z').toISOString().slice(0,10)!==d)throw Error('Ngày không hợp lệ: '+s);return d;}
+  function serial(v){return text(v).toUpperCase().replace(/\s+/g,'');}
+  function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(function(k){return JSON.stringify(k)+':'+stable(v[k]);}).join(',')+'}';return JSON.stringify(v);}
+  function row(r,headers){var out={};headers.forEach(function(k){var v=r[k];out[k]=/^Ngày /.test(k)&&text(v)?day(v):text(v);});return out;}
+  function unique(rows,key){var out={};rows.forEach(function(r){var id=text(r[key]);if(!id)throw Error('Thiếu khóa '+key);if(out[id])throw Error('Trùng khóa '+id);out[id]=r;});return out;}
+  function indexState(snapshot){var out={};Object.keys(keys).forEach(function(t){if(!snapshot.headers[t]||!snapshot.tables[t])throw Error('Thiếu bảng/schema '+t);var key=keys[t];if(snapshot.headers[t].indexOf(key)<0)throw Error('Thiếu cột khóa '+t);out[t]=unique(snapshot.tables[t].map(function(r){return row(r,snapshot.headers[t]);}),key);});return out;}
+  function validate(snapshot){var s=indexState(snapshot);Object.keys(s[WORK]).forEach(function(id){if(!s[CASE][s[WORK][id]['Mã hồ sơ']])throw Error('Công việc mồ côi '+id);});[PART,FAULT,HOLD].forEach(function(t){Object.keys(s[t]).forEach(function(id){if(!s[WORK][s[t][id]['Mã công việc']])throw Error('Chi tiết mồ côi '+id);});});Object.keys(s[TRANSFER]).forEach(function(id){var r=s[TRANSFER][id],a=s[WORK][r['Mã công việc gửi']],b=s[WORK][r['Mã công việc nhận']];if(!a||!b||a['Mã hồ sơ']!==r['Mã hồ sơ']||b['Mã hồ sơ']!==r['Mã hồ sơ']||a['Trung tâm xử lý']!==r['Trung tâm gửi']||b['Trung tâm xử lý']!==r['Trung tâm nhận'])throw Error('Sai quan hệ luân chuyển '+id);});return s;}
+  function applyGroup(snapshot,group){var state=indexState(snapshot);group.operations.forEach(function(op){var now=state[op.table][op.id]||null;if(stable(now)===stable(op.after))return;if(stable(now)!==stable(op.before))throw Error('Dữ liệu đã thay đổi: '+op.table+'/'+op.id);state[op.table][op.id]=copy(op.after);});var next=copy(snapshot);Object.keys(keys).forEach(function(t){next.tables[t]=Object.keys(state[t]).map(function(id){return state[t][id];});});validate(next);return next;}
+  function build(converted,baseline,audit){
+    if(audit.blockers.length||audit.decisions.some(function(d){return ['append_candidate','merge_candidate'].indexOf(d.action)<0;}))throw Error('Mapping chưa chốt');
+    if(audit.decisions.length!==converted.tables[CASE].length)throw Error('Mapping thiếu case');
+    var current=validate(baseline),incoming=unique(converted.tables[CASE],keys[CASE]),groups=[],workAliases={},partAliases={},seenSource={},seenTarget={};
+    function add(group,t,record){var normalized=row(record,baseline.headers[t]),id=normalized[keys[t]],before=current[t][id]||null;
+      if(!id)throw Error('Thiếu ID '+t);Object.keys(record).forEach(function(k){if(k!=='__rowNumber'&&baseline.headers[t].indexOf(k)<0)throw Error('Cột không có trong production: '+t+'/'+k);});
+      if(Object.keys(normalized).some(function(k){return /^=/.test(normalized[k]);}))throw Error('Giá trị giống công thức: '+t+'/'+id);
+      if(stable(before)!==stable(normalized)){var pending=group.operations.find(function(o){return o.table===t&&o.id===id;});if(pending)pending.after=copy(normalized);else group.operations.push({table:t,id:id,before:before?copy(before):null,after:copy(normalized)});current[t][id]=normalized;}
+      return normalized;
+    }
+    function mergeNote(oldValue,newValue){return text(oldValue)?text(oldValue)+'\n'+text(newValue):text(newValue);}
+    function transfer(group,id,a,b,note,received){add(group,TRANSFER,{'Mã luân chuyển':id,'Mã hồ sơ':group.caseId,'Mã công việc gửi':a['Mã công việc'],'Mã công việc nhận':b['Mã công việc'],'Trung tâm gửi':a['Trung tâm xử lý'],'Trung tâm nhận':b['Trung tâm xử lý'],'Ngày gửi':'','Ngày xác nhận nhận':received||'','Trạng thái luân chuyển':'Đã nhận','Mã vận chuyển':'','Người bàn giao':'Đồng bộ XBSolar','Người xác nhận nhận':'Đồng bộ XBSolar','Ghi chú bàn giao':note+'; ngày gửi/nhận chưa rõ giữ trống, không dùng ngày giao khách để suy ra.'});}
+    audit.decisions.forEach(function(d){
+      if(seenSource[d.sourceCase])throw Error('Mapping lặp '+d.sourceCase);seenSource[d.sourceCase]=true;
+      var c=copy(incoming[d.sourceCase]),target=d.action==='append_candidate'?d.sourceCase:d.targetCase;if(!c)throw Error('Sai source ID');
+      if(seenTarget[target])throw Error('Hai lần nhận vào cùng case '+target);seenTarget[target]=true;
+      var base=current[CASE][target],group={sourceCase:d.sourceCase,caseId:target,serial:serial(c['Số sê-ri (S/N)']),createdCase:!base,operations:[],preserveIndependentCase:d.preserveIndependentCase||''};
+      if(base&&d.action==='append_candidate')throw Error('ID append đã tồn tại '+target);
+      if(base&&(serial(base['Số sê-ri (S/N)'])!==group.serial||base['Trạng thái hồ sơ']==='Đã hủy'))throw Error('Sai SN/case hủy '+target);
+      if(!base&&d.action!=='append_candidate')throw Error('Đích không tồn tại '+target);
+      c['Mã hồ sơ']=target;
+      if(base){var merged=copy(base);Object.keys(c).forEach(function(k){if(['Mã hồ sơ','Mã dòng dữ liệu cũ','Nguồn dữ liệu','Người tạo','Ngày tạo'].indexOf(k)>=0)return;if(text(c[k])||['Ngày trả khách','Ngày sẵn sàng trả khách','Đơn vị gửi hàng'].indexOf(k)>=0)merged[k]=c[k];});merged['Ngày nhận từ khách']=d.transfer?d.transfer.originalReceivedDate:[day(base['Ngày nhận từ khách']),day(c['Ngày nhận từ khách'])].filter(Boolean).sort()[0]||'';merged['Ghi chú chung']=mergeNote(base['Ghi chú chung'],'[XBSolar '+d.sourceCase+' / '+d.source+'] '+c['Ghi chú chung']);if(d.transfer)merged['Trung tâm tiếp nhận khách']=d.transfer.fromCenter;if(text(merged['Dự án/Địa điểm'])==='Tạ Quốc Hùng')merged['Dự án/Địa điểm']='';c=merged;}
+      if(d.userEdited){group.protectedManualEdits=copy(base);var newNote=c['Ghi chú chung'];c=copy(base);c['Ghi chú chung']=newNote;group.reviewNote='Giữ toàn bộ giá trị hồ sơ đã được quản lý sửa; chỉ nối ghi chú và thêm chặng XB. Đối chiếu ngày/center/kết quả trong báo cáo trước commit.';}
+      add(group,CASE,c);
+      var sources=converted.tables[WORK].filter(function(w){return w['Mã hồ sơ']===d.sourceCase;});if(sources.length!==1)throw Error('Cần đúng một công việc nguồn '+d.sourceCase);
+      var w=copy(sources[0]),oldWorkId=w['Mã công việc'],oldWorks=Object.keys(current[WORK]).map(function(id){return current[WORK][id];}).filter(function(x){return x['Mã hồ sơ']===target;}),forward=d.transfer&&d.transfer.route&&d.transfer.route.length===3;
+      w['Mã hồ sơ']=target;if(w['Kết quả xử lý']==='Đã đổi thiết bị')w['Kết quả xử lý']='Đổi thiết bị';
+      var reused=null;
+      if(base&&!d.transfer&&w['Trung tâm xử lý']==='Sungrow Service Center'){var matches=oldWorks.filter(function(x){return x['Trung tâm xử lý']===w['Trung tâm xử lý']&&day(x['Ngày trung tâm nhận hàng'])===day(w['Ngày trung tâm nhận hàng']);});if(matches.length!==1)throw Error('Không xác định được công việc Sungrow '+target);reused=matches[0];w['Mã công việc']=reused['Mã công việc'];w['Người tạo']=reused['Người tạo'];w['Ngày tạo']=reused['Ngày tạo'];w['Ghi chú nội bộ']=mergeNote(reused['Ghi chú nội bộ'],w['Ghi chú nội bộ']);}
+      if(base&&!d.transfer&&!reused){if(oldWorks.length!==1)throw Error('Công việc cũ mơ hồ '+target);var prior=copy(oldWorks[0]);prior['Kết quả xử lý']='Không sửa chữa';prior['Trạng thái xử lý']='Đã đóng công việc';prior['Ngày chuyển hàng đi']=prior['Ngày trung tâm nhận hàng'];prior['Ghi chú nội bộ']=mergeNote(prior['Ghi chú nội bộ'],'Lần ghi nhận trước không sửa chữa, trả vào ngày nhận; giữ nguyên ID. Lần XB sửa sau ở '+oldWorkId+'.');add(group,WORK,prior);}
+      if(forward){w['Kết quả xử lý']='Đã sửa chữa';w['Loại thiết bị đổi']='';w['Ngày chuyển hàng đi']='';w['Ghi chú nội bộ']+='; chặng XB sửa trước chuyển Sungrow; việc đổi thiết bị hoàn tất ở Sungrow.';}
+      w=add(group,WORK,w);workAliases[oldWorkId]=w['Mã công việc'];
+      var destination=w,sourceWork=null,returnWork=null;
+      if(d.transfer){
+        var sourceIds=forward?d.transfer.destinationWorkIds:d.transfer.sourceWorkIds;if(sourceIds.length!==1)throw Error('Chặng production mơ hồ '+target);sourceWork=copy(current[WORK][sourceIds[0]]);if(!sourceWork||sourceWork['Mã hồ sơ']!==target)throw Error('Sai công việc chặng '+target);
+        if(d.userEdited){sourceWork['Mã công việc']+='-SG-TRACE';sourceWork['Ghi chú nội bộ']+='; chặng lịch sử Sungrow bổ sung từ mapping, giữ nguyên công việc đã được quản lý sửa.';}
+        sourceWork['Trung tâm xử lý']='Sungrow Service Center';sourceWork['Trạng thái xử lý']='Đã chuyển hàng đi';if(forward){sourceWork['Ngày chuyển hàng đi']='';sourceWork['Kết quả xử lý']='Đổi thiết bị';sourceWork['Loại thiết bị đổi']=sources[0]['Loại thiết bị đổi'];c['Ngày sẵn sàng trả khách']=sourceWork['Ngày hoàn tất kỹ thuật'];add(group,CASE,c);}sourceWork['Ghi chú nội bộ']=mergeNote(sourceWork['Ghi chú nội bộ'],d.transfer.note);sourceWork=add(group,WORK,sourceWork);
+        if(forward){destination=sourceWork;transfer(group,'LC-XB-'+d.sourceCase+'-1',w,sourceWork,d.transfer.note,d.transfer.receivedAt);returnWork=add(group,WORK,{'Mã công việc':oldWorkId+'-RETURN','Mã hồ sơ':target,'Trung tâm xử lý':'XBSolar Center','Ngày trung tâm nhận hàng':'','Trạng thái xử lý':'Đã đóng công việc','Ngày hoàn tất chẩn đoán':'','Ngày hoàn tất kỹ thuật':'','Kết quả xử lý':'','Loại thiết bị đổi':'','Ngày chuyển hàng đi':c['Ngày trả khách'],'Ghi chú nội bộ':'XB nhận lại và giao khách theo xác nhận người dùng; chưa có ngày nhận lại. Không dùng ngày máy gốc chuyển Mekong làm ngày trả về XB.','Người tạo':'Đồng bộ XBSolar','Ngày tạo':'','Người cập nhật':'Đồng bộ XBSolar','Ngày cập nhật':c['Ngày trả khách']});transfer(group,'LC-XB-'+d.sourceCase+'-2',sourceWork,returnWork,d.transfer.note,'');}
+        else transfer(group,'LC-XB-'+d.sourceCase+'-1',sourceWork,w,d.transfer.note,d.transfer.receivedAt);
+      }else if(reused&&c['Trung tâm tiếp nhận khách']==='XBSolar Center'){
+        var trace=add(group,WORK,{'Mã công việc':oldWorkId+'-INTAKE','Mã hồ sơ':target,'Trung tâm xử lý':'XBSolar Center','Ngày trung tâm nhận hàng':c['Ngày nhận từ khách'],'Trạng thái xử lý':'Đã chuyển hàng đi','Ngày hoàn tất chẩn đoán':'','Ngày hoàn tất kỹ thuật':'','Kết quả xử lý':'','Loại thiết bị đổi':'','Ngày chuyển hàng đi':'','Ghi chú nội bộ':'XB tiếp nhận rồi chuyển Sungrow xử lý cuối; không ghi thêm lần sửa/đổi tại XB; không chuyển về XB.','Người tạo':'Đồng bộ XBSolar','Ngày tạo':c['Ngày nhận từ khách'],'Người cập nhật':'Đồng bộ XBSolar','Ngày cập nhật':c['Ngày trả khách']});transfer(group,'LC-XB-'+d.sourceCase+'-1',trace,w,trace['Ghi chú nội bộ'],w['Ngày trung tâm nhận hàng']);
+      }
+      converted.tables[PART].filter(function(p){return p['Mã công việc']===oldWorkId;}).forEach(function(p){var item=copy(p),original=item['Mã sử dụng linh kiện'];item['Mã công việc']=w['Mã công việc'];
+        if(forward&&/đổi|thay thế/.test(text(item['Tên linh kiện']).toLowerCase())){item['Mã công việc']=destination['Mã công việc'];item['Ngày sử dụng']=destination['Ngày hoàn tất kỹ thuật'];}
+        if(reused){var matches=Object.keys(current[PART]).map(function(id){return current[PART][id];}).filter(function(q){return q['Mã công việc']===w['Mã công việc']&&text(q['Mã linh kiện (Part Number)'])===text(item['Mã linh kiện (Part Number)'])&&Number(q['Số lượng'])===Number(item['Số lượng'])&&day(q['Ngày sử dụng'])===day(item['Ngày sử dụng']);});if(matches.length>1)throw Error('Linh kiện trùng mơ hồ '+target);if(matches.length===1){var same=matches[0];item['Mã sử dụng linh kiện']=same['Mã sử dụng linh kiện'];if(!text(item['Tên linh kiện']))item['Tên linh kiện']=same['Tên linh kiện'];item['Ghi chú']=mergeNote(same['Ghi chú'],item['Ghi chú']);}}
+        partAliases[original]=item['Mã sử dụng linh kiện'];if(!(Number(item['Số lượng'])>0)||!text(item['Mã linh kiện (Part Number)']||item['Tên linh kiện']))throw Error('Linh kiện không hợp lệ '+original);add(group,PART,item);
+      });
+      converted.tables[FAULT].filter(function(p){return p['Mã công việc']===oldWorkId;}).forEach(function(p){var item=copy(p);item['Mã công việc']=w['Mã công việc'];add(group,FAULT,item);});
+      groups.push(group);
+    });
+    var after=copy(baseline);Object.keys(keys).forEach(function(t){after.tables[t]=Object.keys(current[t]).map(function(id){return current[t][id];});});validate(after);
+    return {format:1,spreadsheetId:baseline.spreadsheetId,baseline:copy(baseline),groups:groups,workAliases:workAliases,partAliases:partAliases,expectedCounts:Object.fromEntries(Object.keys(keys).map(function(t){return [t,after.tables[t].length];})),rules:{historicalTabsUntouched:true,immutableExistingCaseIds:true,independentVisitsKept:true,missingDatesNotInvented:true},readyForDryRun:true};
+  }
+  return {build:build,validate:validate,applyGroup:applyGroup,stable:stable,normalizeRow:row,day:day,keys:keys};
+})();

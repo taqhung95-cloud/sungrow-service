@@ -6,8 +6,9 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const readDocs = name => fs.readFileSync(path.resolve(root, '..', 'docs', name), 'utf8');
+new vm.Script(readDocs('form-drafts.js'), {filename:'docs/form-drafts.js'});
 
-for (const file of ['Code.gs', 'ManagerDashboard.gs', 'LegacyDashboardApi.gs']) {
+for (const file of ['Code.gs', 'ManagerDashboard.gs', 'LegacyDashboardApi.gs', 'XBSolarMigrationPlan.gs', 'XBSolarMigration.gs']) {
   new vm.Script(read(file), {filename:file});
 }
 
@@ -135,7 +136,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.10\.2-ticket-coverage/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.10\.3-case-corrections/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
 assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
@@ -459,11 +460,11 @@ assert.match(entryHtml, /class="loading-spinner"/, 'Danh sách hồ sơ phải h
 assert.match(entryHtml, /installLoadingIndicators/, 'Các trạng thái tải động phải tự động được gắn vòng xoay.');
 assert.match(entryHtml, /querySelectorAll\('\.empty-row td,\.empty,button,\[role="status"\]'\)/, 'Vòng xoay chỉ được gắn vào trạng thái tải thực sự.');
 assert.doesNotMatch(entryHtml, /querySelectorAll\('td,\.empty,button/, 'Không được hiểu nhầm trạng thái nghiệp vụ trong ô bảng là trạng thái tải.');
-assert.match(liveDataSource, /v=64#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=66#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=69/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=71/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');

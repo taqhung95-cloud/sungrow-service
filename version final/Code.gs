@@ -1,4 +1,4 @@
-const APP_VERSION = '1.10.2-ticket-coverage';
+const APP_VERSION = '1.10.3-case-corrections';
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -117,6 +117,7 @@ function handlePortalApi_(request) {
     cancelCase: cancelCase,
     confirmWarranty: confirmWarranty,
     updateWorkOrder: updateWorkOrder,
+    correctCase: correctCase,
     createTransfer: createTransfer,
     acceptTransfer: acceptTransfer,
     returnToCustomer: returnToCustomer
@@ -330,6 +331,7 @@ function createCase(idToken, payload) {
   reservation.waitLock(20000);
   let evidenceLink;
   try {
+    if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     const existing = getCreationStatus(idToken, requestId);
     if (existing.found) return existing;
     const raw = receipts.getProperty(receiptKey);
@@ -356,6 +358,7 @@ function createCase(idToken, payload) {
       const existing = getCreationStatus(idToken, requestId);
       if (existing.found) return existing;
     }
+    if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
     ensureSheetColumns_(SHEETS.cases, ['Mã yêu cầu tạo']);
     const caseId = makeId_('HS');
@@ -460,6 +463,7 @@ function cancelCaseUnlocked_(idToken, payload) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) throw publicError_('Dữ liệu đang được cập nhật. Vui lòng chờ vài giây rồi xóa lại hồ sơ.');
   try {
+    if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     ensureSheetColumns_(SHEETS.cases, ['Người hủy', 'Ngày hủy', 'Lý do hủy']);
     const table = readTableWithRows_(SHEETS.cases);
     const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
@@ -619,10 +623,66 @@ function withSerializedWrite_(operationName, callback) {
   }
 
   try {
+    if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     return callback();
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Administrative correction updates the existing case; never creates a case or transfer. */
+function correctCase(idToken, payload) {
+  return withSerializedWrite_('sửa thông tin hồ sơ', function () {
+    const actor = authenticate_(idToken);
+    if (!actor.isGlobalManager) throw publicError_('Chỉ quản lý toàn hệ thống được sửa thông tin gốc.');
+    payload = payload || {};
+    const caseId = required_(payload.caseId, 'Mã hồ sơ');
+    const reason = required_(payload.reason, 'Lý do sửa');
+    if (reason.length > 500) throw publicError_('Lý do sửa tối đa 500 ký tự.');
+    if (!payload.expectedRevision || String(payload.expectedRevision) !== getPortalDatabaseRevision_()) throw publicError_('Dữ liệu đã thay đổi. Tải lại hồ sơ trước khi sửa.');
+    const table = readTableWithRows_(SHEETS.cases);
+    const matches = table.rows.filter(function (c) { return clean_(c['Mã hồ sơ']) === caseId; });
+    if (matches.length !== 1) throw publicError_('Không tìm thấy đúng một hồ sơ để sửa.');
+    const record = matches[0];
+    if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không sửa hồ sơ đã hủy.');
+    const fields = {serialNumber:'Số sê-ri (S/N)',model:'Model',quantity:'Số lượng',receivedAt:'Ngày nhận từ khách',readyAt:'Ngày sẵn sàng trả khách',returnedAt:'Ngày trả khách',sender:'Đơn vị gửi hàng',customerName:'Tên khách hàng',customerAddress:'Địa chỉ khách hàng',customerPhone:'Số điện thoại khách hàng',customerEmail:'Email khách hàng',note:'Ghi chú chung',evidenceLink:'Liên kết hồ sơ Drive'};
+    const input = payload.changes || {}, changes = {}, dates = ['receivedAt','readyAt','returnedAt'];
+    Object.keys(input).forEach(function (key) {
+      if (!fields[key]) throw publicError_('Trường không được phép sửa: ' + key);
+      if (table.headers.indexOf(fields[key]) === -1) throw publicError_('Thiếu cột đích: ' + fields[key]);
+      let value = clean_(input[key]);
+      if (value.length > (key === 'note' ? 20000 : 2000)) throw publicError_('Thông tin quá dài: ' + key);
+      if (dates.indexOf(key) !== -1) { const raw=value; value = value ? parseDateRequired_(value, key) : ''; if(raw && (!/^\d{4}-\d{2}-\d{2}$/.test(raw)||iso_(value)!==raw)) throw publicError_('Ngày không hợp lệ: '+key); }
+      else if (key === 'quantity') { value = Number(value); if (!Number.isInteger(value) || value < 1) throw publicError_('Số lượng phải là số nguyên từ 1.'); }
+      else if (key === 'customerEmail' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw publicError_('Email không hợp lệ.');
+      else if (key === 'evidenceLink' && value && !safeDriveLink_(value)) throw publicError_('Link hồ sơ phải là Google Drive hợp lệ.');
+      else if ((key === 'serialNumber' || key === 'model') && !value) throw publicError_('S/N và Model không được để trống khi sửa.');
+      if (typeof value === 'string' && /^[=+@]/.test(value)) throw publicError_('Không nhập công thức vào thông tin hồ sơ.');
+      changes[fields[key]] = value;
+      if(key==='sender' && table.headers.indexOf('Nơi gửi hàng')>=0)changes['Nơi gửi hàng']=value;
+    });
+    if (!Object.keys(changes).length) throw publicError_('Chưa chọn thông tin cần sửa.');
+    const next = Object.assign({}, record, changes), received = asDate_(next['Ngày nhận từ khách']), ready = asDate_(next['Ngày sẵn sàng trả khách']), returned = asDate_(next['Ngày trả khách']);
+    if (clean_(next['Nguồn dữ liệu']) === 'Quy trình mới' && !received) throw publicError_('Hồ sơ quy trình mới phải có ngày nhận.');
+    if (received && ((ready && ready < received) || (returned && returned < received))) throw publicError_('Ngày sẵn sàng/trả không được trước ngày nhận.');
+    if (ready && returned && returned < ready) throw publicError_('Ngày trả không được trước ngày sẵn sàng trả.');
+    if (clean_(record['Trạng thái hồ sơ']) === 'Đã hoàn tất' && asDate_(record['Ngày trả khách']) && !returned) throw publicError_('Hồ sơ đã hoàn tất phải giữ ngày trả khách.');
+    const works = findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
+    const transfers = findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId]);
+    if (received && Object.prototype.hasOwnProperty.call(changes, 'Ngày nhận từ khách') && works.some(function(w){const d=asDate_(w['Ngày trung tâm nhận hàng']);return d && d < received;})) throw publicError_('Ngày nhận khách không được sau ngày nhận một chặng xử lý.');
+    if (returned && transfers.some(function(t){const d=asDate_(t['Ngày xác nhận nhận']);return d && d > returned;})) throw publicError_('Ngày trả khách không được trước ngày nhận luân chuyển đã ghi.');
+    const normalize = function(v){return clean_(v).toUpperCase().replace(/\s+/g,'');};
+    const identityChanged = normalize(next['Số sê-ri (S/N)']) !== normalize(record['Số sê-ri (S/N)']) || iso_(next['Ngày nhận từ khách']) !== iso_(record['Ngày nhận từ khách']);
+    if (identityChanged && received && table.rows.some(function(c){return clean_(c['Mã hồ sơ'])!==caseId && clean_(c['Trạng thái hồ sơ'])!=='Đã hủy' && normalize(c['Số sê-ri (S/N)'])===normalize(next['Số sê-ri (S/N)']) && iso_(c['Ngày nhận từ khách'])===iso_(received);})) throw publicError_('S/N và ngày nhận trùng hồ sơ khác. Cần đối chiếu case trước khi sửa.');
+    changes['Người cập nhật gần nhất'] = actor.email;
+    changes['Ngày cập nhật gần nhất'] = new Date();
+    updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
+    audit_(actor, 'Sửa thông tin hồ sơ', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, {reason:reason,changes:changes});
+    const projection = syncDashboardProjectionCase_(caseId), index = syncPortalCaseIndexCase_(caseId);
+    const revision = bumpPortalDatabaseRevision_();
+    if (!projection || !projection.ok || !index || !index.ok) throw publicError_('Thông tin đã lưu nhưng đồng bộ dashboard/chỉ mục chưa hoàn tất. Tải lại hồ sơ và kiểm tra trước khi tiếp tục.');
+    return {ok:true,caseId:caseId,revision:revision};
+  });
 }
 
 function updateWorkOrder() {
@@ -655,7 +715,7 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   if (gsp.length > 100 || ma.length > 100) throw publicError_('GSP hoặc MA không được vượt quá 100 ký tự.');
   const requestedStatus = required_(payload.workflowStatus, 'Trạng thái xử lý');
   const warrantyPending = clean_(caseRecord['Tình trạng bảo hành']) === 'Chờ xác nhận';
-  const hasParts = (payload.parts || []).some(function (item) { return clean_(item.partNumber); });
+  const hasParts = (payload.parts || []).some(function (item) { return clean_(item.partNumber) || clean_(item.name); });
   if (warrantyPending && (PRE_WARRANTY_WORKFLOW_STATUSES.indexOf(requestedStatus) === -1 || payload.technicalCompletedAt || payload.outcome || hasParts)) {
     throw publicError_('Quản lý dịch vụ hoặc Quản lý Sungrow phải xác nhận tình trạng bảo hành trước khi sửa chữa, sử dụng linh kiện hoặc hoàn tất kỹ thuật.');
   }
@@ -1410,6 +1470,7 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
     isClosed: isClosed, canEditCase: canEditCase, canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
     canDelete: canDeleteCase,
+    canCorrectCase: isManager, correctionRevision: isManager ? getPortalDatabaseRevision_() : '',
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
     workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
@@ -1458,8 +1519,8 @@ function replaceWorkOrderChildren_(actor, workOrderId, issues, parts) {
   const currentParts = partTable.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
   const currentPartById = currentParts.reduce(function (map, row) { map[clean_(row['Mã sử dụng linh kiện'])] = row; return map; }, {});
   const keptPartIds = {};
-  (parts || []).filter(function (item) { return clean_(item.partNumber); }).forEach(function (item) {
-    const partNumber = required_(item.partNumber, 'Mã linh kiện');
+  (parts || []).filter(function (item) { return clean_(item.partNumber) || clean_(item.name); }).forEach(function (item) {
+    const partNumber = clean_(item.partNumber);
     const partName = required_(item.name, 'Tên linh kiện');
     const quantity = Number(item.quantity || 0);
     if (!Number.isFinite(quantity) || quantity <= 0) throw publicError_('Số lượng linh kiện phải lớn hơn 0.');
