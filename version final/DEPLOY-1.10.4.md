@@ -5,7 +5,7 @@
 1. Trong Apps Script project đang phục vụ URL production, thay toàn bộ nội dung `Code.gs` bằng `version final/Code.gs`, và `LegacyDashboardApi.gs` bằng `version final/LegacyDashboardApi.gs`. Lưu cả hai file. Không dùng `apps-script/` cũ.
 2. Xóa các launcher migration/repair public tạm đã dùng trong Editor trước khi deploy. Không xóa các helper private đang được bộ migration tham chiếu. Không chạy lại nhập XB/BKE/DAT hoặc các repair lịch sử chỉ để cập nhật web.
 3. Deploy → Manage deployments → chọn Web App hiện tại → Edit → Version: **New version** → Deploy. Giữ nguyên URL và cấu hình quyền hiện tại.
-4. Mở URL `/exec` hiện tại: response service phải báo version `1.10.4-canonical-sync`. Save trong Editor hoặc chạy hàm Editor không thay phiên bản `/exec`.
+4. Đăng nhập portal; phản hồi API `getBootstrap` phải có `version: 1.10.4-canonical-sync` (có thể kiểm tra trong Network của trình duyệt). URL `/exec` trực tiếp có thể trả giao diện HTML, không phải JSON version. Save trong Editor hoặc chạy hàm Editor không thay phiên bản deployment.
 5. Reload GitHub portal. Nếu trình duyệt giữ bản cũ, Ctrl+Shift+R. Frontend mới phải tải `live-data.js?v=72`.
 6. Kiểm tra quản lý toàn hệ thống: Danh sách thiết bị không bị lọc theo năm; đổi tháng/năm chỉ đổi KPI. Đối chiếu cùng scope, bỏ lọc tìm kiếm/trạng thái/center, không so số row thô có case hủy với case đang hoạt động.
 7. Kiểm tra riêng mỗi role/center và một lượt nhận đã migration. Case có nhiều center vẫn giữ nguyên ID; không ghép theo S/N đơn lẻ. Quyền dashboard theo center xử lý gần nhất, quyền danh sách hồ sơ theo các center liên quan; hai tổng theo center không nhất thiết giống nhau.
