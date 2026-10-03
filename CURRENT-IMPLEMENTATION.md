@@ -2,7 +2,13 @@
 
 Tài liệu này mô tả quy tắc dữ liệu và cách triển khai của phiên bản production hiện tại. Đây là điểm bắt đầu cho các task mới, thay cho việc đọc lại toàn bộ lịch sử thay đổi.
 
-Cập nhật lần cuối: `2026-10-02`.
+Cập nhật lần cuối: `2026-10-03`.
+
+## Release ứng viên 1.10.4-canonical-sync — chưa xác minh backend deploy
+
+Dashboard production chuyển sang nguồn hồ sơ nghiệp vụ canonical đã migration, không ghép lại các năm lịch sử khi đọc. Snapshot compact/cache bảng cùng revision và không stale; không giữ ScriptLock ngoài shared reader. Danh sách server-side giữ mọi case hoạt động, kể cả thiếu ngày hoặc trước 2024. KPI kỳ vẫn lọc ngày có căn cứ; cumulative records khác cumulative received. Phân quyền dashboard theo center xử lý gần nhất vẫn khác phạm vi center liên quan của platform; không sửa quyền để ép tổng bằng nhau.
+
+Frontend cache mới `live-data.js?v=72`, bỏ fallback sai dùng preview 250 dòng làm toàn bộ danh sách. Backend Code và Legacy đều `1.10.4-canonical-sync`. Test 10.000 case/regression đạt; replay snapshot sau DAT đạt 2.767 case hoạt động ở cả dashboard và danh sách, 6 thiếu ngày, 4 lượt đọc bảng cho toàn bộ các trang khi cache warm. Không chạy lại migration/repair cho release này. Hướng dẫn `version final/DEPLOY-1.10.4.md`; backend chưa deploy/xác minh live vì công cụ trình duyệt gặp lỗi khởi động. Giữ nguyên dữ liệu và các launcher private; không deploy launcher Editor public tạm.
 
 ## Thay đổi local chờ triển khai ngày 02/10/2026
 

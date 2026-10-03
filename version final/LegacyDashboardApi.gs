@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.10.2-ticket-coverage';
+const APP_VERSION = '1.10.4-canonical-sync';
 const SLA_DAYS = 7;
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -47,6 +47,42 @@ function parseRequest_(e) {
   try { return JSON.parse(raw); } catch (_) { throw apiError_('BAD_REQUEST', 'Request JSON không hợp lệ.'); }
 }
 
+function readCanonicalSnapshot_(spreadsheetId, centers, revision) {
+  // Canonical cases already contain all approved historical migrations.
+  // Never rescan yearly tabs or use a stale table under a newer revision.
+  const cache = CacheService.getScriptCache();
+  const key = ['canonical-records', APP_VERSION, spreadsheetId, revision].join(':');
+  const packed = safeCacheGet_(cache, key);
+  if (packed && packed.headers && packed.rows) {
+    const records = packed.rows.map(function (values) {
+      const record = {};
+      packed.headers.forEach(function (header, index) { record[header] = values[index]; });
+      ['receivedDate', 'checkDate', 'sparePartDate', 'returnDate'].forEach(function (field) {
+        record[field] = date_(record[field]);
+      });
+      return record;
+    });
+    return { records: records, sheetName: packed.sheetName, lastRow: packed.lastRow };
+  }
+  // Shared table readers own their short-lived builder leases. Do not hold
+  // ScriptLock here: nested locks serialize viewers and can block mutations.
+  const snapshot = readOperationalRecords_(spreadsheetId, centers, revision);
+  assertCanonicalRevision_(revision);
+  const headers = snapshot.records.length ? Object.keys(snapshot.records[0]) : [];
+  safeCachePut_(cache, key, {
+    headers: headers,
+    rows: snapshot.records.map(function (record) { return headers.map(function (header) { return record[header]; }); }),
+    sheetName: snapshot.sheetName, lastRow: snapshot.lastRow
+  }, 1800);
+  return snapshot;
+}
+
+function assertCanonicalRevision_(revision) {
+  if (revision && typeof getPortalDatabaseRevision_ === 'function' && getPortalDatabaseRevision_() !== revision) {
+    throw apiError_('DATA_CHANGED', 'Dữ liệu vừa được cập nhật. Vui lòng tải lại danh sách.');
+  }
+}
+
 function getDashboard_(request, actor) {
   const period = normalizePeriod_(request.period);
   const centers = centerRegistry_();
@@ -72,12 +108,15 @@ function getDashboard_(request, actor) {
   }
 
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const operational = readOperationalRecords_(spreadsheetId, centers);
-  const hybrid = readHybridRecordsForYear_(spreadsheetId, period.year, centers, operational.records);
-  const records = hybrid.records.filter(function (r) { return r.hasData && recordInScope_(r, scope, includeUnassigned, centers); });
-  const yearlyTotals = request.includeAnnual === false ? [] : buildHybridYearlyTotals_(spreadsheetId, period.year, scope, centers, operational.records, hybrid.records, includeUnassigned);
-  const output = buildDashboard_(records, period, scope, hybrid.sheetName, hybrid.lastRow, spreadsheetId, actor, yearlyTotals);
-  output.dataQuality.hybridMerge = hybrid.stats;
+  const operational = readCanonicalSnapshot_(spreadsheetId, centers, dataRevision);
+  const records = operational.records.filter(function (r) { return r.hasData && recordInScope_(r, scope, includeUnassigned, centers); });
+  const yearlyTotals = request.includeAnnual === false ? [] : buildYearlyTotalsFromRecords_(records, period.year);
+  const output = buildDashboard_(records, period, scope, operational.sheetName, operational.lastRow, spreadsheetId, actor, yearlyTotals);
+  output.cumulative.records = records.length;
+  output.cumulative.unallocatedReceived = records.filter(function (r) { return !r.receivedDate; }).length;
+  output.source.revision = dataRevision;
+  output.dataQuality.canonical = { activeCases: operational.records.length, visibleCases: records.length, revision: dataRevision };
+  assertCanonicalRevision_(dataRevision);
   if (request.includeTickets === false) output.tickets = [];
   safeCachePut_(cache, cacheKey, output, 1800);
   return output;
@@ -86,59 +125,17 @@ function getDashboard_(request, actor) {
 function searchTickets_(request, actor) {
   const query = clean_(request.query);
   if (query.length < 2 || query.length > 100) throw apiError_('INVALID_QUERY', 'Nhập ít nhất 2 và không quá 100 ký tự để tra cứu thiết bị.');
-
-  const centers = centerRegistry_();
-  const allowed = actor.role === 'service_manager'
-    ? centers.map(function (c) { return c.name; })
-    : centers.filter(function (c) { return actor.centers.includes(c.id) || actor.centers.includes(c.name); }).map(function (c) { return c.name; });
-  if (!allowed.length) throw apiError_('FORBIDDEN', 'Tài khoản chưa được gán service center.');
-
-  const requestedCenter = request.center && request.center !== 'all' ? String(request.center) : 'all';
-  if (requestedCenter !== 'all' && !allowed.includes(requestedCenter)) throw apiError_('FORBIDDEN', 'Không có quyền xem service center đã chọn.');
-  const scope = requestedCenter === 'all' ? allowed : [requestedCenter];
-  const includeUnassigned = actor.role === 'service_manager' && requestedCenter === 'all';
-  const currentYear = new Date().getFullYear();
-  const requestedYear = Number(request.year);
-  const years = Number.isInteger(requestedYear) && requestedYear >= FIRST_REPORT_YEAR && requestedYear <= currentYear
-    ? [requestedYear]
-    : Array.from({length:currentYear - FIRST_REPORT_YEAR + 1}, function (_, index) { return FIRST_REPORT_YEAR + index; });
-  const cache = CacheService.getScriptCache();
-  const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['ticket-search', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), years.join('-'), digest_(query.toUpperCase())].join(':');
-  const cached = safeCacheGet_(cache, cacheKey);
-  if (cached) return cached;
-
-  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const lowerQuery = query.toLowerCase();
-  const compactQuery = normalizeDeviceKey_(query);
-  const matches = [];
-  const operational = readOperationalRecords_(spreadsheetId, centers);
-  for (let yearIndex = 0; yearIndex < years.length; yearIndex++) {
-    const hybrid = readHybridRecordsForYear_(spreadsheetId, years[yearIndex], centers, operational.records);
-    hybrid.records.forEach(function (record) {
-      if (!record.hasData || !recordInScope_(record, scope, includeUnassigned, centers)) return;
-      const searchable = [record.serialNumber, record.model].join(' ');
-      const textMatch = searchable.toLowerCase().includes(lowerQuery);
-      const compactMatch = compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery);
-      if (!textMatch && !compactMatch) return;
-      matches.push(publicTicket_(record));
-    });
-  }
-
-  matches.sort(function (a, b) { return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id)); });
-  const limit = 200;
-  const output = { tickets: matches.slice(0, limit), total: matches.length, truncated: matches.length > limit, fromYear: years[0], toYear: years[years.length - 1] };
-  safeCachePut_(cache, cacheKey, output, 600);
-  return output;
+  const page = pageTickets_(Object.assign({}, request, { page: 1, pageSize: 100 }), actor);
+  return { tickets: page.tickets, total: page.total, truncated: page.total > page.tickets.length, fromYear: page.fromYear, toYear: page.toYear };
 }
 
-function readOperationalRecords_(spreadsheetId, centers) {
+function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
   let spreadsheet = null;
-  const sharedRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const sharedRevision = pinnedRevision || (typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '');
   const canUseSharedTables = typeof readTableShared_ === 'function' && sharedRevision &&
     (typeof DATABASE_SPREADSHEET_ID === 'undefined' || spreadsheetId === DATABASE_SPREADSHEET_ID);
   function objects(sheetName) {
-    if (canUseSharedTables) return readTableShared_(sheetName, sharedRevision);
+    if (canUseSharedTables) return readTableShared_(sheetName, sharedRevision, false);
     if (!spreadsheet) spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet || sheet.getLastRow() < 2) return [];
@@ -227,7 +224,7 @@ function readOperationalRecords_(spreadsheetId, centers) {
       status: clean_(latest['Trạng thái xử lý']) || caseStatus,
       sparePartDate: parts.map(function (part) { return date_(part['Ngày nhận linh kiện']); }).filter(Boolean)[0] || null,
       parts: parts.map(function (part) {
-        return { pn: clean_(part['Mã linh kiện (Part Number)']), qty: number_(part['Số lượng']) };
+        return { pn: clean_(part['Mã linh kiện (Part Number)']) || clean_(part['Tên linh kiện']), qty: number_(part['Số lượng']) };
       }).filter(function (part) { return part.pn; }),
       returnDate: date_(item['Ngày trả khách']),
       waitingParts: /chờ|thiếu.+(?:board|part)|đề xuất.+board/i.test(note + ' ' + clean_(item['Tình trạng bảo hành']) + ' ' + clean_(latest['Trạng thái xử lý'])),
@@ -264,45 +261,21 @@ function pageTickets_(request, actor) {
   const indexKey = ['ticket-index', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), includeUnassigned ? 'with-unassigned' : 'assigned-only'].join(':');
   let index = safeCacheGet_(cache, indexKey);
   if (!index) {
-    // Prevent a cache miss from making every concurrent viewer scan the same
-    // yearly tabs. Recheck after acquiring the lock because another request
-    // may have completed the shared index while this request was waiting.
-    const lock = LockService.getScriptLock();
-    lock.waitLock(30000);
-    try {
-      index = safeCacheGet_(cache, indexKey);
-      if (!index) {
-        const operational = readOperationalRecords_(spreadsheetId, centers);
-        const records = [];
-        const sourceYears = [];
-        const lastYear = Math.max(new Date().getFullYear(), FIRST_REPORT_YEAR);
-        for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
-          try {
-            const hybrid = readHybridRecordsForYear_(spreadsheetId, year, centers, operational.records);
-            Array.prototype.push.apply(records, hybrid.records);
-            sourceYears.push(year);
-          } catch (error) {
-            if (error.code !== 'SOURCE_TAB_NOT_FOUND') throw error;
-          }
-        }
-        const tickets = records.filter(function (record) {
-          return record.hasData && recordInScope_(record, scope, includeUnassigned, centers);
-        }).map(publicTicket_).sort(function (a, b) {
-          return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id));
-        });
-        index = {
-          tickets: tickets,
-          statuses: Array.from(new Set(tickets.map(function (ticket) {
-            return clean_(ticket.status || ticket.deliveryStatus) || 'Chưa cập nhật';
-          }))).sort(function (a, b) { return a.localeCompare(b, 'vi'); }),
-          fromYear: sourceYears.length ? Math.min.apply(null, sourceYears) : FIRST_REPORT_YEAR,
-          toYear: sourceYears.length ? Math.max.apply(null, sourceYears) : lastYear
-        };
-        safeCachePut_(cache, indexKey, index, 1800);
-      }
-    } finally {
-      lock.releaseLock();
-    }
+    const operational = readCanonicalSnapshot_(spreadsheetId, centers, dataRevision);
+    const tickets = operational.records.filter(function (record) {
+      return record.hasData && recordInScope_(record, scope, includeUnassigned, centers);
+    }).map(publicTicket_).sort(function (a, b) {
+      return String(b.receivedDate || '').localeCompare(String(a.receivedDate || '')) || String(a.id).localeCompare(String(b.id));
+    });
+    const years = tickets.map(function (ticket) { return Number(String(ticket.receivedDate || '').slice(0, 4)); }).filter(function (year) { return year > 0; });
+    index = {
+      tickets: tickets,
+      statuses: Array.from(new Set(tickets.map(function (ticket) { return clean_(ticket.status || ticket.deliveryStatus) || 'Chưa cập nhật'; }))).sort(function (a, b) { return a.localeCompare(b, 'vi'); }),
+      fromYear: years.length ? Math.min.apply(null, years) : null,
+      toYear: years.length ? Math.max.apply(null, years) : null
+    };
+    assertCanonicalRevision_(dataRevision);
+    safeCachePut_(cache, indexKey, index, 1800);
   }
   const lowerQuery = query.toLowerCase();
   const compactQuery = normalizeDeviceKey_(query);
@@ -504,7 +477,10 @@ function buildHybridYearlyTotals_(spreadsheetId, selectedYear, scope, centers, o
 function buildYearlyTotalsFromRecords_(records, selectedYear) {
   const lastYear = Math.max(new Date().getFullYear(), selectedYear);
   const totals = [];
-  for (let year = FIRST_REPORT_YEAR; year <= lastYear; year++) {
+  const receiptYears = records.filter(function (record) { return record.receivedDate; }).map(function (record) { return record.receivedDate.getFullYear(); });
+  const firstYear = receiptYears.length ? Math.min(FIRST_REPORT_YEAR, Math.min.apply(null, receiptYears)) : FIRST_REPORT_YEAR;
+  const finalYear = receiptYears.length ? Math.max(lastYear, Math.max.apply(null, receiptYears)) : lastYear;
+  for (let year = firstYear; year <= finalYear; year++) {
     let received = 0, returned = 0, slaEligible = 0, slaMet = 0;
     const monthlyReceived = Array(12).fill(0);
     records.forEach(function (record) {
@@ -1050,7 +1026,7 @@ function safeCacheGet_(cache, key) {
     if (!stored) return null;
     if (stored.indexOf('chunks:') !== 0) return JSON.parse(stored);
     const count = Number(stored.slice(7));
-    if (!Number.isInteger(count) || count < 1 || count > 80) return null;
+    if (!Number.isInteger(count) || count < 1 || count > 250) return null;
     const keys = Array.from({length: count}, function (_, index) { return key + ':part:' + index; });
     const chunks = cache.getAll(keys);
     if (keys.some(function (partKey) { return !chunks[partKey]; })) return null;
@@ -1069,7 +1045,7 @@ function safeCachePut_(cache, key, value, ttl) {
     }
     // CacheService limits each value to 100 KB. Split the response so large dashboards can still be cached.
     const parts = serialized.match(/[\s\S]{1,15000}/g) || [];
-    if (!parts.length || parts.length > 80) return;
+    if (!parts.length || parts.length > 250) return;
     const entries = {};
     parts.forEach(function (part, index) { entries[key + ':part:' + index] = part; });
     cache.putAll(entries, ttl);
