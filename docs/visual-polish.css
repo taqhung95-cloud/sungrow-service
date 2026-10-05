@@ -1298,3 +1298,14 @@
 }
 @keyframes sg-ticket-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){#sg-preview .sg-ticket-spinner{animation-duration:1.8s}}
+
+/* Compact KPI captions; detailed metric definitions remain in tooltips. */
+#sg-preview #sg-overview .sg-kpi-head{min-width:0}
+#sg-preview #sg-overview .sg-kpi-head .sg-kpi-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+#sg-preview #sg-overview .sg-mini-trend{width:46px;flex:0 0 46px;overflow:hidden}
+#sg-preview #sg-overview .sg-kpi-note{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+#sg-preview #sg-overview .sg-compare-list-head,
+#sg-preview #sg-overview .sg-compare-list-row{grid-template-columns:minmax(0,24fr) minmax(0,13fr) minmax(0,11fr) minmax(0,13fr) minmax(0,11fr) minmax(0,12fr) minmax(0,16fr)!important}
+#sg-preview #sg-overview .sg-compare-list-head>span,
+#sg-preview #sg-overview .sg-compare-list-row small,
+#sg-preview #sg-overview .sg-compare-list-row .sg-cell-delta{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}

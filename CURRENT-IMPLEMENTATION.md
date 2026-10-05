@@ -1,5 +1,7 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+Frontend layout 05/10/2026: cache JS `74`, CSS `32`. Rút gọn nhãn KPI/cột, giữ định nghĩa trong tooltip; phân bổ lại độ rộng bảng, giữ chú thích và so sánh một dòng. Không thay công thức hay dữ liệu backend.
+
 ## Frontend GitHub Pages — 05/10/2026
 
 Frontend cache `live-data.js?v=73` phân biệt phát sinh trong kỳ với tồn tại ngày chốt, bổ sung tồn đầu kỳ và số hồ sơ. Hoàn tất kỹ thuật lấy `summary.technicalCompleted`; khi backend chưa hỗ trợ, hiển thị `—`, không suy từ chờ giao cộng đã trả. Backend Apps Script 1.10.5 cần triển khai riêng để có đủ trường và cách tính mới; publish frontend không tự cập nhật Apps Script hoặc dữ liệu Sheets. Commit frontend chỉ gồm hai file docs và ghi chú triển khai này; các thay đổi backend/migration local chưa được publish trong commit đó.

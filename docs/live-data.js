@@ -323,8 +323,8 @@
     const comparisonNoun = live.period?.isYear ? 'Năm trước' : 'Tháng trước';
     const base = [
       {key:'received',label:'Tiếp nhận trong kỳ',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
-      {key:'processed',label:'Hoàn tất kỹ thuật trong kỳ',value:s.technicalCompleted??null,previous:ps?.technicalCompleted??null,lower:false,unit:'thiết bị'},
-      {key:'waiting',label:'Chờ giao tại ngày chốt',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
+      {key:'processed',label:'Hoàn tất kỹ thuật',value:s.technicalCompleted??null,previous:ps?.technicalCompleted??null,lower:false,unit:'thiết bị'},
+      {key:'waiting',label:'Chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
       {key:'returned',label:'Đã giao trong kỳ',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
     ];
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
@@ -388,7 +388,7 @@
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? '--' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
       const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; KPI cộng số lượng thiết bị đã biết':'Theo kỳ đang chọn';
-      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+(item.key==='received'&&s.receivedCases!==undefined?' · '+s.receivedCases+' hồ sơ':'')+'</div></div>';
+      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
@@ -458,10 +458,10 @@
     if (compareTitle) compareTitle.textContent = annualComparison ? 'Biến động vận hành so với năm trước' : 'Biến động vận hành so với tháng trước';
     const pct = function(value) { return value === null || value === undefined ? '—' : Math.round(value * 100) + '%'; };
     const deltaHtml = function(current, previous, lowerIsBetter, suffix) {
-      if (previous === null || previous === undefined || current === null || current === undefined) return '<span class="sg-cell-delta neutral">Chưa có kỳ trước</span>';
+      if (previous === null || previous === undefined || current === null || current === undefined) return '<span class="sg-cell-delta neutral" title="Chưa đủ dữ liệu so sánh kỳ trước">—</span>';
       const delta = current - previous;
       const tone = delta === 0 ? 'neutral' : (lowerIsBetter ? delta < 0 : delta > 0) ? 'good' : 'bad';
-      const text = delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta) + (suffix || '');
+      const text = delta === 0 ? '--' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta) + (suffix || '');
       return '<span class="sg-cell-delta ' + tone + '">' + text + '</span>';
     };
     const previousByCenter = previousLive ? Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; })) : {};
@@ -500,9 +500,9 @@
       const tat = x.medianDays === null ? '—' : x.medianDays + ' ngày';
       const flow = x.outflowInflowRatio === null || x.outflowInflowRatio === undefined ? '—' : pct(x.outflowInflowRatio);
       const stockNote=x.carriedOpen===undefined?'Bao gồm hồ sơ kỳ trước':x.carriedOpen+' tồn từ kỳ trước';
-      return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small>'+esc(stockNote)+'</small></span><span><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tổng tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span title="Tồn đầu + tiếp nhận − đã giao = tồn cuối khi đủ dữ liệu ngày"><strong>' + x.open + '</strong><small>Tồn đầu kỳ: '+(x.opening??'—')+'</small>' + deltaHtml(x.open,p.open,true,'') + '</span><span><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' trên tổng tồn</small></span><span><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
+      return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small title="'+esc(stockNote)+'">'+esc(stockNote)+'</small></span><span title="Tỷ trọng trong tổng tiếp nhận của kỳ"><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span title="Tồn đầu kỳ: '+(x.opening??'—')+'. Tồn tại ngày chốt gồm các kỳ trước; chỉ cân bằng khi đủ dữ liệu ngày."><strong>' + x.open + '</strong><small>Đầu kỳ: '+(x.opening??'—')+'</small>' + deltaHtml(x.open,p.open,true,'') + '</span><span title="Tỷ lệ quá hạn trên tổng tồn tại ngày chốt"><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' tồn</small></span><span title="TAT: trung vị thời gian xử lý trên hồ sơ"><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
     }).join('');
-    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span>Tiếp nhận trong kỳ</span><span>Đã giao trong kỳ</span><span>Tồn tại ngày chốt</span><span>Quá hạn trên tồn</span><span>TAT hồ sơ</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
+    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span title="Tiếp nhận trong kỳ đang chọn">Tiếp nhận</span><span title="Đã giao trong kỳ đang chọn">Đã giao</span><span title="Tồn tại ngày chốt, gồm hồ sơ từ kỳ trước">Tồn cuối</span><span title="Quá hạn trên tổng tồn tại ngày chốt">Quá hạn</span><span title="Trung vị thời gian xử lý trên hồ sơ">TAT</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
     const unknown=live.dataQuality?.kpi?.unknownQuantityCases||0;
     const missingReceived=live.cumulative?.unallocatedReceived||0,missingReturned=live.dataQuality?.kpi?.missingReturnDateCases||0;
     q('#sg-compare-note').textContent = 'Kỳ: '+formatDate(live.period.start)+'–'+formatDate(live.period.asOf)+'. Tiếp nhận/đã giao tính phát sinh trong kỳ; tồn và quá hạn bao gồm hồ sơ từ các kỳ trước, không phải tập con của số tiếp nhận. Center theo chặng xử lý gần nhất. Hoàn tất kỹ thuật và giao khách là hai sự kiện riêng.'+(unknown?' '+unknown+' hồ sơ thiếu số lượng chưa cộng vào KPI thiết bị.':'')+(missingReceived||missingReturned?' '+missingReceived+' hồ sơ thiếu ngày nhận; '+missingReturned+' hồ sơ đã giao thiếu ngày trả hợp lệ, chưa xác định được tồn lịch sử.':'');
