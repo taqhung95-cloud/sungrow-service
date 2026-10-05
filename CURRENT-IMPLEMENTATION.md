@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sửa hồ sơ — frontend 05/10/2026
+
+Frontend JS cache 75, entry 67 bổ sung chọn Loại thiết bị và vòng xoay khi mở form/lưu, chặn nhấp lặp và dọn loading khi lỗi. Backend cần cập nhật Code.gs bản 1.10.6-device-type-repair để chấp nhận thay đổi loại; GitHub Pages không tự deploy Apps Script. Nhóm sửa dữ liệu máy đổi vẫn cần audit/repair trong Apps Script; chưa có thay đổi production từ commit frontend này.
+
 Frontend layout 05/10/2026: cache JS `74`, CSS `32`. Rút gọn nhãn KPI/cột, giữ định nghĩa trong tooltip; phân bổ lại độ rộng bảng, giữ chú thích và so sánh một dòng. Không thay công thức hay dữ liệu backend.
 
 ## Frontend GitHub Pages — 05/10/2026
