@@ -322,15 +322,15 @@
     const ps = previousLive?.summary;
     const comparisonNoun = live.period?.isYear ? 'Năm trước' : 'Tháng trước';
     const base = [
-      {key:'received',label:'Thiết bị tiếp nhận',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
-      {key:'processed',label:'Thiết bị đã xử lý',value:s.waitingDelivery+s.returned,previous:ps ? ps.waitingDelivery+ps.returned : null,lower:false,unit:'thiết bị'},
-      {key:'waiting',label:'Thiết bị chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
-      {key:'returned',label:'Thiết bị đã giao',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
+      {key:'received',label:'Tiếp nhận trong kỳ',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
+      {key:'processed',label:'Hoàn tất kỹ thuật trong kỳ',value:s.technicalCompleted??null,previous:ps?.technicalCompleted??null,lower:false,unit:'thiết bị'},
+      {key:'waiting',label:'Chờ giao tại ngày chốt',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
+      {key:'returned',label:'Đã giao trong kỳ',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
     ];
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
     base.push({key:'sla',label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
     const trendViz = function(previous,current,tone) {
-      if (previous === null || previous === undefined) return '<span class="sg-mini-empty">Kỳ trước → Kỳ này</span>';
+      if (previous === null || previous === undefined || current === null || current === undefined) return '<span class="sg-mini-empty">Kỳ trước → Kỳ này</span>';
       const max=Math.max(1,previous,current), min=Math.min(0,previous,current), y=function(v){return 25-(v-min)/(max-min||1)*18;};
       const y1=y(previous).toFixed(1), y2=y(current).toFixed(1);
       return '<svg class="sg-mini-trend '+tone+'" viewBox="0 0 72 30" aria-label="Kỳ trước '+previous+', kỳ này '+current+'"><path d="M4 26 L4 '+y1+' L68 '+y2+' L68 26 Z"></path><polyline points="4,'+y1+' 68,'+y2+'"></polyline><circle cx="4" cy="'+y1+'" r="2.4"></circle><circle cx="68" cy="'+y2+'" r="2.8"></circle></svg>';
@@ -382,12 +382,13 @@
         return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note">' + note + '</div></div>';
       }
       const p = item.previous === undefined ? null : item.previous;
-      const delta = p === null ? null : item.value-p;
+      const delta = p === null || item.value === null ? null : item.value-p;
       const better = delta === 0 ? null : (item.lower ? delta<0 : delta>0);
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? '--' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      return '<div class="sg-kpi sg-kpi-' + item.key + '"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+item.value+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
+      const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; KPI cộng số lượng thiết bị đã biết':'Theo kỳ đang chọn';
+      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+(item.key==='received'&&s.receivedCases!==undefined?' · '+s.receivedCases+' hồ sơ':'')+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
@@ -498,10 +499,13 @@
       const label = x.lowVolume && x.status !== 'action' ? 'Mẫu nhỏ' : x.status === 'action' ? 'Cần hành động' : x.status === 'good' ? 'Ổn định' : 'Cần theo dõi';
       const tat = x.medianDays === null ? '—' : x.medianDays + ' ngày';
       const flow = x.outflowInflowRatio === null || x.outflowInflowRatio === undefined ? '—' : pct(x.outflowInflowRatio);
-      return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small>' + esc(x.reason || '') + '</small></span><span><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tổng tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span><strong>' + x.open + '</strong>' + deltaHtml(x.open,p.open,true,'') + '</span><span><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' thiết bị mở</small></span><span><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
+      const stockNote=x.carriedOpen===undefined?'Bao gồm hồ sơ kỳ trước':x.carriedOpen+' tồn từ kỳ trước';
+      return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small>'+esc(stockNote)+'</small></span><span><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tổng tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span title="Tồn đầu + tiếp nhận − đã giao = tồn cuối khi đủ dữ liệu ngày"><strong>' + x.open + '</strong><small>Tồn đầu kỳ: '+(x.opening??'—')+'</small>' + deltaHtml(x.open,p.open,true,'') + '</span><span><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' trên tổng tồn</small></span><span><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
     }).join('');
-    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span>Tiếp nhận</span><span>Đã giao</span><span>Tồn cuối</span><span>Quá hạn</span><span>TAT</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
-    q('#sg-compare-note').textContent = 'Khối lượng cho biết tải service. Ra/vào, tồn, quá hạn và TAT dùng để đánh giá vận hành. Tỷ trọng tiếp nhận chưa phải tỷ lệ hỏng vì chưa có số máy đang vận hành.';
+    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span>Tiếp nhận trong kỳ</span><span>Đã giao trong kỳ</span><span>Tồn tại ngày chốt</span><span>Quá hạn trên tồn</span><span>TAT hồ sơ</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
+    const unknown=live.dataQuality?.kpi?.unknownQuantityCases||0;
+    const missingReceived=live.cumulative?.unallocatedReceived||0,missingReturned=live.dataQuality?.kpi?.missingReturnDateCases||0;
+    q('#sg-compare-note').textContent = 'Kỳ: '+formatDate(live.period.start)+'–'+formatDate(live.period.asOf)+'. Tiếp nhận/đã giao tính phát sinh trong kỳ; tồn và quá hạn bao gồm hồ sơ từ các kỳ trước, không phải tập con của số tiếp nhận. Center theo chặng xử lý gần nhất. Hoàn tất kỹ thuật và giao khách là hai sự kiện riêng.'+(unknown?' '+unknown+' hồ sơ thiếu số lượng chưa cộng vào KPI thiết bị.':'')+(missingReceived||missingReturned?' '+missingReceived+' hồ sơ thiếu ngày nhận; '+missingReturned+' hồ sơ đã giao thiếu ngày trả hợp lệ, chưa xác định được tồn lịch sử.':'');
   }
 
   function renderTickets() {
@@ -846,7 +850,7 @@
   installChartTooltip();
   function renderCenters() {
     const labels = {good:'Ổn định',watch:'Cần theo dõi',action:'Cần hành động'};
-    const cs = live.centers;
+    const cs = live.centers.filter(x=>!x.unassigned);
     const pct = function(value) { return value === null || value === undefined ? '—' : Math.round(value * 100) + '%'; };
     q('#sg-center-summary').innerHTML = [['Center đang theo dõi',cs.length,'center'],['Tiếp nhận trong kỳ',live.summary.received,'thiết bị'],['Đã giao trong kỳ',live.summary.returned,'thiết bị'],['Đạt SLA 7 ngày',live.summary.slaRate===null||live.summary.slaRate===undefined?'—':Math.round(live.summary.slaRate*100)+'%','thiết bị đã trả'],['Đang mở > 7 ngày',live.summary.slaBreachedOpen||0,'thiết bị cần can thiệp']].map(function(x) { return '<div class="sg-center-summary-item"><span>' + x[0] + '</span><strong>' + x[1] + '</strong><span>' + x[2] + '</span></div>'; }).join('');
     q('#sg-center-health-grid').innerHTML = cs.map(function(x) {

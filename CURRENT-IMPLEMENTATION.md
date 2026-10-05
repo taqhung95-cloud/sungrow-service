@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Frontend GitHub Pages — 05/10/2026
+
+Frontend cache `live-data.js?v=73` phân biệt phát sinh trong kỳ với tồn tại ngày chốt, bổ sung tồn đầu kỳ và số hồ sơ. Hoàn tất kỹ thuật lấy `summary.technicalCompleted`; khi backend chưa hỗ trợ, hiển thị `—`, không suy từ chờ giao cộng đã trả. Backend Apps Script 1.10.5 cần triển khai riêng để có đủ trường và cách tính mới; publish frontend không tự cập nhật Apps Script hoặc dữ liệu Sheets. Commit frontend chỉ gồm hai file docs và ghi chú triển khai này; các thay đổi backend/migration local chưa được publish trong commit đó.
+
 Tài liệu này mô tả quy tắc dữ liệu và cách triển khai của phiên bản production hiện tại. Đây là điểm bắt đầu cho các task mới, thay cho việc đọc lại toàn bộ lịch sử thay đổi.
 
 Cập nhật lần cuối: `2026-10-03`.
