@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tự điền Model theo SN — 06/10/2026
+
+Frontend live-data76/entry68 dùng thêm Model từ response lookupWarranty, readOnly khi tìm thấy, nhập tay khi thiếu hoặc lookup lỗi; sequence chặn phản hồi cũ, không thêm request tra cứu. Backend local cần deploy 1.10.7-sn-model (Code.gs/LegacyDashboardApi.gs/Index.html) để trả Model từ All SN list. Backend cũ vẫn nhập Model thủ công. Không thay dữ liệu nguồn hoặc chạy migration để bật tính năng này.
+
 ## Sửa hồ sơ — frontend 05/10/2026
 
 Frontend JS cache 75, entry 67 bổ sung chọn Loại thiết bị và vòng xoay khi mở form/lưu, chặn nhấp lặp và dọn loading khi lỗi. Backend cần cập nhật Code.gs bản 1.10.6-device-type-repair để chấp nhận thay đổi loại; GitHub Pages không tự deploy Apps Script. Nhóm sửa dữ liệu máy đổi vẫn cần audit/repair trong Apps Script; chưa có thay đổi production từ commit frontend này.

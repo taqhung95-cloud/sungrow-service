@@ -201,35 +201,66 @@
       $$('.tab').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
       const receiveForm=$('#receiveForm');
       const serialInput=receiveForm.elements.serialNumber;
+      const modelInput=receiveForm.elements.model;
       const warrantyLookup=$('#warrantyLookup');
       const setWarrantyLookup=(text,status='neutral')=>{
         warrantyLookup.textContent=text;
         warrantyLookup.className='warranty-chip '+(status==='valid'?'valid':status==='expired'?'expired':'neutral');
         warrantyLookup.title=text;
       };
+      const manualModel=message=>{
+        modelInput.readOnly=false;
+        modelInput.setAttribute('aria-busy','false');
+        modelInput.placeholder='Nhập Model thủ công';
+        modelInput.title=message;
+      };
+      let warrantyTimer=0,lookupSequence=0;
       receiveForm.elements.deviceType.addEventListener('change',()=>{
         const fan=receiveForm.elements.deviceType.value==='Fan';
         serialInput.required=!fan;
         $('#serialRequired').textContent=fan?'(không bắt buộc)':'*';
-        if(fan)setWarrantyLookup('Fan không yêu cầu S/N');
-        else if(serialInput.value.trim())serialInput.dispatchEvent(new Event('input'));
-        else setWarrantyLookup('Chưa tra cứu');
+        serialInput.dispatchEvent(new Event('input'));
       });
-      let warrantyTimer=0;
       serialInput.addEventListener('input',()=>{
         clearTimeout(warrantyTimer);
-        const serial=serialInput.value.trim();
-        if(receiveForm.elements.deviceType.value==='Fan'||!serial){
-          setWarrantyLookup(receiveForm.elements.deviceType.value==='Fan'?'Fan không yêu cầu S/N':'Chưa tra cứu');
+        const sequence=++lookupSequence;
+        const serial=serialInput.value.trim().toUpperCase();
+        const fan=receiveForm.elements.deviceType.value==='Fan';
+        if(modelInput.dataset.autoSerial && modelInput.dataset.autoSerial!==serial){
+          modelInput.value='';
+          delete modelInput.dataset.autoSerial;
+        }
+        if(!serial){
+          manualModel('Nhập SN để tự điền Model, hoặc nhập Model thủ công.');
+          setWarrantyLookup(fan?'Fan không yêu cầu S/N':'Chưa tra cứu');
           return;
         }
-        setWarrantyLookup('Đang tra cứu…');
+        modelInput.readOnly=true;
+        modelInput.setAttribute('aria-busy','true');
+        modelInput.placeholder='Đang tra Model…';
+        modelInput.title='Đang tra Model theo SN';
+        setWarrantyLookup(fan?'Fan không yêu cầu S/N':'Đang tra cứu…');
         warrantyTimer=setTimeout(async()=>{
           try{
             const result=await call('lookupWarranty',[state.token,serial]);
-            if(serialInput.value.trim()===serial)setWarrantyLookup(result.label+(result.expiryDate?` · Đến ${result.expiryDate}`:''),result.status);
+            if(sequence!==lookupSequence || serialInput.value.trim().toUpperCase()!==serial)return;
+            modelInput.setAttribute('aria-busy','false');
+            if(result.model && String(result.model).trim()){
+              modelInput.value=String(result.model).trim();
+              modelInput.dataset.autoSerial=serial;
+              modelInput.readOnly=true;
+              modelInput.title='Model từ All SN list: '+modelInput.value;
+              modelInput.dispatchEvent(new Event('change',{bubbles:true}));
+            }else{
+              if(modelInput.dataset.autoSerial){modelInput.value='';delete modelInput.dataset.autoSerial;}
+              manualModel('Không có Model trong kết quả tra cứu. Nhập Model thủ công.');
+            }
+            if(!fan)setWarrantyLookup(result.label+(result.expiryDate?` · Đến ${result.expiryDate}`:''),result.status);
           }catch(error){
-            if(serialInput.value.trim()===serial)setWarrantyLookup('Không thể tra cứu');
+            if(sequence!==lookupSequence || serialInput.value.trim().toUpperCase()!==serial)return;
+            if(modelInput.dataset.autoSerial){modelInput.value='';delete modelInput.dataset.autoSerial;}
+            manualModel('Không thể tra Model. Nhập Model thủ công.');
+            if(!fan)setWarrantyLookup('Không thể tra cứu');
           }
         },450);
       });
