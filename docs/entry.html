@@ -45,6 +45,19 @@
     button.is-busy::before{content:'';width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:portal-spin .7s linear infinite}
     @keyframes portal-spin{to{transform:rotate(360deg)}}
     @media(prefers-reduced-motion:reduce){.loading-spinner,button.is-busy::before{animation-duration:1.8s}}
+    .customer-picker{position:relative}
+    .customer-suggestions{position:absolute;top:100%;left:0;right:0;z-index:40;max-height:280px;overflow-y:auto;background:#fff;border:1px solid #dce2e7;border-radius:8px;box-shadow:0 8px 24px #0002}
+    .customer-suggestions[hidden]{display:none}
+    .customer-suggestions button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #edf0f2;background:#fff;padding:10px 12px;white-space:normal}
+    .customer-suggestions button:hover,.customer-suggestions button.active{background:#fff3e8}
+    .customer-suggestions strong,.customer-suggestions small{display:block;overflow-wrap:anywhere}
+    .customer-suggestions small,.customer-option-status{font-size:12px;color:var(--muted)}
+    .customer-option-status{padding:12px}
+    .customer-save-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
+    .customer-save-row label{display:inline-flex;align-items:center;gap:7px;margin:0}
+    .customer-save-row input[type=checkbox]{width:16px;height:16px;min-height:0;margin:0;padding:0}
+    .customer-save-row small{color:var(--muted)}
+
   </style>
 </head>
 <body>
@@ -120,10 +133,11 @@
           <div><label>Số sê-ri (S/N) <span id="serialRequired">*</span></label><div class="serial-lookup-control"><input name="serialNumber" required placeholder="Quét hoặc nhập S/N"><span id="warrantyLookup" class="warranty-chip neutral" aria-live="polite">Chưa tra cứu</span></div></div>
           <div><label>Số lượng *</label><input name="quantity" type="number" min="1" value="1" required></div>
           <div class="span3"><h3>Thông tin khách hàng</h3></div>
-          <div><label>Tên khách hàng *</label><input name="customerName" required></div>
+          <div class="customer-picker"><label for="customerNameInput">Tên khách hàng *</label><input id="customerNameInput" name="customerName" required autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="customerSuggestions" aria-expanded="false" placeholder="Tên hoặc số điện thoại để tìm khách"><div id="customerSuggestions" class="customer-suggestions" role="listbox" hidden></div><input type="hidden" name="customerId"><input type="hidden" name="customerRevision"></div>
           <div><label>Số điện thoại khách hàng *</label><input name="customerPhone" type="tel" required></div>
           <div><label>Email khách hàng</label><input name="customerEmail" type="email" placeholder="Nếu có"></div>
           <div class="span3"><label>Địa chỉ khách hàng *</label><input name="customerAddress" required></div>
+          <div class="span3 customer-save-row"><label><input type="checkbox" name="saveCustomer" value="true"><span id="customerSaveLabel">Lưu khách mới vào danh bạ</span></label><small id="customerDirectoryStatus" aria-live="polite"></small></div>
           <div class="span3"><label>Hồ sơ đính kèm (.zip/.rar) *</label><input name="evidenceFile" type="file" accept=".zip,.rar" required><div class="muted">Tối đa 8 MB. Cần gồm hình ảnh, file thu thập thông tin sự cố, log file và tài liệu liên quan. Hệ thống tự lưu vào thư mục của center.</div></div>
           <div class="span3"><label>Hiện tượng ban đầu *</label><textarea name="initialIssue" required></textarea></div>
           <div class="span3"><label>Ghi chú chung</label><textarea name="note"></textarea></div>
@@ -179,7 +193,7 @@
       state.token=response.credential;
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
-        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;
+        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.customerPicker?.sync();
         applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
         const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
@@ -197,9 +211,59 @@
 
     function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Không đọc được file đính kèm.'));reader.onabort=()=>reject(new Error('Đã hủy đọc file đính kèm.'));reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');reader.readAsDataURL(file)})}
 
+    function setupCustomerPicker(form){
+      const name=form.elements.customerName,list=$('#customerSuggestions'),save=form.elements.saveCustomer,label=$('#customerSaveLabel'),status=$('#customerDirectoryStatus');
+      let rows=[],selected=null,timer=0,sequence=0,active=-1;
+      const supported=()=>!!state.customerDirectory;
+      function close(){clearTimeout(timer);sequence++;list.hidden=true;name.setAttribute('aria-expanded','false');name.removeAttribute('aria-activedescendant');}
+      function clearSelection(){selected=null;form.elements.customerId.value='';form.elements.customerRevision.value='';save.checked=false;label.textContent='Lưu khách mới vào danh bạ';}
+      function sync(){save.disabled=!supported();status.textContent=supported()?'':'Danh bạ chưa được kích hoạt; vẫn nhập thông tin bình thường.';if(!supported()){save.checked=false;close();}}
+      function choose(index){
+        const row=rows[index];if(!row)return;selected=row;
+        for(const [field,key]of [['customerName','name'],['customerPhone','phone'],['customerEmail','email'],['customerAddress','address']]){
+          form.elements[field].value=row[key]||'';form.elements[field].dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        form.elements.customerId.value=row.customerId;form.elements.customerRevision.value=row.revision;save.checked=false;
+        label.textContent='Cập nhật thông tin khách này trong danh bạ';status.textContent='Đã chọn khách đã lưu. Bỏ chọn cập nhật để chỉ thay thông tin cho hồ sơ này.';close();
+      }
+      function search(){
+        sync();clearTimeout(timer);rows=[];active=-1;list.hidden=true;const request=++sequence,query=name.value.trim(),center=form.elements.intakeCenter.value,actor=state.actor?.email;
+        if(!supported()||query.length<2){close();return;}
+        if(!center){status.textContent='Chọn trung tâm tiếp nhận trước khi tìm khách.';close();return;}
+        timer=setTimeout(async()=>{
+          list.hidden=false;name.setAttribute('aria-expanded','true');list.innerHTML='<div class="customer-option-status" role="status"><i class="loading-spinner" aria-hidden="true"></i>Đang tìm khách…</div>';
+          try{
+            const result=await call('searchCustomers',[state.token,{query,center}]);
+            if(request!==sequence||center!==form.elements.intakeCenter.value||actor!==state.actor?.email)return;
+            rows=Array.isArray(result.rows)?result.rows:[];active=-1;
+            list.innerHTML=rows.length?rows.map((r,i)=>'<button type="button" role="option" aria-selected="false" id="customer-option-'+i+'" data-customer="'+i+'"><strong>'+esc(r.name)+'</strong><small>'+esc(r.phone)+(r.address?' · '+esc(r.address):'')+'</small></button>').join(''):'<div class="customer-option-status">Không tìm thấy. Nhập thông tin và chọn lưu khách mới nếu cần.</div>';
+          }catch(error){if(request!==sequence)return;list.innerHTML='<div class="customer-option-status">Không tải được danh bạ. Bạn vẫn có thể nhập tay.</div>';}
+        },300);
+      }
+      name.addEventListener('input',()=>{if(selected&&name.value!==selected.name)clearSelection();search();});
+      name.addEventListener('focus',search);
+      name.addEventListener('blur',()=>setTimeout(close,150));
+      name.addEventListener('keydown',e=>{
+        if(e.key==='Escape'){close();return;}
+        if(list.hidden||!rows.length)return;
+        if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+          e.preventDefault();active=active<0?(e.key==='ArrowDown'?0:rows.length-1):(active+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length;
+          list.querySelectorAll('[data-customer]').forEach((button,i)=>{button.classList.toggle('active',i===active);button.setAttribute('aria-selected',String(i===active));});
+          name.setAttribute('aria-activedescendant','customer-option-'+active);
+        }else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(active);}
+      });
+      list.addEventListener('mousedown',e=>e.preventDefault());
+      list.addEventListener('click',e=>{const button=e.target.closest('[data-customer]');if(button)choose(Number(button.dataset.customer));});
+      form.elements.intakeCenter.addEventListener('change',()=>{clearSelection();close();search();});
+      form.addEventListener('reset',()=>{clearSelection();close();setTimeout(sync,0);});
+      state.customerPicker={sync};sync();
+    }
+
+
     function bindEvents(){
       $$('.tab').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
       const receiveForm=$('#receiveForm');
+      setupCustomerPicker(receiveForm);
       const serialInput=receiveForm.elements.serialNumber;
       const modelInput=receiveForm.elements.model;
       const warrantyLookup=$('#warrantyLookup');
@@ -490,7 +554,7 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0){
-      const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus'].includes(name);
+      const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers'].includes(name);
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};

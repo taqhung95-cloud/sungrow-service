@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Danh bạ khách hàng — frontend 06/10/2026
+
+Frontend JS77/entry69 bổ sung gợi ý trong Tên khách hàng, tự điền bốn ô và chọn lưu/cập nhật profile riêng; guard chống phản hồi cũ và đổi center, loading/error, nhập tay khi backend chưa hỗ trợ. Backend cần Code.gs/LegacyDashboardApi.gs bản 1.10.8-customer-directory và CustomerDirectory.gs; initializeCustomerDirectory tạo tab Khách hàng/cột Mã khách hàng, audit/seed theo đợt nếu lấy khách từ hồ sơ cũ. Hồ sơ giữ snapshot, profile update không sửa case cũ. Chưa deploy backend hoặc seed production từ commit frontend.
+
 ## Tự điền Model theo SN — 06/10/2026
 
 Frontend live-data76/entry68 dùng thêm Model từ response lookupWarranty, readOnly khi tìm thấy, nhập tay khi thiếu hoặc lookup lỗi; sequence chặn phản hồi cũ, không thêm request tra cứu. Backend local cần deploy 1.10.7-sn-model (Code.gs/LegacyDashboardApi.gs/Index.html) để trả Model từ All SN list. Backend cũ vẫn nhập Model thủ công. Không thay dữ liệu nguồn hoặc chạy migration để bật tính năng này.
