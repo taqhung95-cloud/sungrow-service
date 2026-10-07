@@ -107,7 +107,7 @@
           <select id="caseCenter"><option value="">Tất cả center</option></select>
           <button class="primary" id="caseRefresh" type="button">Tìm kiếm</button>
         </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:10px"><span id="portalSyncStatus" role="status" aria-live="polite" style="font-size:11px;color:#667085">Chưa đồng bộ</span><button id="caseSync" class="secondary" type="button" onclick="globalThis.portalRealtime?.sync()">↻ Đồng bộ</button></div>
+        <div id="portalSyncBar" style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:10px"><span id="portalSyncStatus" role="status" aria-live="polite" style="font-size:11px;color:#667085">Chưa đồng bộ</span><button id="caseSync" class="secondary" type="button" onclick="globalThis.portalRealtime?.sync()">↻ Đồng bộ</button></div>
         <div class="case-table-shell">
           <table class="case-table">
             <thead><tr><th>Thiết bị / S/N</th><th>Trạng thái</th><th>Bảo hành</th><th>Center</th><th aria-sort="descending" id="caseDateHeader"><button id="caseDateSort" type="button" data-order="newest" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều." style="background:none;border:0;padding:0;color:inherit;font:inherit;white-space:nowrap">Ngày nhận ↓</button></th><th>Kết quả gần nhất</th><th>Thao tác</th></tr></thead>
@@ -168,6 +168,7 @@
     const CONFIG = window.SUNGROW_CONFIG || {};
     const EMBEDDED = window.self !== window.top;
     if(EMBEDDED)document.documentElement.classList.add('embedded');
+    if(EMBEDDED){$('#portalSyncBar').style.display='none';const publishSync=()=>parent.postMessage({type:'sungrow-portal-sync-status',text:$('#portalSyncStatus').textContent,detail:$('#portalSyncStatus').title},location.origin);new MutationObserver(publishSync).observe($('#portalSyncStatus'),{childList:true,subtree:true,characterData:true});publishSync();window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='sungrow-portal-sync')globalThis.portalRealtime?.sync()});}
     const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false, caseLoadFailures:0, caseRetryTimer:null, caseCache:{} };
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
@@ -378,7 +379,7 @@
     function viewAllowed(id){const c=state.actor?.capabilities||{};return id==='cases'?c.viewCases!==false:id==='receive'?!!c.createCase:id==='update'?!!c.updateWorkOrder:id==='transfer'?!!c.createTransfer:id==='dashboard'?!!c.viewDashboard:false}
     function applyActorCapabilities(){$$('.tab[data-view]').forEach(button=>button.classList.toggle('hidden',!viewAllowed(button.dataset.view)))}
     function showView(id){if(!viewAllowed(id))id='cases';if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
-    window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(['cases','receive','update','transfer'].includes(view)&&viewAllowed(view))showView(view)});
+    window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.source!==parent||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(view===state.currentView&&!event.data.refresh)return;if(['cases','receive','update','transfer'].includes(view)&&viewAllowed(view))showView(view)});
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
       if(!state.actor||!state.actor.isGlobalManager)return;
@@ -439,6 +440,7 @@
       if(resetPage)state.casePage=1;
       state.caseAbort?.abort();
       const sequence=state.caseSequence=(state.caseSequence||0)+1;
+      const startedAt=Date.now();
       const controller=state.caseAbort=new AbortController();
       if(state.caseRetryTimer){clearTimeout(state.caseRetryTimer);state.caseRetryTimer=null}
       state.caseLoading=true;
@@ -453,7 +455,7 @@
         if(sequence!==state.caseSequence)return false;
         const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;
         state.caseLoadFailures=0;state.caseCache[cacheKey]=data;renderCasesResponse(data);state.caseDataRevision=data.revision||'';
-        syncStatus.textContent='Đã đồng bộ '+new Date().toLocaleTimeString('vi-VN');return true;
+        syncStatus.title='Tổng '+(Date.now()-startedAt)+' ms · Máy chủ '+(data.timing?.serverMs??'chưa hỗ trợ')+' ms · Cache '+(data.timing?.cacheHit?'hit':'miss');syncStatus.textContent='Đã đồng bộ '+new Date().toLocaleTimeString('vi-VN');return true;
       }catch(err){
         if(sequence!==state.caseSequence||controller.signal.aborted)return false;
         state.caseLoadFailures+=1;

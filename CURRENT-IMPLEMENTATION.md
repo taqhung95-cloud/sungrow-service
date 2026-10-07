@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Góc Đồng bộ và tải 15 tài khoản — frontend 08/10/2026
+
+Frontend JS80/entry72: nút Đồng bộ ở góc phải thanh tiêu đề như dashboard; parent relay lệnh/trạng thái iframe với origin/source guard, ẩn syncbar giữa bộ lọc/bảng. Không gửi list trùng do ready handshake; ngừng chờ dashboard khi vào nhập liệu, không để phản hồi nền ghi đè trạng thái. Backend cần Code/Legacy cùng1.10.10-fast-reads: nén shared cache, follower chờ ngắn thay vì15s, giữ freshness/quyền/revision và thêm timing. Kiểm thử fixture15 scoped page requests/cold followers đạt, không phải15 session production. Hướng dẫn local version final/DEPLOY-1.10.10.md; không migration/seed, backend chưa deploy từ commit này.
+
 ## Đồng bộ nhập liệu và chuyển trang — frontend 07/10/2026
 
 Frontend JS79/entry71: nút Đồng bộ/thời điểm đồng bộ trong danh sách; request đọc mới hủy request client cũ, sequence guard giữ trang vừa chọn. Deadline gồm đọc JSON, list30s/backoff giới hạn, không retry transport lồng. Revision poll so với danh sách tải thành công, invalidation cache trước tải lại; form/chi tiết mở giữ nguyên và hiện thông báo. Focus/online kiểm tra cập nhật. Không đổi backend/KPI/schema hoặc chạy migration; backend vẫn 1.10.9. Regression giả lập race, timeout body, lỗi tải, revision và bảo vệ editor đạt; chưa kiểm thử live hai tài khoản.

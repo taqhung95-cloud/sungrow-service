@@ -31,6 +31,7 @@
   style.textContent += '#sg-preview .sg-live-text{display:flex;align-items:center;gap:6px;white-space:nowrap}#sg-preview .sg-kpi-note{overflow:visible!important;text-overflow:clip!important;white-space:normal!important}';
   style.textContent += '#sg-auth-page{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#f8f9fa 0%,#f1f3f5 55%,#fff4e8 100%);font-family:"Sungrow Montserrat",Montserrat,Arial,sans-serif;color:#262626}#sg-auth-page[hidden]{display:none!important}#sg-auth-page .sg-auth-card{width:min(100%,430px);padding:44px 42px 38px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;box-shadow:0 22px 65px rgba(25,35,45,.12);text-align:center}#sg-auth-page .sg-auth-brand{display:flex;justify-content:center;padding-bottom:28px;border-bottom:1px solid #ededed}#sg-auth-page .sg-auth-brand .sg-brand{padding:0!important}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:210px;height:auto}#sg-auth-page .sg-auth-brand small{display:block;margin-top:9px;color:#606060;font-size:13px;letter-spacing:2px}#sg-auth-page h1{margin:28px 0 10px;font-size:24px;font-weight:600;line-height:1.35}#sg-auth-page .sg-auth-copy{margin:0 auto 26px;max-width:315px;color:#667085;font-size:13px;line-height:1.65}#sg-auth-login-slot{display:flex;justify-content:center;min-height:44px}#sg-auth-message{min-height:20px;margin:18px 0 0;color:#667085;font-size:12px;line-height:1.5}#sg-auth-message.sg-auth-error{color:#b42318}#sg-auth-page .sg-auth-note{margin:25px 0 0;padding-top:20px;border-top:1px solid #ededed;color:#8a8f98;font-size:11px;line-height:1.6}@media(max-width:520px){#sg-auth-page{padding:16px}#sg-auth-page .sg-auth-card{padding:34px 24px 30px}#sg-auth-page .sg-auth-brand .sg-official-logo svg{width:180px}}';
   document.head.appendChild(style);
+  style.textContent += '#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:flex!important;margin-left:auto}#sg-preview .sg-main.sg-portal-mode .sg-live-detail{display:none}';
   const authPage = document.createElement('main');
   authPage.id = 'sg-auth-page';
   authPage.setAttribute('aria-label','Đăng nhập Sungrow Service Center');
@@ -119,6 +120,9 @@
   }
 
   function openEntryView(view) {
+    if(activeController){activeController.abort();activeController=null;loadSequence++;}
+    if(ticketSearchController){ticketSearchController.abort();ticketSearchController=null;ticketSearchSequence++;}
+    q('#sg-refresh').disabled=!token;
     if (token) sessionStorage.setItem('sungrow_id_token', token);
     const main = q('.sg-main');
     main.classList.add('sg-portal-mode');
@@ -132,9 +136,9 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=71#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=72#' + view;
     }
-    else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
+    else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh:true},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
     setNavGroup(q('.sg-dashboard-parent'),q('.sg-dashboard-subnav'),false);
     setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),true);
@@ -1078,7 +1082,7 @@
     if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ loadTicketPage(true); },0);
     if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
   });
-  q('#sg-refresh').addEventListener('click',() => {if(token)loadLive({force:true});});
+  q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');frame?.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}else loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
@@ -1096,6 +1100,12 @@
   else initGoogle();
   window.addEventListener('message',event => {
     if (event.origin !== window.location.origin) return;
+    const syncFrame=q('.sg-portal-frame');
+    if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
+      const text=String(event.data.text||'').slice(0,220);
+      status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
+      q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=false;return;
+    }
     if (event.data?.type === 'sungrow-portal-dashboard') showDashboardView();
     if (event.data?.type === 'sungrow-portal-ready') {
       const frame = q('.sg-portal-frame');
