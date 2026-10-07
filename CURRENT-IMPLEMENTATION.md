@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Hotfix khởi tạo iframe — 08/10/2026
+
+Frontend JS81/entry73: relay Đồng bộ được khởi tạo sau const$/state/helpers; sửa ReferenceError do gọi$trước khởi tạo khiến iframe đứng ở đăng nhập. Test entry-startup.mjs chạy toàn script ứng dụng trong DOM mock embedded/standalone, kiểm tra bước khôi phục phiên và tái hiện lỗi cũ. Không thay backend/schema/dữ liệu, không cần deploy Apps Script cho hotfix. Chưa smoke test browser live.
+
 ## Góc Đồng bộ và tải 15 tài khoản — frontend 08/10/2026
 
 Frontend JS80/entry72: nút Đồng bộ ở góc phải thanh tiêu đề như dashboard; parent relay lệnh/trạng thái iframe với origin/source guard, ẩn syncbar giữa bộ lọc/bảng. Không gửi list trùng do ready handshake; ngừng chờ dashboard khi vào nhập liệu, không để phản hồi nền ghi đè trạng thái. Backend cần Code/Legacy cùng1.10.10-fast-reads: nén shared cache, follower chờ ngắn thay vì15s, giữ freshness/quyền/revision và thêm timing. Kiểm thử fixture15 scoped page requests/cold followers đạt, không phải15 session production. Hướng dẫn local version final/DEPLOY-1.10.10.md; không migration/seed, backend chưa deploy từ commit này.

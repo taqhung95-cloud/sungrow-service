@@ -168,13 +168,13 @@
     const CONFIG = window.SUNGROW_CONFIG || {};
     const EMBEDDED = window.self !== window.top;
     if(EMBEDDED)document.documentElement.classList.add('embedded');
-    if(EMBEDDED){$('#portalSyncBar').style.display='none';const publishSync=()=>parent.postMessage({type:'sungrow-portal-sync-status',text:$('#portalSyncStatus').textContent,detail:$('#portalSyncStatus').title},location.origin);new MutationObserver(publishSync).observe($('#portalSyncStatus'),{childList:true,subtree:true,characterData:true});publishSync();window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='sungrow-portal-sync')globalThis.portalRealtime?.sync()});}
     const state = { token:'', actor:null, centers:[], allCenters:[], selectedCase:null, currentView:'cases', casePage:1, casePageSize:20, caseTotal:0, caseTotalPages:1, dashboardReady:false, caseLoading:false, caseReloadPending:false, caseLoadFailures:0, caseRetryTimer:null, caseCache:{} };
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const formData = form => Object.fromEntries(new FormData(form).entries());
     const today = () => new Date().toISOString().slice(0,10);
+    if(EMBEDDED){$('#portalSyncBar').style.display='none';const publishSync=()=>parent.postMessage({type:'sungrow-portal-sync-status',text:$('#portalSyncStatus').textContent,detail:$('#portalSyncStatus').title},location.origin);new MutationObserver(publishSync).observe($('#portalSyncStatus'),{childList:true,subtree:true,characterData:true});publishSync();window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='sungrow-portal-sync')globalThis.portalRealtime?.sync()});}
 
     window.onload = () => {
       $('[name=receivedAt]').value = today();
