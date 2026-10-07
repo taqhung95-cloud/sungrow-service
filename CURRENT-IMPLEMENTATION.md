@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sắp xếp ngày nhận — frontend 07/10/2026
+
+Frontend JS78/entry70 bổ sung nút Ngày nhận ↓/↑ cho danh sách hồ sơ và thiết bị dashboard; đổi chiều về trang 1, giữ bộ lọc. Backend cần Code.gs và LegacyDashboardApi.gs cùng 1.10.9-received-sort để sắp xếp toàn bộ kết quả trước phân trang, ngày trống luôn cuối. Không migration/seed, không đổi KPI/schema. Backend chưa deploy từ commit frontend; cần Save và New version trên deployment hiện tại. Hướng dẫn local version final/DEPLOY-1.10.9.md.
+
 ## Danh bạ khách hàng — frontend 06/10/2026
 
 Frontend JS77/entry69 bổ sung gợi ý trong Tên khách hàng, tự điền bốn ô và chọn lưu/cập nhật profile riêng; guard chống phản hồi cũ và đổi center, loading/error, nhập tay khi backend chưa hỗ trợ. Backend cần Code.gs/LegacyDashboardApi.gs bản 1.10.8-customer-directory và CustomerDirectory.gs; initializeCustomerDirectory tạo tab Khách hàng/cột Mã khách hàng, audit/seed theo đợt nếu lấy khách từ hồ sơ cũ. Hồ sơ giữ snapshot, profile update không sửa case cũ. Chưa deploy backend hoặc seed production từ commit frontend.
