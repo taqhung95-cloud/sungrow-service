@@ -109,7 +109,7 @@
         </div>
         <div class="case-table-shell">
           <table class="case-table">
-            <thead><tr><th>Thiết bị / S/N</th><th>Trạng thái</th><th>Bảo hành</th><th>Center</th><th>Ngày nhận</th><th>Kết quả gần nhất</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Thiết bị / S/N</th><th>Trạng thái</th><th>Bảo hành</th><th>Center</th><th aria-sort="descending" id="caseDateHeader"><button id="caseDateSort" type="button" data-order="newest" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều." style="background:none;border:0;padding:0;color:inherit;font:inherit;white-space:nowrap">Ngày nhận ↓</button></th><th>Kết quả gần nhất</th><th>Thao tác</th></tr></thead>
             <tbody id="caseResults"><tr class="empty-row"><td colspan="7"><span class="loading-state block" role="status" aria-live="polite"><i class="loading-spinner" aria-hidden="true"></i><span>Đang tải hồ sơ…</span></span></td></tr></tbody>
           </table>
         </div>
@@ -362,6 +362,7 @@
       $('#caseRefresh').addEventListener('click',()=>loadCases(true));
       $('#caseQuery').addEventListener('keydown',e=>{if(e.key==='Enter')loadCases(true)});
       $('#caseStatus').addEventListener('change',()=>loadCases(true));
+      $('#caseDateSort').addEventListener('click',()=>{const button=$('#caseDateSort'),oldest=button.dataset.order!=='oldest';button.dataset.order=oldest?'oldest':'newest';button.textContent='Ngày nhận '+(oldest?'↑':'↓');button.title='Theo ngày nhận: '+(oldest?'Cũ nhất → Mới nhất':'Mới nhất → Cũ nhất')+'. Bấm để đổi chiều.';$('#caseDateHeader').setAttribute('aria-sort',oldest?'ascending':'descending');loadCases(true)});
       $('#caseWarranty').addEventListener('change',()=>loadCases(true));
       $('#caseCenter').addEventListener('change',()=>loadCases(true));
       $('#casePageSize').addEventListener('change',e=>{state.casePageSize=Number(e.target.value)||20;loadCases(true)});
@@ -438,7 +439,7 @@
       if(state.caseRetryTimer){clearTimeout(state.caseRetryTimer);state.caseRetryTimer=null}
       state.caseLoading=true;
       const box=$('#caseResults');
-      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,page:state.casePage,pageSize:state.casePageSize,includeDetails:false,refresh:Boolean(resetPage)};
+      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,sortOrder:$('#caseDateSort').dataset.order,page:state.casePage,pageSize:state.casePageSize,includeDetails:false,refresh:Boolean(resetPage)};
       const cacheKey=JSON.stringify(filters),cached=state.caseCache[cacheKey];
       if(cached)renderCasesResponse(cached);else box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
       try{

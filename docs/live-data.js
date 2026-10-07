@@ -19,6 +19,7 @@
   let ticketSearchController = null;
   let ticketSearchSequence = 0;
   let ticketSearchState = {term:'',rows:null,total:0,loading:false,error:'',page:1,pageSize:20,totalPages:1,statuses:[],fromYear:null,toYear:null};
+  let ticketSortOrder = 'newest';
   const AUTO_SYNC_MS = 300000;
   const REVISION_SYNC_MS = 60000 + Math.floor(Math.random()*15000);
   let portalRevision = '';
@@ -131,7 +132,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=69#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=70#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -562,7 +563,7 @@
     const controller = new AbortController();
     ticketSearchController = controller;
     try {
-      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,status:q('#sg-status').value,page:page,pageSize:pageSize},controller.signal,2);
+      const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,status:q('#sg-status').value,sortOrder:ticketSortOrder,page:page,pageSize:pageSize},controller.signal,2);
       if (sequence !== ticketSearchSequence) return;
       ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],fromYear:Number(data.fromYear)||null,toYear:Number(data.toYear)||null,fallback:false};
     } catch (error) {
@@ -1063,6 +1064,8 @@
   q('#sg-model-type').addEventListener('change',() => {if(live)setTimeout(renderModels,0);});
   q('#sg-search').addEventListener('input',() => {if(live)scheduleTicketSearch();});
   q('#sg-status').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
+  q('#sg-status').insertAdjacentHTML('afterend','<button id="sg-ticket-date-sort" type="button" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều." style="border:1px solid #d5dbe3;border-radius:8px;padding:10px 12px;background:white;color:#526173;font:inherit;white-space:nowrap">Ngày nhận ↓</button>');
+  q('#sg-ticket-date-sort').addEventListener('click',function(){ticketSortOrder=ticketSortOrder==='oldest'?'newest':'oldest';this.textContent='Ngày nhận '+(ticketSortOrder==='oldest'?'↑':'↓');this.title='Theo ngày nhận: '+(ticketSortOrder==='oldest'?'Cũ nhất → Mới nhất':'Mới nhất → Cũ nhất')+'. Bấm để đổi chiều.';if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
   q('#sg-ticket-page-size').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
   root.addEventListener('click',e => {
     if (!live) return;
