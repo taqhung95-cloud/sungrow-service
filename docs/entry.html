@@ -107,6 +107,7 @@
           <select id="caseCenter"><option value="">Tất cả center</option></select>
           <button class="primary" id="caseRefresh" type="button">Tìm kiếm</button>
         </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:10px"><span id="portalSyncStatus" role="status" aria-live="polite" style="font-size:11px;color:#667085">Chưa đồng bộ</span><button id="caseSync" class="secondary" type="button" onclick="globalThis.portalRealtime?.sync()">↻ Đồng bộ</button></div>
         <div class="case-table-shell">
           <table class="case-table">
             <thead><tr><th>Thiết bị / S/N</th><th>Trạng thái</th><th>Bảo hành</th><th>Center</th><th aria-sort="descending" id="caseDateHeader"><button id="caseDateSort" type="button" data-order="newest" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều." style="background:none;border:0;padding:0;color:inherit;font:inherit;white-space:nowrap">Ngày nhận ↓</button></th><th>Kết quả gần nhất</th><th>Thao tác</th></tr></thead>
@@ -191,6 +192,7 @@
 
     function onCredential(response){
       state.token=response.credential;
+      state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.customerPicker?.sync();
@@ -433,28 +435,35 @@
     function openDashboardCase(query){showView('cases');$('#caseQuery').value=query||'';loadCases(true)}
     function formatNumber(value){return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:1}).format(Number(value)||0)}
     function formatDateTime(value){const date=new Date(value);return isNaN(date.getTime())?'—':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(date)}
-    async function loadCases(resetPage=false){
+    async function loadCases(resetPage=false,forceRefresh=false){
       if(resetPage)state.casePage=1;
-      if(state.caseLoading){state.caseReloadPending=true;return}
+      state.caseAbort?.abort();
+      const sequence=state.caseSequence=(state.caseSequence||0)+1;
+      const controller=state.caseAbort=new AbortController();
       if(state.caseRetryTimer){clearTimeout(state.caseRetryTimer);state.caseRetryTimer=null}
       state.caseLoading=true;
       const box=$('#caseResults');
-      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,sortOrder:$('#caseDateSort').dataset.order,page:state.casePage,pageSize:state.casePageSize,includeDetails:false,refresh:Boolean(resetPage)};
+      const filters={query:$('#caseQuery').value,status:$('#caseStatus').value,warrantyStatus:$('#caseWarranty').value,center:$('#caseCenter').value,sortOrder:$('#caseDateSort').dataset.order,page:state.casePage,pageSize:state.casePageSize,includeDetails:false,refresh:Boolean(resetPage||forceRefresh)};
       const cacheKey=JSON.stringify(filters),cached=state.caseCache[cacheKey];
-      if(cached)renderCasesResponse(cached);else box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
+      if(cached&&!forceRefresh)renderCasesResponse(cached);else if(!box.querySelector('tr:not(.empty-row)'))box.innerHTML='<tr class="empty-row"><td colspan="7">Đang tải hồ sơ…</td></tr>';
+      box.setAttribute('aria-busy','true');
+      const syncStatus=$('#portalSyncStatus');syncStatus.innerHTML='<span class="loading-spinner" aria-hidden="true"></span> Đang tải trang '+filters.page+'…';
       try{
-        const response=await call('listCases',[state.token,filters]);
+        const response=await call('listCases',[state.token,filters],0,controller.signal);
+        if(sequence!==state.caseSequence)return false;
         const data=Array.isArray(response)?{items:response,total:response.length,page:1,pageSize:response.length||20,totalPages:1}:response;
-        state.caseLoadFailures=0;state.caseCache[cacheKey]=data;renderCasesResponse(data);
+        state.caseLoadFailures=0;state.caseCache[cacheKey]=data;renderCasesResponse(data);state.caseDataRevision=data.revision||'';
+        syncStatus.textContent='Đã đồng bộ '+new Date().toLocaleTimeString('vi-VN');return true;
       }catch(err){
+        if(sequence!==state.caseSequence||controller.signal.aborted)return false;
         state.caseLoadFailures+=1;
         const retryDelays=[3000,7000,15000,30000],retryDelay=retryDelays[Math.min(state.caseLoadFailures-1,retryDelays.length-1)];
-        if(state.caseLoadFailures<=retryDelays.length&&state.currentView==='cases')state.caseRetryTimer=setTimeout(()=>{state.caseRetryTimer=null;loadCases(false)},retryDelay);
+        if(state.caseLoadFailures<=retryDelays.length&&state.currentView==='cases'&&!isAuthError(err))state.caseRetryTimer=setTimeout(()=>{state.caseRetryTimer=null;loadCases(false,forceRefresh)},retryDelay);
+        syncStatus.textContent='Chưa đồng bộ · '+err.message;
         if(!cached)box.innerHTML=`<tr class="empty-row"><td colspan="7"><span class="notice error">${esc(err.message)} ${state.caseLoadFailures<=retryDelays.length?`Hệ thống sẽ tự thử lại sau ${Math.round(retryDelay/1000)} giây.`:''} <button type="button" class="secondary" onclick="state.caseLoadFailures=0;loadCases(false)">Thử ngay</button></span></td></tr>`;
         else showMessage('Đang hiển thị dữ liệu gần nhất; chưa lấy được bản cập nhật mới.',true);
       }finally{
-        state.caseLoading=false;
-        if(state.caseReloadPending){state.caseReloadPending=false;window.setTimeout(()=>loadCases(false),100)}
+        if(sequence===state.caseSequence){state.caseLoading=false;box.setAttribute('aria-busy','false');state.caseAbort=null;}
       }
     }
     function renderCasesResponse(data){const box=$('#caseResults');state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;$('#casePageSize').value=String(data.pageSize);box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';const first=data.total?(data.page-1)*data.pageSize+1:0,last=Math.min(data.page*data.pageSize,data.total);$('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager()}
@@ -554,25 +563,24 @@
     async function acceptTransferUI(raw,caseId){const transfer=JSON.parse(raw),date=prompt('Ngày nhận hàng (YYYY-MM-DD):',today());if(!date)return;try{await call('acceptTransfer',[state.token,{transferId:transfer.transferId,receivedAt:date}]);showMessage('Đã xác nhận nhận hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}}
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
-    async function call(name,args,attempt=0){
+    async function call(name,args,attempt=0,signal){
       const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers'].includes(name);
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
         const controller=new AbortController();
-        const timeout=setTimeout(()=>controller.abort(),name==='createCase'?90000:name==='listCases'?30000:45000);
-        let response;
-        try{response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal})}
-        finally{clearTimeout(timeout)}
-        if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}
-        const result=await response.json();
+        let timeout,abort;
+        const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},name==='createCase'?90000:name==='listCases'?30000:45000)});
+        let result;
+        try{result=await Promise.race([(async()=>{const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
+        finally{clearTimeout(timeout);signal?.removeEventListener('abort',abort)}
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
-        if(!readOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);}
+        if(!readOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new Event('portal-data-changed'));}
         return result.data;
       }catch(error){
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
-        if(retryable&&attempt<1){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1)}
+        if(retryable&&attempt<1&&!signal?.aborted&&!['listCases','getPortalSyncState'].includes(name)){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1,signal)}
         throw error;
       }
     }
@@ -632,8 +640,7 @@
         notice.textContent = 'Có dữ liệu mới · Bấm để tải lại';
         notice.style.cssText = 'position:fixed;right:22px;top:76px;z-index:10000;border:0;border-radius:10px;padding:10px 14px;background:#fff4e8;color:#9a4a0a;box-shadow:0 4px 18px rgba(0,0,0,.14);font:600 14px inherit;cursor:pointer';
         notice.addEventListener('click', () => {
-          notice.remove();
-          if (typeof loadCases === 'function') loadCases(false);
+          syncPortalNow();
         });
         document.body.appendChild(notice);
       }
@@ -647,11 +654,8 @@
         if (!sync || !sync.revision) return;
         realtime.pollMs = Number(sync.pollMs) || realtime.pollMs;
         const nextRevision = String(sync.revision);
-        if (!realtime.revision) {
-          realtime.revision = nextRevision;
-          return;
-        }
-        if (nextRevision === realtime.revision) return;
+        if (nextRevision === String(state.caseDataRevision || '')) return;
+        state.caseCache = {};
         realtime.revision = nextRevision;
         if (state.currentView === 'cases' && hasOpenCaseEditor()) {
           showRealtimeNotice();
@@ -660,7 +664,7 @@
         const notice = document.getElementById('portalRealtimeNotice');
         if (notice) notice.remove();
         if (state.currentView === 'cases' && typeof loadCases === 'function') {
-          await loadCases(false);
+          await loadCases(false,true);
         }
       } catch (error) {
         // Keep the current screen usable during a transient network failure.
@@ -674,6 +678,20 @@
       realtime.timer = window.setInterval(checkPortalRevision, realtime.pollMs);
       window.setTimeout(checkPortalRevision, 800);
     }
+
+    async function syncPortalNow() {
+      if (!state.token) return;
+      state.caseCache = {};
+      if (hasOpenCaseEditor()) {
+        showRealtimeNotice();
+        document.getElementById('portalRealtimeNotice').textContent='Đóng phần chi tiết / biểu mẫu rồi bấm Đồng bộ để xem dữ liệu mới';
+        return;
+      }
+      document.getElementById('portalRealtimeNotice')?.remove();
+      await loadCases(false,true);
+    }
+    globalThis.portalRealtime={sync:syncPortalNow,check:checkPortalRevision};
+    window.addEventListener('portal-data-changed',()=>{state.caseDataRevision='';checkPortalRevision()});
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) checkPortalRevision();

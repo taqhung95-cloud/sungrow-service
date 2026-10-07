@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng bộ nhập liệu và chuyển trang — frontend 07/10/2026
+
+Frontend JS79/entry71: nút Đồng bộ/thời điểm đồng bộ trong danh sách; request đọc mới hủy request client cũ, sequence guard giữ trang vừa chọn. Deadline gồm đọc JSON, list30s/backoff giới hạn, không retry transport lồng. Revision poll so với danh sách tải thành công, invalidation cache trước tải lại; form/chi tiết mở giữ nguyên và hiện thông báo. Focus/online kiểm tra cập nhật. Không đổi backend/KPI/schema hoặc chạy migration; backend vẫn 1.10.9. Regression giả lập race, timeout body, lỗi tải, revision và bảo vệ editor đạt; chưa kiểm thử live hai tài khoản.
+
 ## Sắp xếp ngày nhận — frontend 07/10/2026
 
 Frontend JS78/entry70 bổ sung nút Ngày nhận ↓/↑ cho danh sách hồ sơ và thiết bị dashboard; đổi chiều về trang 1, giữ bộ lọc. Backend cần Code.gs và LegacyDashboardApi.gs cùng 1.10.9-received-sort để sắp xếp toàn bộ kết quả trước phân trang, ngày trống luôn cuối. Không migration/seed, không đổi KPI/schema. Backend chưa deploy từ commit frontend; cần Save và New version trên deployment hiện tại. Hướng dẫn local version final/DEPLOY-1.10.9.md.
