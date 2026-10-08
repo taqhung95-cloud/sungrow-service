@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thiết kế đăng nhập hai phần — 08/10/2026
+
+Frontend JS90/entry80/login-theme v1: header logo, khung ảnh solar/form Google hai cột theo mẫu; mobile<=760px một cột với hero160px. Theme scoped cho dashboard, entry standalone và popup; giữ Google slot IDs/callbacks/auth/role/origin guards, không thêm password/register/guest/server selector giả. Ảnh built-in image_gen đóng gói docs/login-solar.jpg162780bytes dùng chung hero/nền mờ, không tải ảnh ngoài. Popup success selector đổi sang sg-auth-copy để tránh sửa hero paragraph. Test actual frontend localGSIstub tại1440/1024/390/360 đạt columns/button/no-overflow/no-JS-errors; validate đạt, không kiểm thử OAuth production. Chỉ publish GitHub, không Apps Script/backend/data/KPI/Drive thay đổi. Chi tiết+prompt: version final/LOGIN-DESIGN.md.
+
 ## Favicon khung sát logo — 08/10/2026
 
 docs/favicon-tight.svg nhúng nguyên PNG người dùng (không đổi bytes) và viewBox109 108 296 296 bao quanh alpha bounds115 123..398 388; logo chiếm96% chiều ngang thay55% khung cũ. Bốn trang dùng SVG favicon v1 ưu tiên, giữ PNG v3 fallback. Chỉ thay viewport favicon, không vẽ lại logo, không API/backend/data thay đổi. Test favicon-tight kiểm tra bytes PNG nguyên vẹn, SVG self-contained và render favicon16px trong Edge với nền trong suốt; validate đạt. Không cần Apps Script.

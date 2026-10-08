@@ -34,8 +34,9 @@
   style.textContent += '#sg-preview .sg-main.sg-portal-mode .sg-live-box{display:flex!important;margin-left:auto}#sg-preview .sg-main.sg-portal-mode .sg-live-detail{display:none}';
   const authPage = document.createElement('main');
   authPage.id = 'sg-auth-page';
+  authPage.className = 'sg-auth-layout';
   authPage.setAttribute('aria-label','Đăng nhập Sungrow Service Center');
-  authPage.innerHTML = '<section class="sg-auth-card"><div class="sg-auth-brand" id="sg-auth-brand"></div><h1>Đăng nhập hệ thống</h1><p class="sg-auth-copy">Sử dụng tài khoản Google đã được cấp quyền để truy cập Service Center.</p><div id="sg-auth-login-slot"></div><p id="sg-auth-message" role="status">Đang kiểm tra phiên đăng nhập…</p><p class="sg-auth-note">Giao diện và chức năng sẽ được hiển thị theo quyền của từng tài khoản.</p></section>';
+  authPage.innerHTML = "<header class=\"sg-auth-top\"><div class=\"sg-auth-brand\" id=\"sg-auth-brand\"></div><span class=\"sg-auth-top-note\">Cổng dịch vụ · Việt Nam</span></header><section class=\"sg-auth-card\"><aside class=\"sg-auth-hero\"><div><h2>Đồng hành cùng<br>năng lượng bền vững.</h2><p>Kết nối dữ liệu. Nâng tầm dịch vụ.</p></div><span class=\"sg-auth-hero-foot\">SUNGROW · SERVICE CENTER</span></aside><div class=\"sg-auth-form\"><p class=\"sg-auth-eyebrow\">SUNGROW SERVICE CENTER</p><h1>Chào mừng đến với<br>Service Center</h1><div class=\"sg-auth-method\">Đăng nhập bằng Google</div><p class=\"sg-auth-copy\">Sử dụng tài khoản Google đã được cấp quyền để truy cập hệ thống quản lý và nhập liệu.</p><div id=\"sg-auth-login-slot\" class=\"sg-auth-login-slot\"></div><div id=\"sg-auth-message\" class=\"sg-auth-message\" role=\"status\" aria-live=\"polite\"></div><p class=\"sg-auth-note\">Chỉ tài khoản được Service Manager cấp quyền mới truy cập được. Chức năng hiển thị theo phân quyền của bạn.</p></div></section><footer class=\"sg-auth-footer\"><a href=\"./privacy.html\" target=\"_blank\" rel=\"noopener\">Chính sách bảo mật</a><br>SUNGROW · Service Center</footer>";
   document.body.appendChild(authPage);
   const authBrand = q('.sg-brand')?.cloneNode(true);
   if (authBrand) document.getElementById('sg-auth-brand').appendChild(authBrand);
@@ -136,7 +137,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=79#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=80#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh:true},window.location.origin);
     root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -948,7 +949,7 @@
     google.accounts.id.initialize({client_id:cfg.googleClientId,callback:handleCredential});
     const loginSlot = document.getElementById('sg-auth-login-slot');
     loginSlot.replaceChildren();
-    google.accounts.id.renderButton(loginSlot,{theme:'outline',size:'large',text:'signin_with',shape:'rectangular',locale:'vi',width:300});
+    google.accounts.id.renderButton(loginSlot,{theme:'outline',size:'large',text:'signin_with',shape:'rectangular',locale:'vi',width:Math.min(300,Math.max(200,window.innerWidth-64))});
     setAuthMessage('Vui lòng đăng nhập để tiếp tục.');
     status('Yêu cầu đăng nhập','Dữ liệu hiển thị sau khi xác thực');
   }
