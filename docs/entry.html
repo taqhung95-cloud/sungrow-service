@@ -196,7 +196,7 @@
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
-        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.customerPicker?.sync();
+        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.uploadCategories=!!data.uploadCategories;state.customerPicker?.sync();
         applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
         const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
@@ -574,7 +574,10 @@
 
     async function call(name,args,attempt=0,signal){
       const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession'].includes(name);
-      const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile'].includes(name);
+      const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile','setCaseUploadCategory'].includes(name);
+      const mutation=!readOnly&&!uploadOnly;
+      if(mutation&&document.getElementById('mutationProgress'))throw new Error('Một thao tác đang được lưu. Vui lòng chờ kết quả trước khi gửi tiếp.');
+      if(mutation){const status=document.createElement('div');status.id='mutationProgress';status.className='mutation-progress';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.innerHTML='<span class="mutation-spinner" aria-hidden="true"></span><span>'+esc(name==='createCase'?'Đang tạo hồ sơ…':name==='cancelCase'?'Đang xóa hồ sơ…':'Đang cập nhật dữ liệu…')+'</span>';document.body.append(status);}
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
@@ -592,7 +595,7 @@
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
         if(retryable&&attempt<1&&!signal?.aborted&&!['listCases','getPortalSyncState'].includes(name)){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1,signal)}
         throw error;
-      }
+      }finally{if(mutation)document.getElementById('mutationProgress')?.remove();}
     }
     function isAuthError(error){return /AUTH|TOKEN|FORBIDDEN/i.test(error?.code||'')||/(đăng nhập|token|phiên đăng nhập|cấp quyền truy cập)/i.test(error?.message||'')}
     function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
@@ -751,5 +754,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=2"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=2"></script></body>
+<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=3"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=3"></script></body>
 </html>

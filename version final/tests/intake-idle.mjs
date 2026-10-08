@@ -7,7 +7,7 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const docs=path.resolve(import.meta.dirname,'../../docs');
-let mode='valid',created=0;
+let mode='valid',created=0,releaseMutation;
 const uploadSessions=new Map(),createdRequests=new Map();let lastCreatedPayload=null;
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
@@ -22,13 +22,14 @@ const server=http.createServer(async(req,res)=>{
     if(mode==='expired'&&fn==='getCreationStatus'){
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ok:false,error:{code:'PUBLIC_ERROR',message:'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'}}));return;
     }
-    if(fn==='getBootstrap')data={actor:{email:'fixture@example.invalid',name:'Fixture',role:'center_staff',centers:['DAT Center'],homeCenter:'DAT Center',capabilities:{viewCases:true,createCase:true}},centers:['DAT Center'],allCenters:['DAT Center'],customerDirectory:false,temporaryUploads:mode==='staged'};
+    if(fn==='getBootstrap')data={actor:{email:'fixture@example.invalid',name:'Fixture',role:'center_staff',centers:['DAT Center'],homeCenter:'DAT Center',capabilities:{viewCases:true,createCase:true}},centers:['DAT Center'],allCenters:['DAT Center'],customerDirectory:false,temporaryUploads:mode.startsWith('staged'),uploadCategories:mode==='staged-categories'};
     if(fn==='getPortalSyncState')data={revision:'fixture-revision',pollMs:60000};
     if(fn==='lookupWarranty')data={status:'unknown',label:'Chưa có thông tin',modelStatus:'missing'};
     if(fn==='getCreationStatus')data=createdRequests.get(request.args[1])||{found:false};
-    if(fn==='createCase'){created++;lastCreatedPayload=request.args[1];data={caseId:'fixture-case',workOrderId:'fixture-work'};createdRequests.set(request.args[1].requestId,{found:true,...data});}
+    if(fn==='createCase'){await new Promise(resolve=>{releaseMutation=resolve});created++;lastCreatedPayload=request.args[1];data={caseId:'fixture-case',workOrderId:'fixture-work'};createdRequests.set(request.args[1].requestId,{found:true,...data});}
     if(fn==='beginCaseUpload'){const p=request.args[1];if(!uploadSessions.has(p.sessionId))uploadSessions.set(p.sessionId,{sessionId:p.sessionId,center:p.center,state:'OPEN',expiresAt:Date.now()+86400000,files:[]});data=uploadSessions.get(p.sessionId);}
-    if(fn==='uploadCaseFile'){const p=request.args[1];data=uploadSessions.get(p.sessionId);if(!data.files.some(f=>f.uploadId===p.uploadId))data.files.push({uploadId:p.uploadId,name:p.name,size:Buffer.from(p.base64,'base64').length,status:'READY'});}
+    if(fn==='uploadCaseFile'){const p=request.args[1];data=uploadSessions.get(p.sessionId);if(!data.files.some(f=>f.uploadId===p.uploadId))data.files.push({uploadId:p.uploadId,name:p.name,size:Buffer.from(p.base64,'base64').length,status:'READY',category:p.category||''});}
+    if(fn==='setCaseUploadCategory'){const p=request.args[1];data=uploadSessions.get(p.sessionId);data.files.find(f=>f.uploadId===p.uploadId).category=p.category;}
     if(fn==='getCaseUploadSession')data=uploadSessions.get(request.args[1]);
     if(fn==='removeCaseUploadFile'){const p=request.args[1];data=uploadSessions.get(p.sessionId);data.files=data.files.filter(f=>f.uploadId!==p.uploadId);}
     if(fn==='listCases')data={items:[],total:0,page:1,pageSize:20,totalPages:1,revision:'fixture-revision'};
@@ -43,8 +44,8 @@ const base=`http://127.0.0.1:${server.address().port}`;
 let browser;
 try{
   browser=await chromium.launch({headless:true,channel:'msedge'});
-  for(const scenario of ['valid','expired','staged']){
-    mode=scenario==='staged'?'staged':'valid';const startCreated=created;
+  for(const scenario of ['valid','expired','staged','staged-categories']){
+    mode=scenario.startsWith('staged')?scenario:'valid';const startCreated=created;
     const context=await browser.newContext();const page=await context.newPage();
     await page.route('**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
     await page.addInitScript(()=>sessionStorage.setItem('sungrow_id_token','LOCAL-FIXTURE-NOT-A-REAL-TOKEN'));
@@ -59,12 +60,20 @@ try{
     await form.locator('[name=customerPhone]').fill('0900000000');
     await form.locator('[name=customerAddress]').fill('Địa chỉ giả lập');
     await form.locator('[name=initialIssue]').fill('Kiểm thử local, không gửi production');
-    if(scenario==='staged'){
+    if(scenario.startsWith('staged')){
       await page.waitForFunction(()=>document.querySelector('#receiveForm [name=evidenceFile]').multiple);
       assert.equal(await page.locator('.upload-label .upload-label-note').count(),1);
       assert.equal(await page.locator('.case-upload-panel>p').count(),0,'Long upload notes must not be below the progress bar');
       assert.equal(await page.locator('.case-upload-panel progress').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');
-      await form.locator('[name=evidenceFile]').setInputFiles([{name:'fixture.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')},{name:'fixture.png',mimeType:'image/png',buffer:Buffer.from([137,80,78,71,13,10,26,10])}]);
+      if(scenario==='staged-categories'){
+        assert.equal(await page.locator('.upload-group').count(),4);
+        await page.locator('#upload-incident').setInputFiles({name:'fixture.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
+        await page.waitForFunction(()=>document.querySelector('.upload-summary')?.textContent.startsWith('1/1'));
+        await page.locator('#upload-incident').setInputFiles({name:'second.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-other')});
+        await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('tối đa 1'));
+        assert.equal(await page.locator('.upload-item').count(),1);
+        await page.locator('#upload-sitePhotos').setInputFiles({name:'fixture.png',mimeType:'image/png',buffer:Buffer.from([137,80,78,71,13,10,26,10])});
+      }else await form.locator('[name=evidenceFile]').setInputFiles([{name:'fixture.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')},{name:'fixture.png',mimeType:'image/png',buffer:Buffer.from([137,80,78,71,13,10,26,10])}]);
       await page.waitForFunction(()=>document.querySelector('.upload-summary')?.textContent.startsWith('2/2'));
       assert.equal(created,startCreated,'Selecting files must not create a case');
       assert.equal(await page.locator('.case-upload-panel progress').getAttribute('value'),'2');
@@ -78,14 +87,16 @@ try{
     }else await form.locator('[name=evidenceFile]').setInputFiles({name:'fixture.zip',mimeType:'application/zip',buffer:Buffer.from([80,75,3,4])});
     await page.clock.fastForward(361000);
     assert.equal(await form.locator('[name=customerName]').inputValue(),'Khách hàng giả lập');
-    if(scenario!=='staged')assert.equal(await form.locator('[name=evidenceFile]').evaluate(el=>el.files[0]?.name),'fixture.zip');
+    if(!scenario.startsWith('staged'))assert.equal(await form.locator('[name=evidenceFile]').evaluate(el=>el.files[0]?.name),'fixture.zip');
     assert.equal(await page.locator('#receive').isVisible(),true,'Idle/revision sync must not navigate away from Receive');
     mode=scenario;
     await form.locator('button[type=submit]').click();
-    if(scenario==='valid'||scenario==='staged'){
+    if(scenario!=='expired'){await page.locator('#mutationProgress').waitFor({state:'visible'});assert.equal(await page.locator('.mutation-spinner').count(),1);await page.waitForFunction(()=>true);while(!releaseMutation)await new Promise(r=>setTimeout(r,10));releaseMutation();releaseMutation=null;}
+    if(scenario==='valid'||scenario.startsWith('staged')){
       await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('Đã tạo hồ sơ'));
+      assert.equal(await page.locator('#mutationProgress').count(),0);
       assert.equal(created,startCreated+1,'Valid session should create exactly once after six minutes idle');
-      if(scenario==='staged'){assert.equal(lastCreatedPayload.uploadIds.length,1);assert.equal('attachment' in lastCreatedPayload,false);assert.ok(lastCreatedPayload.uploadSessionId);}
+      if(scenario.startsWith('staged')){assert.equal(lastCreatedPayload.uploadIds.length,1);assert.equal('attachment' in lastCreatedPayload,false);assert.ok(lastCreatedPayload.uploadSessionId);}
     }else{
       await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('hết hạn'));
       assert.equal(created,startCreated,'Auth rejection must not upload or create');

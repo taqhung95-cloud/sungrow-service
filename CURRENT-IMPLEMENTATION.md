@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Nhóm đính kèm và trạng thái mutation — 08/10/2026
+
+Code/Legacy local 1.10.14-upload-categories + TemporaryUploads.gs: incident max1, sitePhotos/deviceLog/waveform dùng chung tổng10×8MiB; overall >=1, không bắt buộc từng nhóm. Bootstrap uploadCategories gate giữ fallback backend cũ. Recategorization READY metadata-only, owner/center/capability/state guard; tên file khi finalize có tiền tố nhóm trong cùng folder case, không schema/ACL/subfolder thay đổi, legacy files vẫn tương thích. Frontend JS89/entry79/case-uploads v3; mutation API hiện thông báo spinner, chặn gửi mutation thứ hai nhưng không khóa đọc; finally dọn trạng thái cả thành công/lỗi/timeout. Regression/helper/actual-entry fakeAPI đạt, chưa tác động production dữ liệu hay test15session live. Triển khai theo version final/DEPLOY-1.10.14.md: thay Code, Legacy, TemporaryUploads, Save/New version cùng URL, không migration/rebuild/init lại nếu đã bật upload tạm.
+
 ## Upload UI và nháp trống — 08/10/2026
 
 Frontend JS88/entry78/case-uploads CSS+JSv2/form-drafts JSv2: progress explicit white track/orange fill WebKit+Firefox, notes gọn sau nhãn đính kèm, bỏ notes dài dưới bar. Draft giữ storage namespace v1 để bảo toàn nháp thật, không lưu/khôi phục snapshot chưa có thay đổi (bỏ hidden-only changes); upload-only metadata do staged module quản lý, không báo nháp text trống. Nháp có nội dung, isolation theo account, conflict guard và giữ khi gửi lỗi vẫn nguyên. Index.html direct được mirror helper local cho tương thích; GHPages chỉ cần publish, không thay backend/AppScript cho hotfix. Tests form-drafts + actual entry fakeAPI + regression đạt, không upload dữ liệu production.

@@ -3,6 +3,10 @@ const TU_FOLDER_ID = '181f6qWxeV3N9Sv8ua7aqWjT-V7Ak4trY';
 const TU_PREFIX = 'TEMP_UPLOAD_V1:';
 const TU_TTL = 24 * 60 * 60 * 1000;
 const TU_LEASE = 10 * 60 * 1000;
+const TU_CATEGORIES = Object.freeze({incident:'01_Mau thu thap su co',sitePhotos:'02_Hinh anh cong trinh',deviceLog:'03_Log file',waveform:'04_Log song su co'});
+function uploadCategoriesEnabled_() { return temporaryUploadsEnabled_(); }
+function tuCategory_(value) { const category=clean_(value);if(category && !TU_CATEGORIES[category])throw publicError_('Nhóm file không hợp lệ.');return category; }
+function tuCheckCategory_(files,category,id) { if(category==='incident'&&files.some(function(f){return f.id!==id&&f.category==='incident';}))throw publicError_('Mẫu thu thập thông tin sự cố tối đa 1 file.'); }
 const TU_TYPES = Object.freeze({doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',pdf:'application/pdf',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',zip:'application/zip',rar:'application/vnd.rar',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png'});
 
 function tuLock_(work) {
@@ -37,7 +41,7 @@ function tuOwned_(actor, id, editable) {
 }
 function tuPublic_(record) {
   return {sessionId:record.id,center:record.center,state:record.state,expiresAt:record.expiresAt,
-    files:record.files.map(function(f){return {uploadId:f.id,name:f.name,size:f.size,status:f.status};})};
+    files:record.files.map(function(f){return {uploadId:f.id,name:f.name,size:f.size,status:f.status,category:f.category||''};})};
 }
 function temporaryUploadsEnabled_() { return PropertiesService.getScriptProperties().getProperty('TEMP_UPLOAD_ENABLED') === '1'; }
 
@@ -104,6 +108,8 @@ function uploadCaseFile(idToken, payload) {
   let record = tuOwned_(actor,id,true);
   if (record.center !== payload.center) throw publicError_('Center của file không khớp phiên upload.');
   let file = record.files.find(function(f){return f.id===fileId;});
+  const category=tuCategory_(payload.category);
+  if(file && category!==(file.category||''))throw publicError_('Nhóm file đã thay đổi. Kiểm tra phiên upload trước khi thử lại.');
   if(!file&&tuActiveUploads_()>=4)throw publicError_('[UPLOAD_BUSY] Đang có nhiều file tải lên. Hệ thống sẽ chờ để giữ tốc độ đọc dữ liệu.');
   const input = tuFileBytes_(payload);
   if (file) {
@@ -119,7 +125,8 @@ function uploadCaseFile(idToken, payload) {
     const existing = current.files.find(function(f){return f.id===fileId;});
     if (existing && (!file || existing.startedAt !== file.startedAt)) throw publicError_('Một yêu cầu khác đang tải file này.');
     if (!existing && current.files.length>=10) throw publicError_('Mỗi hồ sơ tối đa 10 file.');
-    file = {id:fileId,name:input.name,size:input.bytes.length,hash:input.hash,status:'UPLOADING',startedAt:Date.now()};
+    tuCheckCategory_(current.files,category,fileId);
+    file = {id:fileId,name:input.name,size:input.bytes.length,hash:input.hash,category:category,status:'UPLOADING',startedAt:Date.now()};
     if (existing) current.files[current.files.indexOf(existing)]=file;else current.files.push(file);
     tuWrite_(current);return current;
   });
@@ -134,6 +141,17 @@ function getCaseUploadSession(idToken, sessionId) {
   assertCapability_(actor,'createCase');
   // No scans of Drive on the read path. Reconcile only an uncertain upload explicitly on retry.
   return tuPublic_(record);
+}
+function setCaseUploadCategory(idToken,payload) {
+  const actor=tuActor_(idToken,required_(payload&&payload.center,'Trung tâm tiếp nhận'));
+  const category=tuCategory_(payload.category);
+  if(!category)throw publicError_('Chọn nhóm file.');
+  return tuLock_(function(){const current=tuOwned_(actor,tuId_(payload.sessionId),true);
+    if(current.center!==payload.center)throw publicError_('Center không khớp phiên upload.');
+    const file=current.files.find(function(f){return f.id===tuId_(payload.uploadId);});
+    if(!file||file.status!=='READY')throw publicError_('Chỉ đổi nhóm file đã tải xong.');
+    tuCheckCategory_(current.files,category,file.id);file.category=category;tuWrite_(current);return tuPublic_(current);
+  });
 }
 function removeCaseUploadFile(idToken, payload) {
   const actor=tuActor_(idToken,required_(payload && payload.center,'Trung tâm tiếp nhận'));
@@ -160,6 +178,7 @@ function tuPrepareCase_(actor, payload, folderName) {
     if (current.requestId && current.requestId!==payload.requestId) throw publicError_('Phiên file đã gắn với yêu cầu khác.');
     if (!Array.isArray(ids)||!ids.length||ids.length>10||new Set(ids).size!==ids.length||ids.length!==current.files.length||current.files.some(function(f){return f.status!=='READY'||ids.indexOf(f.id)<0;})) throw publicError_('Các file đính kèm chưa tải xong hoặc danh sách file không khớp.');
     if (current.state==='COMMITTED') return current;
+    current.files.forEach(function(f){tuCategory_(f.category);tuCheckCategory_(current.files,f.category,f.id);});
     if (!['OPEN','CLAIMED'].includes(current.state)||current.expiresAt<=Date.now()) throw publicError_('Phiên file tạm đã hết hạn 24 giờ.');
     current.state='CLAIMED';current.requestId=payload.requestId;current.leaseUntil=Date.now()+60*60*1000;
     current.targetParent=CASE_EVIDENCE_FOLDERS[current.center];tuWrite_(current);return current;
@@ -167,7 +186,7 @@ function tuPrepareCase_(actor, payload, folderName) {
   const folder=DriveApp.getFolderById(record.folderId),parents=folder.getParents();
   const parentId=parents.hasNext()?parents.next().getId():'';
   if (parents.hasNext()||[TU_FOLDER_ID,record.targetParent].indexOf(parentId)<0) throw publicError_('Thư mục file không ở vị trí được phép.');
-  record.files.forEach(function(f){const saved=DriveApp.getFileById(f.fileId),p=saved.getParents();if(!p.hasNext()||p.next().getId()!==record.folderId||p.hasNext()||saved.getSize()!==f.size||saved.isTrashed())throw publicError_('File đã thay đổi hoặc không còn tồn tại.');saved.setName(f.name);});
+  record.files.forEach(function(f){const saved=DriveApp.getFileById(f.fileId),p=saved.getParents();if(!p.hasNext()||p.next().getId()!==record.folderId||p.hasNext()||saved.getSize()!==f.size||saved.isTrashed())throw publicError_('File đã thay đổi hoặc không còn tồn tại.');saved.setName((TU_CATEGORIES[f.category]?TU_CATEGORIES[f.category]+'--':'')+f.name);});
   folder.setName(folderName);
   if (parentId===TU_FOLDER_ID) folder.moveTo(DriveApp.getFolderById(record.targetParent));
   return folder.getUrl();
