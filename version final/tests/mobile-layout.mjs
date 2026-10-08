@@ -65,6 +65,26 @@ try {
     else assert.notEqual(state.cards,'block','Desktop table must remain a table');
   }
   await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{
+    document.getElementById('sg-overview-table').innerHTML='<div class="sg-card-list-body sg-attention-list-body">'+Array.from({length:250},(_,i)=>`<div class="sg-attention-list-row"><span><b>Fixture ${i}</b><small>S/N TEST-${i}</small></span><span>DAT</span><span>Đang kiểm tra</span><span>10 ngày</span></div>`).join('')+'</div>';
+  });
+  const attention=page.locator('.sg-attention-list-body');
+  await page.waitForFunction(()=>document.querySelectorAll('.sg-attention-list-body .mobile-preview-hidden').length===245);
+  assert.equal(await attention.locator('.sg-attention-list-row:visible').count(),5,'Mobile overview previews only five of 250 rows');
+  await attention.locator('..').locator('.mobile-preview-more').click();
+  assert.equal(await attention.locator('.sg-attention-list-row:visible').count(),10);
+  await attention.locator('..').locator('.mobile-preview-less').click();
+  assert.equal(await attention.locator('.sg-attention-list-row:visible').count(),5);
+  const center=page.locator('.sg-compare-list-row').first();
+  assert.equal(await center.locator('> span:nth-child(2)').isVisible(),false);
+  await center.locator('.mobile-center-expand').click();
+  assert.equal(await center.locator('> span:nth-child(2)').isVisible(),true);
+  await center.locator('.mobile-center-expand').click();
+  await page.setViewportSize({width:1440,height:900});
+  assert.equal(await attention.locator('.sg-attention-list-row:visible').count(),250,'Desktop keeps all original rows');
+  assert.equal(await center.locator('> span:nth-child(2)').isVisible(),true,'Desktop metrics are not collapsed');
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<6000),'250 attention rows must not create an enormous Overview');
   const sections=['sg-overview','sg-centers','sg-tickets','sg-parts','sg-quality'];
   for(const id of sections){
     await page.evaluate(({sections,id})=>sections.forEach(s=>document.getElementById(s)?.classList.toggle('sg-hidden',s!==id)),{sections,id});

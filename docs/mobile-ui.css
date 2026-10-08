@@ -1,6 +1,6 @@
 /* Mobile layer only: desktop, source data, KPI definitions and paging stay unchanged. */
 .mobile-menu-toggle,.mobile-menu-close,.mobile-filter-toggle,.mobile-filter-summary,
-.mobile-entry-header,.mobile-case-sort{display:none}
+.mobile-entry-header,.mobile-case-sort,.mobile-center-expand,.mobile-preview-controls{display:none}
 .mobile-menu-backdrop[hidden]{display:none!important}
 @media(max-width:760px){
  body.mobile-menu-lock{overflow:hidden}
@@ -90,10 +90,19 @@
  #sg-preview .sg-compare-list-row>span:nth-child(5)::before{content:'Quá hạn trên tồn'}
  #sg-preview .sg-compare-list-row>span:nth-child(6)::before{content:'TAT hồ sơ'}
  #sg-preview #sg-overview .sg-compare-list-row strong,#sg-preview #sg-overview .sg-compare-list-row small{display:block!important}
+ #sg-preview #sg-overview .sg-compare-list-row:not(.mobile-center-open)>span:not(:first-child):not(:last-child){display:none!important}
+ #sg-preview #sg-overview .mobile-center-expand{display:block;width:100%;text-align:left;white-space:normal;border:1px solid #e5e7eb;background:#fafafa;color:#4c5c66;font-size:12px;min-height:44px;padding:8px 10px;margin-top:8px;border-radius:6px}
+ #sg-preview #sg-overview .mobile-center-expand[aria-expanded=true]{border-color:#ff7900;background:#fff3e8}
+ #sg-preview #sg-overview .mobile-preview-hidden{display:none!important}
+ #sg-preview #sg-overview .mobile-preview-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #edf0f2}
+ #sg-preview #sg-overview .mobile-preview-controls[hidden],#sg-preview #sg-overview .mobile-preview-controls button[hidden]{display:none!important}
+ #sg-preview .mobile-preview-count{flex:1 1 100%;font-size:11px;color:#667085}
+ #sg-preview .mobile-preview-controls button{min-height:44px;border:1px solid #d9dee2;background:#fff;border-radius:6px;padding:8px 12px;color:#4c5c66;font-size:13px}
  #sg-preview #sg-overview .sg-compare-list-row small,#sg-preview #sg-overview .sg-cell-delta{white-space:normal!important;overflow:visible!important;font-size:12px!important;line-height:1.5!important}
  #sg-preview .sg-attention-list-head{display:none!important}
  #sg-preview .sg-attention-list-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;padding:14px 0!important}
  #sg-preview .sg-attention-list-row>span:first-child{grid-column:1/-1}
+ #sg-preview .sg-attention-list-row .sg-sn,#sg-preview .sg-attention-list-row small{display:block!important;line-height:1.5}
  #sg-preview .sg-center-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  #sg-preview .sg-center-layout{display:block!important}
  #sg-preview #sg-centers>*{grid-area:auto!important;min-width:0!important}

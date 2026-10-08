@@ -94,8 +94,56 @@
         .observe(sort, {childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['title']});
     }
   }
+  // Keep Overview short on phones without dropping data or requesting another snapshot.
+  const previewLimits = new WeakMap();
+  let centerSequence = 0;
+  const compactOverview = () => {
+    if (!root) return;
+    root.querySelectorAll('#sg-overview .sg-compare-list-row').forEach(row => {
+      const cells = [...row.children];
+      if (cells.length < 6) return;
+      let toggle = cells[0].querySelector('.mobile-center-expand');
+      if (!toggle) {
+        row.id = 'mobile-center-' + (++centerSequence);
+        toggle = button('', 'mobile-center-expand');
+        toggle.setAttribute('aria-controls', row.id);
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.addEventListener('click', () => {
+          const open = row.classList.toggle('mobile-center-open');
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+        cells[0].append(toggle);
+      }
+      const text = 'Tồn cuối: ' + (cells[3].querySelector('strong')?.textContent || '—') +
+        ' · Quá hạn: ' + (cells[4].querySelector('strong')?.textContent || '—') + ' ▾';
+      if (toggle.textContent !== text) toggle.textContent = text;
+      toggle.title = 'Mở/thu gọn chi tiết KPI của ' + (cells[0].querySelector('strong')?.textContent || 'center');
+    });
+    root.querySelectorAll('#sg-overview .sg-attention-list-body,#sg-overview .sg-model-list-body,#sg-overview .sg-error-list-body,#sg-overview .sg-part-list-body').forEach(body => {
+      const rows = [...body.children];
+      let controls = body.nextElementSibling;
+      if (!controls?.classList.contains('mobile-preview-controls')) {
+        controls = document.createElement('div'); controls.className = 'mobile-preview-controls';
+        const count = document.createElement('span'); count.className = 'mobile-preview-count';
+        const more = button('Xem thêm', 'mobile-preview-more');
+        const less = button('Thu gọn', 'mobile-preview-less');
+        more.addEventListener('click', () => {previewLimits.set(body, (previewLimits.get(body)||5)+5);compactOverview();});
+        less.addEventListener('click', () => {previewLimits.set(body,5);compactOverview();body.parentElement.scrollIntoView({block:'start'});});
+        controls.append(count,more,less); body.after(controls);
+      }
+      const limit = previewLimits.get(body)||5;
+      rows.forEach((row,index) => row.classList.toggle('mobile-preview-hidden', index>=limit));
+      const text = Math.min(limit,rows.length) + '/' + rows.length + ' mục trong danh sách hiện có';
+      const count = controls.querySelector('.mobile-preview-count');
+      if (count.textContent !== text) count.textContent = text;
+      controls.querySelector('.mobile-preview-more').hidden = limit>=rows.length;
+      controls.querySelector('.mobile-preview-less').hidden = limit<=5;
+      controls.hidden = rows.length<=5;
+    });
+  };
   // Reuse the same paged rows and actions; labels follow their actual column headers.
   const labelRows = () => {
+    compactOverview();
     scope.querySelectorAll(root ? '.sg-device-table' : '.case-table').forEach(table => {
       table.setAttribute('role', 'table');
       const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim().replace(/[↑↓]\s*$/, '').trim() || 'Chi tiết');

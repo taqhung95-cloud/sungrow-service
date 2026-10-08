@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tổng quan mobile gọn — 08/10/2026
+
+JS85/entry75/mobile-ui v2: sửa mobile v1 đã mở toàn bộ card-list-body thành trang quá dài. Trên Tổng quan <=760px, attention/model/error/parts hiển thị5 mục, Xem thêm tăng5 và Thu gọn về5; count chỉ số mục trong preview đang có, không giả là toàn database. Center comparison mặc định summary tồn cuối/quá hạn và mở chi tiết theo nút. Dùng cùng DOM/dữ liệu, không thêm API hoặc sửa KPI/role/cache; desktop giữ mọi hàng. Fixture250 attention kiểm chứng5→10→5 trên phone/250 trên desktop, center toggle và giới hạn chiều dài trang; chưa smoke Safari/Zalo thật. Chỉ deploy GitHub Pages.
+
 ## Favicon Sungrow — 08/10/2026
 
 Dùng nguyên ảnh PNG logo người dùng cung cấp (32x32) tại docs/favicon.png, không vẽ lại/chỉnh sửa. Bốn trang index, entry, data-entry-login và privacy dùng favicon.png?v=2 thay biểu tượng chữ S SVG đã chọn nhầm trước đó. Chỉ thay biểu tượng tab; không đổi OAuth/DNS/backend. Publish GitHub Pages; không cần cập nhật Apps Script.
