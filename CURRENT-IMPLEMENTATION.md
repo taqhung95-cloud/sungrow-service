@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Favicon Sungrow — 08/10/2026
+
+Thêm docs/favicon.svg dùng path chữ S màu cam từ logo SVG hiện có, nền trắng vuông bo góc. Gắn favicon vào index, entry, data-entry-login và privacy. Chỉ thay biểu tượng tab; không đổi OAuth/DNS/backend. Cần publish GitHub Pages để hiển thị trên tên miền.
+
 ## Giao diện mobile — 08/10/2026
 
 Frontend JS84/entry74, mobile-ui.css/js v1: responsive <=760px; menu drawer có backdrop/Escape/focus trap, bộ lọc dashboard thu gọn với tóm tắt kỳ/center, Đồng bộ vẫn trên header. KPI không chồng legend; center comparison có nhãn theo flow/stock hiện hành. Bảng thiết bị/hồ sơ dùng chính các rows/actions phân trang cũ dưới dạng thẻ (data-label theo header); form một cột và ô16px/nút44px. Không thêm API, không đổi KPI/quyền/schema/cache/backend. Desktop >760px giữ bố cục hiện hành; không tạo dữ liệu giả trên production. Test local headless Edge360/390/430/768/1440, no horizontal page overflow trên phone, menu/Escape/filter/sort proxy/forms và regression validate đạt. Kiểm thử layout fixtures không phải Safari/Zalo/live authenticated smoke. Chỉ push GitHub Pages; không cập nhật Apps Script, không migration/rebuild. File bổ sung docs/mobile-ui.css và docs/mobile-ui.js.
