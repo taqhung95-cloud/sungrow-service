@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Upload UI và nháp trống — 08/10/2026
+
+Frontend JS88/entry78/case-uploads CSS+JSv2/form-drafts JSv2: progress explicit white track/orange fill WebKit+Firefox, notes gọn sau nhãn đính kèm, bỏ notes dài dưới bar. Draft giữ storage namespace v1 để bảo toàn nháp thật, không lưu/khôi phục snapshot chưa có thay đổi (bỏ hidden-only changes); upload-only metadata do staged module quản lý, không báo nháp text trống. Nháp có nội dung, isolation theo account, conflict guard và giữ khi gửi lỗi vẫn nguyên. Index.html direct được mirror helper local cho tương thích; GHPages chỉ cần publish, không thay backend/AppScript cho hotfix. Tests form-drafts + actual entry fakeAPI + regression đạt, không upload dữ liệu production.
+
 ## Upload tạm 1.10.13 — 08/10/2026
 
 Code/Legacy local1.10.13-staged-uploads; runtime mới TemporaryUploads.gs. Folder tạm181f6qWxeV3N9Sv8ua7aqWjT-V7Ak4trY đã readback Google Drive là File upload temporary (owner Sungrow, editor quản lý), không sửa ACL. Tài khoản có createCase+center upload qua Execute as Me, không cần share folder cho staff; journal owner+center+session/upload/request IDs, max10 files×8MiB, Office/PDF/ZIP/RAR/JPG/PNG. Client tuần tự, progress theo file Drive xác nhận; backend pool4, short-lock metadata, Drive outside lock, không bump revision từngfile; case tạo bằng references/move folder, xóa journal sau canonical commit. TTL24h, triggerhourly bounded10sessions đối chiếu canonicallinks, active leases, exact parents và contents, trash không permanent delete/case evidence. Frontend JS87/entry77/case-uploads v1 có fallback ZIP/RAR cũ khi backend chưa enable, metadata localStorage không filecontents/tokens mới. Tests helper/actual frontend fakeAPI và regression đạt; chưa deploy/init/upload/cleanup production hoặc test15session live. Guide version final/DEPLOY-1.10.13.md; không migration/rebuild. Không sửa luồng gia hạn xác thực.

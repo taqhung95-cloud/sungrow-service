@@ -1,5 +1,10 @@
 .case-upload-panel{margin-top:12px;min-width:0}
-.case-upload-panel progress{width:100%;height:10px;accent-color:#ff7900;display:block;margin:8px 0 12px}
+.case-upload-panel progress{appearance:none;-webkit-appearance:none;width:100%;height:10px;display:block;margin:8px 0 12px;border:1px solid #d9dee2;border-radius:999px;overflow:hidden;background:#fff;color:#ff7900}
+.case-upload-panel progress::-webkit-progress-bar{background:#fff;border-radius:999px}
+.case-upload-panel progress::-webkit-progress-value{background:#ff7900;border-radius:999px}
+.case-upload-panel progress::-moz-progress-bar{background:#ff7900;border-radius:999px}
+.upload-label{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.upload-label .upload-label-note{font-size:12px;font-weight:400;color:#667085}
 .upload-summary{font-size:12px;color:#59636f}
 .upload-list{display:grid;gap:8px}
 .upload-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e5e7eb;border-radius:7px;padding:10px 12px;background:#fafafa}

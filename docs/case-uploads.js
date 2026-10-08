@@ -8,7 +8,7 @@ globalThis.portalUploads = (() => {
   function draw(){
     if(!panel)return;
     const ready=items.filter(x=>x.status==='READY').length;
-    panel.innerHTML=`<div class="upload-summary" role="status" aria-live="polite">${ready}/${items.length} file đã được Drive xác nhận · Tối đa 10 file, 8 MB/file</div>${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}<progress max="${items.length||1}" value="${ready}" aria-label="Số file đã upload thành công"></progress><div class="upload-list">${items.map(x=>`<div class="upload-item"><div><strong>${escape(x.name)}</strong><small>${(x.size/1024/1024).toFixed(2)} MB · ${x.status==='READY'?'Đã tải lên':x.status==='SENDING'?'Đang gửi / chờ Drive lưu':x.status==='QUEUED'?'Chờ tải':escape(x.error||'Chưa xác nhận kết quả')}</small></div><div class="upload-actions">${['ERROR','UPLOADING'].includes(x.status)?`<button type="button" class="secondary" data-upload-retry="${escape(x.id)}">${x.file?'Thử lại':'Kiểm tra'}</button>`:''}<button type="button" class="secondary" data-upload-remove="${escape(x.id)}" ${['SENDING','UPLOADING'].includes(x.status)?'disabled':''}>Bỏ</button></div></div>`).join('')}</div><p class="muted">File lưu tạm 24 giờ, chưa tạo hồ sơ. Chỉ bấm Tạo hồ sơ sau khi mọi file đã được xác nhận. Nếu không tạo, đợt dọn định kỳ sẽ đưa file tạm hết hạn vào thùng rác.</p>`;
+    panel.innerHTML=`<div class="upload-summary" role="status" aria-live="polite">${ready}/${items.length} file đã tải lên</div>${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}<progress max="${items.length||1}" value="${ready}" aria-label="Số file đã upload thành công"></progress><div class="upload-list">${items.map(x=>`<div class="upload-item"><div><strong>${escape(x.name)}</strong><small>${(x.size/1024/1024).toFixed(2)} MB · ${x.status==='READY'?'Đã tải lên':x.status==='SENDING'?'Đang gửi / chờ Drive lưu':x.status==='QUEUED'?'Chờ tải':escape(x.error||'Chưa xác nhận kết quả')}</small></div><div class="upload-actions">${['ERROR','UPLOADING'].includes(x.status)?`<button type="button" class="secondary" data-upload-retry="${escape(x.id)}">${x.file?'Thử lại':'Kiểm tra'}</button>`:''}<button type="button" class="secondary" data-upload-remove="${escape(x.id)}" ${['SENDING','UPLOADING'].includes(x.status)?'disabled':''}>Bỏ</button></div></div>`).join('')}</div>`;
   }
   function merge(result){
     const locals=new Map(items.map(x=>[x.id,x]));
@@ -66,8 +66,10 @@ globalThis.portalUploads = (() => {
     form=document.getElementById('receiveForm');if(!form)return;
     input=form.elements.evidenceFile;
     input.accept='.doc,.docx,.pdf,.xls,.xlsx,.zip,.rar,.jpg,.jpeg,.png';input.multiple=true;input.required=false;
-    const field=input.closest('.span3');field.querySelector('label').textContent='Hồ sơ đính kèm *';
-    field.querySelector('.muted').textContent='Chọn file để bắt đầu upload. DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG.';
+    const field=input.closest('.span3'),label=field.querySelector('label');label.classList.add('upload-label');
+    label.innerHTML='Hồ sơ đính kèm * <small id="uploadLabelNote" class="upload-label-note">Tự tải lên · 10 file · 8 MB/file · Lưu tạm 24 giờ</small>';
+    label.title='DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG. File tạm chưa gắn vào case sẽ được đưa vào thùng rác sau khi hết hạn, trong đợt dọn định kỳ.';
+    input.setAttribute('aria-describedby','uploadLabelNote');field.querySelector('.muted').hidden=true;
     panel=document.createElement('div');panel.className='case-upload-panel';input.after(panel);
     form.elements.intakeCenter.addEventListener('change',scope);
     input.addEventListener('change',async()=>{

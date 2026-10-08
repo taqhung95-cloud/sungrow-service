@@ -61,6 +61,9 @@ try{
     await form.locator('[name=initialIssue]').fill('Kiểm thử local, không gửi production');
     if(scenario==='staged'){
       await page.waitForFunction(()=>document.querySelector('#receiveForm [name=evidenceFile]').multiple);
+      assert.equal(await page.locator('.upload-label .upload-label-note').count(),1);
+      assert.equal(await page.locator('.case-upload-panel>p').count(),0,'Long upload notes must not be below the progress bar');
+      assert.equal(await page.locator('.case-upload-panel progress').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');
       await form.locator('[name=evidenceFile]').setInputFiles([{name:'fixture.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')},{name:'fixture.png',mimeType:'image/png',buffer:Buffer.from([137,80,78,71,13,10,26,10])}]);
       await page.waitForFunction(()=>document.querySelector('.upload-summary')?.textContent.startsWith('2/2'));
       assert.equal(created,startCreated,'Selecting files must not create a case');
