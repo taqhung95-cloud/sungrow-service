@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đăng nhập gọn và email liên hệ — 09/10/2026
+
+Frontend JS91/entry81/login-theme v2: bỏ eyebrow thương hiệu, nhãn Google gạch chân, đoạn mô tả/quyền truy cập, hero footer/slogan phụ và trạng thái idle dư; giữ h1, nút Google, loading/error auth. Header Cổng dịch vụ/Việt Nam và footer SUNGROW/Service Center dùng vạch đứng CSS mảnh thay dấu chấm. Privacy contact text+mailto là QuocHung@sungrow-apac.com; không sửa tài khoản, OAuth hay quyền. Cùng áp dụng dashboard/entry/popup, success popup hiển thị trong message. Không cần Apps Script. Regression/layout local desktop+mobile kiểm chứng.
+
 ## Thiết kế đăng nhập hai phần — 08/10/2026
 
 Frontend JS90/entry80/login-theme v1: header logo, khung ảnh solar/form Google hai cột theo mẫu; mobile<=760px một cột với hero160px. Theme scoped cho dashboard, entry standalone và popup; giữ Google slot IDs/callbacks/auth/role/origin guards, không thêm password/register/guest/server selector giả. Ảnh built-in image_gen đóng gói docs/login-solar.jpg162780bytes dùng chung hero/nền mờ, không tải ảnh ngoài. Popup success selector đổi sang sg-auth-copy để tránh sửa hero paragraph. Test actual frontend localGSIstub tại1440/1024/390/360 đạt columns/button/no-overflow/no-JS-errors; validate đạt, không kiểm thử OAuth production. Chỉ publish GitHub, không Apps Script/backend/data/KPI/Drive thay đổi. Chi tiết+prompt: version final/LOGIN-DESIGN.md.

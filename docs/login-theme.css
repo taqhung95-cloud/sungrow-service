@@ -8,7 +8,10 @@
 .sg-auth-layout .sg-auth-brand .sg-brand{padding:0!important;min-height:0!important}
 .sg-auth-layout .sg-auth-brand svg,.sg-auth-layout .sg-auth-top>svg{display:block;width:160px!important;height:auto!important}
 .sg-auth-layout .sg-auth-brand small{display:none!important}
-.sg-auth-layout .sg-auth-top-note{font-size:13px;color:#77828c;letter-spacing:.1px}
+.sg-auth-layout .sg-auth-top-note{display:inline-flex;align-items:center;gap:14px;font-size:13px;color:#77828c;letter-spacing:.1px}
+.sg-auth-layout .sg-auth-separator{display:inline-block;flex:none;width:1px;height:14px;background:#c8cdd2}
+.sg-auth-layout .sg-auth-footer-brand{display:inline-flex;align-items:center;gap:8px}
+.sg-auth-layout .sg-auth-footer-brand .sg-auth-separator{height:11px}
 .sg-auth-layout .sg-auth-card{display:grid;grid-template-columns:1fr 1fr;align-self:center;justify-self:center;width:min(100%,960px);min-height:540px;padding:0;border:1px solid #e9ecef;border-radius:20px;background:#fff;box-shadow:0 20px 70px #26334416;overflow:hidden;text-align:left}
 .sg-auth-layout .sg-auth-hero{position:relative;display:flex;flex-direction:column;justify-content:space-between;min-width:0;padding:64px 40px 32px;color:white;background:linear-gradient(180deg,#16394b59 0%,#123f5333 55%,#09243366 100%),url('./login-solar.jpg') center/cover no-repeat}
 .sg-auth-layout .sg-auth-hero h2{margin:48px 0 0;font-size:30px;line-height:1.45;font-weight:600;letter-spacing:-.5px;text-wrap:balance}
@@ -22,6 +25,7 @@
 .sg-auth-layout .sg-auth-login-slot{display:flex;justify-content:center;align-items:center;min-height:60px;padding:8px 0;border-radius:8px;background:#fafbfc;border:1px solid #eef0f2}
 .sg-auth-layout .sg-auth-message{min-height:22px;margin:14px 0 0;font-size:12px;line-height:1.65;color:#687580;overflow-wrap:anywhere}
 .sg-auth-layout .sg-auth-message.sg-auth-error{color:#b42318}
+.sg-auth-layout .sg-auth-message:empty{display:none}
 .sg-auth-layout .sg-auth-note{margin:22px 0 0;padding-top:20px;border-top:1px solid #edf0f2;font-size:12px;color:#7e8993;line-height:1.8}
 .sg-auth-layout .sg-auth-footer{justify-self:center;text-align:center;font-size:11px;line-height:1.8;color:#89929b}
 .sg-auth-layout .sg-auth-footer a{color:#65727c;text-decoration:none}.sg-auth-layout .sg-auth-footer a:hover{text-decoration:underline}

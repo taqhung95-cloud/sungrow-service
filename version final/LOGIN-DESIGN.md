@@ -1,5 +1,7 @@
 # Trang đăng nhập theo bố cục tham khảo
 
+09/10/2026: JS91/entry81/theme v2 rút gọn chữ, giữ lời chào/nút Google/loading+error; bỏ eyebrow, nhãn Google gạch chân, ghi chú quyền, slogan phụ và hero footer. Header/footer dùng vạch đứng mảnh thay dấu chấm; email privacy đổi thành QuocHung@sungrow-apac.com. Popup success dùng message, không dùng sg-auth-copy đã bỏ.
+
 Frontend JS90/entry80/login-theme v1. Chỉ GitHub Pages, không cập nhật Apps Script.
 
 - Header wordmark SUNGROW hiện hành; khung trung tâm hai cột với ảnh solar bên trái, đăng nhập Google bên phải; nền cùng ảnh làm mờ, link chính sách bảo mật thật.

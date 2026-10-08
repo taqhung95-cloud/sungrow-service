@@ -28,11 +28,13 @@ try{
    await page.goto(base+'/'+file,{waitUntil:'networkidle'});
    const layout=page.locator('.sg-auth-layout').first();await layout.waitFor({state:'visible'});
    assert.equal(await layout.locator('h1').count(),1);
+   assert.equal(await layout.locator('.sg-auth-eyebrow,.sg-auth-method,.sg-auth-copy,.sg-auth-note,.sg-auth-hero-foot').count(),0,'No duplicate branding or unnecessary login notes');
+   assert.equal(await layout.locator('.sg-auth-separator').count(),2,'Header and footer use a thin vertical divider');
    assert.equal(await layout.locator('.sg-auth-hero').count(),1);
    const card=await layout.locator('.sg-auth-card').boundingBox();
    const hero=await layout.locator('.sg-auth-hero').boundingBox();const form=await layout.locator('.sg-auth-form').boundingBox();
    assert.ok(card.x>=0&&card.x+card.width<=width+1,'Card must fit viewport '+file+width);
-   if(width<=760){assert.ok(form.y>=hero.y+hero.height-1,'Phone should stack image and form');assert.ok(form.height>=240)}
+   if(width<=760){assert.ok(form.y>=hero.y+hero.height-1,'Phone should stack image and form');assert.ok(form.height>=150)}
    else assert.ok(form.x>=hero.x+hero.width-1,'Desktop should have two columns');
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow '+file+width);
    assert.equal(await page.locator('input[type=password]').count(),0,'Keep Google login, do not invent password auth');
