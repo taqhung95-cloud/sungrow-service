@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Favicon PNG trong suốt mới — 08/10/2026
+
+Thay docs/favicon.png bằng nguyên PNG512x512 người dùng gửi (SHA256 AC1C99DE290608686473595E8C4A709D2D30CDA7015D2EBD4993FA9912721010; alpha góc0), không chỉnh sửa ảnh. index/entry/data-entry-login/privacy dùng favicon.png?v=3 để bỏ cache ảnh cũ. Chỉ biểu tượng tab trình duyệt, không đổi wordmark SUNGROW trong sidebar, backend, API hay dữ liệu; không cần deploy Apps Script.
+
 ## Nhóm đính kèm và trạng thái mutation — 08/10/2026
 
 Code/Legacy local 1.10.14-upload-categories + TemporaryUploads.gs: incident max1, sitePhotos/deviceLog/waveform dùng chung tổng10×8MiB; overall >=1, không bắt buộc từng nhóm. Bootstrap uploadCategories gate giữ fallback backend cũ. Recategorization READY metadata-only, owner/center/capability/state guard; tên file khi finalize có tiền tố nhóm trong cùng folder case, không schema/ACL/subfolder thay đổi, legacy files vẫn tương thích. Frontend JS89/entry79/case-uploads v3; mutation API hiện thông báo spinner, chặn gửi mutation thứ hai nhưng không khóa đọc; finally dọn trạng thái cả thành công/lỗi/timeout. Regression/helper/actual-entry fakeAPI đạt, chưa tác động production dữ liệu hay test15session live. Triển khai theo version final/DEPLOY-1.10.14.md: thay Code, Legacy, TemporaryUploads, Save/New version cùng URL, không migration/rebuild/init lại nếu đã bật upload tạm.
