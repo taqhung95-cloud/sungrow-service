@@ -26,6 +26,12 @@ try{
   await page.addInitScript(()=>{window.google={accounts:{id:{initialize(){},renderButton(slot){const button=document.createElement('button');button.textContent='Đăng nhập bằng Google';button.style.cssText='width:300px;max-width:100%;height:44px;border:1px solid #dadce0;border-radius:4px;background:white;color:#333;font:14px Arial';slot.append(button)},disableAutoSelect(){}}}}});
   for(const file of ['index.html','entry.html','data-entry-login.html']){
    await page.goto(base+'/'+file,{waitUntil:'networkidle'});
+   if(file!=='index.html'){
+    await page.locator(file==='entry.html'?'#loginView':'.card').waitFor({state:'visible'});
+    assert.equal(await page.locator('.sg-auth-layout,.sg-auth-hero').count(),0,'Secondary login must keep classic UI');
+    assert.equal(await page.locator('link[href^="login-theme.css"]').count(),0,'Main login theme must not leak into portal');
+    continue;
+   }
    const layout=page.locator('.sg-auth-layout').first();await layout.waitFor({state:'visible'});
    assert.equal(await layout.locator('h1').count(),1);
    assert.equal(await layout.locator('.sg-auth-eyebrow,.sg-auth-method,.sg-auth-copy,.sg-auth-note,.sg-auth-hero-foot').count(),0,'No duplicate branding or unnecessary login notes');
@@ -34,6 +40,7 @@ try{
    const card=await layout.locator('.sg-auth-card').boundingBox();
    const hero=await layout.locator('.sg-auth-hero').boundingBox();const form=await layout.locator('.sg-auth-form').boundingBox();
    assert.ok(card.x>=0&&card.x+card.width<=width+1,'Card must fit viewport '+file+width);
+   if(width>760){assert.ok(card.width<=861,'Compact card width');if(file!=='data-entry-login.html')assert.ok(card.height<=440,'Do not retain oversized empty login card');}
    if(width<=760){assert.ok(form.y>=hero.y+hero.height-1,'Phone should stack image and form');assert.ok(form.height>=150)}
    else assert.ok(form.x>=hero.x+hero.width-1,'Desktop should have two columns');
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow '+file+width);
@@ -44,5 +51,5 @@ try{
   }
   assert.deepEqual(errors,[],'No JavaScript errors');await context.close();
  }
- console.log('Login layout passed: all three login surfaces, 1440/1024/390/360px, Google button, unchanged auth mode, no horizontal overflow or JS errors. Local fixtures only.');
+ console.log('Login layout passed: compact main login at 1440/1024/390/360px; classic entry and popup retained; Google button, unchanged auth mode, no horizontal overflow or JS errors. Local fixtures only.');
 }finally{await browser?.close();await new Promise(r=>server.close(r))}

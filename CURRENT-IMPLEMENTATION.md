@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Cân bố cục login tổng, giữ login phụ cũ — 09/10/2026
+
+JS92/entry82/login-theme v3: chỉ login dashboard tổng dùng khung860×420, tỷ lệ1.08:1, h1/Google căn trái, bỏ viền bọc nút dư, điểm nhấn icon PNG gốc nhúngSVG44px và nền ấm nhẹ; không thêm lại ghi chú đã bỏ. Entry login và data-entry-login popup trở về visual classic trước91ae00a, không nạp login-theme/hero/header/footer mới; giữ session/auto-restore/callback/origin và các nghiệp vụ hiện hành. Theme chỉ index, không đổi backend/API/data. Tests main geometry/mobile và classic secondary không leak theme; regression đạt. Chỉ publish GitHub, không Apps Script.
+
 ## Đăng nhập gọn và email liên hệ — 09/10/2026
 
 Frontend JS91/entry81/login-theme v2: bỏ eyebrow thương hiệu, nhãn Google gạch chân, đoạn mô tả/quyền truy cập, hero footer/slogan phụ và trạng thái idle dư; giữ h1, nút Google, loading/error auth. Header Cổng dịch vụ/Việt Nam và footer SUNGROW/Service Center dùng vạch đứng CSS mảnh thay dấu chấm. Privacy contact text+mailto là QuocHung@sungrow-apac.com; không sửa tài khoản, OAuth hay quyền. Cùng áp dụng dashboard/entry/popup, success popup hiển thị trong message. Không cần Apps Script. Regression/layout local desktop+mobile kiểm chứng.
