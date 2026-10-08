@@ -196,7 +196,7 @@
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
-        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.customerPicker?.sync();
+        state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.customerPicker?.sync();
         applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
         const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
@@ -332,14 +332,20 @@
         },450);
       });
       receiveForm.addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{
+        let payload;
+        if(state.temporaryUploads){
+          if(!globalThis.portalUploads)throw new Error('Không tải được giao diện upload. Vui lòng giữ bản nháp và thử tải lại.');
+          payload=formData(e.target);delete payload.evidenceFile;Object.assign(payload,portalUploads.prepare());
+        }else{
         const file=e.target.elements.evidenceFile.files[0];
         if(!file||!(/\.(zip|rar)$/i.test(file.name)))throw new Error('Vui lòng chọn file .zip hoặc .rar.');
         if(file.size>8*1024*1024)throw new Error('File vượt quá 8 MB.');
         const attachment={name:file.name,base64:await fileToBase64(file)};
-        const payload=formData(e.target);delete payload.evidenceFile;payload.attachment=attachment;
+        payload=formData(e.target);delete payload.evidenceFile;payload.attachment=attachment;
+        }
         const fingerprint=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload))))).map(n=>n.toString(16).padStart(2,'0')).join('');
         const requestKey='pendingCaseRequestId:'+fingerprint;
-        let requestId=sessionStorage.getItem(requestKey);
+        let requestId=payload.uploadSessionId?portalUploads.requestId():sessionStorage.getItem(requestKey);
         if(!requestId){requestId=crypto.randomUUID();sessionStorage.setItem(requestKey,requestId)}
         payload.requestId=requestId;
         // Verify backend support before any upload, including after a lost response.
@@ -361,6 +367,7 @@
         if(result.cancelled)throw new Error('Yêu cầu này thuộc hồ sơ đã hủy. Vui lòng kiểm tra danh sách trước khi tạo lại.');
         sessionStorage.removeItem(requestKey);
         showMessage(`Đã tạo hồ sơ ${result.caseId} và công việc ${result.workOrderId}.`);e.target.reset();e.target.elements.deviceType.dispatchEvent(new Event('change'));$('[name=receivedAt]').value=today();$('[name=quantity]').value=1;fillCenters();showView('cases')
+        if(state.temporaryUploads)portalUploads.reset();
       }catch(err){showMessage(err.message,true)}finally{busy(btn,false)}});
       $('#caseRefresh').addEventListener('click',()=>loadCases(true));
       $('#caseQuery').addEventListener('keydown',e=>{if(e.key==='Enter')loadCases(true)});
@@ -566,19 +573,20 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0,signal){
-      const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers'].includes(name);
+      const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession'].includes(name);
+      const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile'].includes(name);
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
         const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
         const controller=new AbortController();
         let timeout,abort;
-        const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},name==='createCase'?90000:name==='listCases'?30000:45000)});
+        const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},name==='uploadCaseFile'?120000:name==='createCase'?90000:name==='listCases'?30000:45000)});
         let result;
         try{result=await Promise.race([(async()=>{const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
         finally{clearTimeout(timeout);signal?.removeEventListener('abort',abort)}
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
-        if(!readOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new Event('portal-data-changed'));}
+        if(!readOnly&&!uploadOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new Event('portal-data-changed'));}
         return result.data;
       }catch(error){
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
@@ -743,5 +751,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="mobile-ui.css?v=3"><script src="form-drafts.js?v=1"></script><script src="mobile-ui.js?v=2"></script></body>
+<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=1"><script src="form-drafts.js?v=1"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=1"></script></body>
 </html>

@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Upload tạm 1.10.13 — 08/10/2026
+
+Code/Legacy local1.10.13-staged-uploads; runtime mới TemporaryUploads.gs. Folder tạm181f6qWxeV3N9Sv8ua7aqWjT-V7Ak4trY đã readback Google Drive là File upload temporary (owner Sungrow, editor quản lý), không sửa ACL. Tài khoản có createCase+center upload qua Execute as Me, không cần share folder cho staff; journal owner+center+session/upload/request IDs, max10 files×8MiB, Office/PDF/ZIP/RAR/JPG/PNG. Client tuần tự, progress theo file Drive xác nhận; backend pool4, short-lock metadata, Drive outside lock, không bump revision từngfile; case tạo bằng references/move folder, xóa journal sau canonical commit. TTL24h, triggerhourly bounded10sessions đối chiếu canonicallinks, active leases, exact parents và contents, trash không permanent delete/case evidence. Frontend JS87/entry77/case-uploads v1 có fallback ZIP/RAR cũ khi backend chưa enable, metadata localStorage không filecontents/tokens mới. Tests helper/actual frontend fakeAPI và regression đạt; chưa deploy/init/upload/cleanup production hoặc test15session live. Guide version final/DEPLOY-1.10.13.md; không migration/rebuild. Không sửa luồng gia hạn xác thực.
+
 ## Chữ và header thẻ mobile — 08/10/2026
 
 JS86/entry76/mobile CSSv3 (mobile JSv2): title17px, body14px, helper12px, input/select16px. Ba thẻ model/errors/parts dùng header riêng một cột, bỏ eyebrow trùng, bộ lọc model fullwidth dưới title, link chi tiết hàng riêng; donut trên legend. Header và rows model/error/parts dùng cùng grid và căn số phải, tên được wrap không cắt mất. Mobile <=760px; không thay desktop/API/KPI/schema. Kiểm thử headless fixtures có rows thật cấu trúc tại360/390/430px, font/column alignment và regressions; không phải Safari live. Chỉ GitHub Pages, không cần Apps Script.
