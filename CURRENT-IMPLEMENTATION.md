@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Favicon khung sát logo — 08/10/2026
+
+docs/favicon-tight.svg nhúng nguyên PNG người dùng (không đổi bytes) và viewBox109 108 296 296 bao quanh alpha bounds115 123..398 388; logo chiếm96% chiều ngang thay55% khung cũ. Bốn trang dùng SVG favicon v1 ưu tiên, giữ PNG v3 fallback. Chỉ thay viewport favicon, không vẽ lại logo, không API/backend/data thay đổi. Test favicon-tight kiểm tra bytes PNG nguyên vẹn, SVG self-contained và render favicon16px trong Edge với nền trong suốt; validate đạt. Không cần Apps Script.
+
 ## Favicon PNG trong suốt mới — 08/10/2026
 
 Thay docs/favicon.png bằng nguyên PNG512x512 người dùng gửi (SHA256 AC1C99DE290608686473595E8C4A709D2D30CDA7015D2EBD4993FA9912721010; alpha góc0), không chỉnh sửa ảnh. index/entry/data-entry-login/privacy dùng favicon.png?v=3 để bỏ cache ảnh cũ. Chỉ biểu tượng tab trình duyệt, không đổi wordmark SUNGROW trong sidebar, backend, API hay dữ liệu; không cần deploy Apps Script.
