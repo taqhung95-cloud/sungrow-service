@@ -1,5 +1,7 @@
 # Trang đăng nhập theo bố cục tham khảo
 
+09/10/2026 — JS93/theme v4: slogan English “Powering a sustainable future.” center-top trên ảnh; logo trái và welcome Vietnamese phải trên một hàng (không br/wrap). Entry82 và popup classic không thay đổi.
+
 09/10/2026 — bản JS92/entry82/theme v3: chỉ trang login tổng dùng thiết kế mới; khung860×420 với icon cam, căn trái và bỏ viền bọc nút thừa. Entry và popup giữ giao diện classic trước91ae00a, không dùng ảnh/theme mới. Các mô tả áp dụng cả3 login bên dưới là lịch sử của v1, không còn là phạm vi v3.
 
 09/10/2026: JS91/entry81/theme v2 rút gọn chữ, giữ lời chào/nút Google/loading+error; bỏ eyebrow, nhãn Google gạch chân, ghi chú quyền, slogan phụ và hero footer. Header/footer dùng vạch đứng mảnh thay dấu chấm; email privacy đổi thành QuocHung@sungrow-apac.com. Popup success dùng message, không dùng sg-auth-copy đã bỏ.

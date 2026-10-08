@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Slogan English và welcome một hàng — 09/10/2026
+
+JS93/entry82/login-theme v4, chỉ login tổng: slogan Powering a sustainable future. center-top trên ảnh; header form là img logo gốc bên trái+h1 Chào mừng đến với Service Center bên phải, bỏ br, nowrap, cùng hàng/cùng tâm. Grid .9:1.1 và font20 desktop/mobile clamp12–14 để vừa; vẫn khung860×420. Không sửa entry/popup/auth/backend/dữ liệu. Test geometry logo/welcome/no-overflow/hero center và classic secondary; validate đạt. Chỉ GitHub.
+
 ## Cân bố cục login tổng, giữ login phụ cũ — 09/10/2026
 
 JS92/entry82/login-theme v3: chỉ login dashboard tổng dùng khung860×420, tỷ lệ1.08:1, h1/Google căn trái, bỏ viền bọc nút dư, điểm nhấn icon PNG gốc nhúngSVG44px và nền ấm nhẹ; không thêm lại ghi chú đã bỏ. Entry login và data-entry-login popup trở về visual classic trước91ae00a, không nạp login-theme/hero/header/footer mới; giữ session/auto-restore/callback/origin và các nghiệp vụ hiện hành. Theme chỉ index, không đổi backend/API/data. Tests main geometry/mobile và classic secondary không leak theme; regression đạt. Chỉ publish GitHub, không Apps Script.

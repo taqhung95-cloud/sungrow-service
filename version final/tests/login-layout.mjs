@@ -34,6 +34,13 @@ try{
    }
    const layout=page.locator('.sg-auth-layout').first();await layout.waitFor({state:'visible'});
    assert.equal(await layout.locator('h1').count(),1);
+   assert.equal(await layout.locator('h1 br').count(),0,'Welcome must not contain line breaks');
+   assert.equal(await layout.locator('.sg-auth-hero h2').textContent(),'Powering a sustainable future.');
+   assert.equal(await layout.locator('.sg-auth-hero h2').evaluate(el=>getComputedStyle(el).textAlign),'center');
+   assert.ok(await layout.locator('.sg-auth-heading').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Logo and one-line welcome must fit');
+   const welcome=await layout.locator('h1').boundingBox(),mark=await layout.locator('.sg-auth-heading img').boundingBox();
+   assert.ok(mark.x+mark.width<=welcome.x,'Logo left, welcome right');
+   assert.ok(Math.abs((mark.y+mark.height/2)-(welcome.y+welcome.height/2))<2,'Logo and welcome align on same row');
    assert.equal(await layout.locator('.sg-auth-eyebrow,.sg-auth-method,.sg-auth-copy,.sg-auth-note,.sg-auth-hero-foot').count(),0,'No duplicate branding or unnecessary login notes');
    assert.equal(await layout.locator('.sg-auth-separator').count(),2,'Header and footer use a thin vertical divider');
    assert.equal(await layout.locator('.sg-auth-hero').count(),1);
