@@ -1066,7 +1066,7 @@
   q('#sg-model-type').addEventListener('change',() => {if(live)setTimeout(renderModels,0);});
   q('#sg-search').addEventListener('input',() => {if(live)scheduleTicketSearch();});
   q('#sg-status').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
-  q('#sg-status').insertAdjacentHTML('afterend','<button id="sg-ticket-date-sort" type="button" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều." style="border:1px solid #d5dbe3;border-radius:8px;padding:10px 12px;background:white;color:#526173;font:inherit;white-space:nowrap">Ngày nhận ↓</button>');
+  q('#sg-status').insertAdjacentHTML('afterend','<button id="sg-ticket-date-sort" class="sg-control sg-date-sort" type="button" title="Theo ngày nhận: Mới nhất → Cũ nhất. Bấm để đổi chiều.">Ngày nhận ↓</button>');
   q('#sg-ticket-date-sort').addEventListener('click',function(){ticketSortOrder=ticketSortOrder==='oldest'?'newest':'oldest';this.textContent='Ngày nhận '+(ticketSortOrder==='oldest'?'↑':'↓');this.title='Theo ngày nhận: '+(ticketSortOrder==='oldest'?'Cũ nhất → Mới nhất':'Mới nhất → Cũ nhất')+'. Bấm để đổi chiều.';if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
   q('#sg-ticket-page-size').addEventListener('change',() => {if(live){q('#sg-detail').classList.add('sg-hidden');loadTicketPage(true);}});
   root.addEventListener('click',e => {

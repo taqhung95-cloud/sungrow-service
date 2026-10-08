@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng bộ kiểu nút sắp xếp — 08/10/2026
+
+Frontend JS83/CSS33: nút Ngày nhận trên danh sách thiết bị dùng chung class sg-control với tìm kiếm/trạng thái, bỏ inline font/viền/padding riêng; giữ toggle cũ/mới, phân trang và API hiện hành. Chỉ GitHub Pages, không cần deploy Apps Script. Giao diện mobile tổng thể chưa thay đổi.
+
 ## Tối ưu đường đọc web — 08/10/2026
 
 Frontend JS82/entry73: deadline bao gồm response.json và không retry các request đã timeout, vẫn hủy phản hồi đọc cũ. Backend local cần Code/Legacy cùng1.10.12-web-read-performance, ManagerDashboard và PortalReadDiagnostics: formatter ngày VN và thống kê hashSN tính JS (giữ output SHA256), workbook handle request-scope, cache response lớn dùng gzip, Manager đọc sharedtables strict revision. Không đổi KPI/schema/role/nguồn; diagnoseWebReadPaths đo build/cache/device/manager trước deploy. Regression local đạt, chưa đo1.10.12 production; hướng dẫn local version final/DEPLOY-1.10.12.md. Commit frontend không deploy backend tự động.

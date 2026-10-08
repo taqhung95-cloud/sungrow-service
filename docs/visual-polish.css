@@ -1299,6 +1299,9 @@
 @keyframes sg-ticket-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){#sg-preview .sg-ticket-spinner{animation-duration:1.8s}}
 
+/* Date sorting uses the same control styling as adjacent search/status filters. */
+#sg-preview #sg-tickets .sg-date-sort{flex:0 0 auto;white-space:nowrap;cursor:pointer;text-align:center}
+
 /* Compact KPI captions; detailed metric definitions remain in tooltips. */
 #sg-preview #sg-overview .sg-kpi-head{min-width:0}
 #sg-preview #sg-overview .sg-kpi-head .sg-kpi-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
