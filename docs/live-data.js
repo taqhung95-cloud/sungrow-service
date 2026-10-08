@@ -194,33 +194,31 @@
   async function fetchDashboard(payload, signal, attempts = 3) {
     let lastError = null;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const requestController = new AbortController();
+      let timeout, forwardAbort;
+      const stopped = new Promise((_, reject) => {
+        forwardAbort = () => { requestController.abort(); const error = new Error('Đã hủy yêu cầu đọc cũ.'); error.name = 'AbortError'; reject(error); };
+        if (signal?.aborted) forwardAbort(); else signal?.addEventListener('abort', forwardAbort, {once:true});
+        timeout = setTimeout(() => { requestController.abort(); const error = new Error('Hết thời gian kết nối dữ liệu. Bấm Đồng bộ để thử lại.'); error.code = 'READ_TIMEOUT'; reject(error); }, 45000);
+      });
       try {
-        const body = new URLSearchParams({payload: JSON.stringify(payload)});
-        const requestController = new AbortController();
-        const timeout = setTimeout(() => requestController.abort(), 45000);
-        if (signal?.aborted) requestController.abort();
-        const forwardAbort = () => requestController.abort();
-        signal?.addEventListener('abort', forwardAbort, {once:true});
-        let response;
-        try {
-          response = await fetch(cfg.appsScriptUrl, {method:'POST', body, redirect:'follow', signal:requestController.signal, cache:'no-store'});
-        } finally {
-          clearTimeout(timeout);
-          signal?.removeEventListener('abort', forwardAbort);
-        }
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const result = await response.json();
-        if (!result.ok) {
-          const error = new Error([result.error?.code, result.error?.message].filter(Boolean).join(': ') || 'API error');
-          error.code = result.error?.code || '';
-          throw error;
-        }
-        return result.data;
+        const result = await Promise.race([(async () => {
+          const body = new URLSearchParams({payload:JSON.stringify(payload)});
+          const response = await fetch(cfg.appsScriptUrl, {method:'POST',body,redirect:'follow',signal:requestController.signal,cache:'no-store'});
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          const result = await response.json();
+          if (!result.ok) { const error = new Error([result.error?.code,result.error?.message].filter(Boolean).join(': ') || 'API error'); error.code = result.error?.code || ''; throw error; }
+          return result.data;
+        })(), stopped]);
+        return result;
       } catch (error) {
-        if (signal.aborted) throw error;
+        if (signal?.aborted) throw error;
         lastError = error;
-        if (/AUTH|TOKEN|FORBIDDEN|INVALID|ACTION_NOT_ALLOWED|UNAUTHORIZED/.test(String(error.code || ''))) throw error;
+        if (/AUTH|TOKEN|FORBIDDEN|INVALID|ACTION_NOT_ALLOWED|UNAUTHORIZED|READ_TIMEOUT/.test(String(error.code || ''))) throw error;
         if (attempt < attempts - 1) await delay([700,1800,3500][attempt] || 3500);
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort',forwardAbort);
       }
     }
     throw lastError || new Error('Không nhận được phản hồi từ Apps Script');

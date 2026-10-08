@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tối ưu đường đọc web — 08/10/2026
+
+Frontend JS82/entry73: deadline bao gồm response.json và không retry các request đã timeout, vẫn hủy phản hồi đọc cũ. Backend local cần Code/Legacy cùng1.10.12-web-read-performance, ManagerDashboard và PortalReadDiagnostics: formatter ngày VN và thống kê hashSN tính JS (giữ output SHA256), workbook handle request-scope, cache response lớn dùng gzip, Manager đọc sharedtables strict revision. Không đổi KPI/schema/role/nguồn; diagnoseWebReadPaths đo build/cache/device/manager trước deploy. Regression local đạt, chưa đo1.10.12 production; hướng dẫn local version final/DEPLOY-1.10.12.md. Commit frontend không deploy backend tự động.
+
 ## Hotfix khởi tạo iframe — 08/10/2026
 
 Frontend JS81/entry73: relay Đồng bộ được khởi tạo sau const$/state/helpers; sửa ReferenceError do gọi$trước khởi tạo khiến iframe đứng ở đăng nhập. Test entry-startup.mjs chạy toàn script ứng dụng trong DOM mock embedded/standalone, kiểm tra bước khôi phục phiên và tái hiện lỗi cũ. Không thay backend/schema/dữ liệu, không cần deploy Apps Script cho hotfix. Chưa smoke test browser live.
