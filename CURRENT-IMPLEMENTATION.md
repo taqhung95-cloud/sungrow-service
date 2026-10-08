@@ -2,7 +2,7 @@
 
 ## Favicon Sungrow — 08/10/2026
 
-Thêm docs/favicon.svg dùng path chữ S màu cam từ logo SVG hiện có, nền trắng vuông bo góc. Gắn favicon vào index, entry, data-entry-login và privacy. Chỉ thay biểu tượng tab; không đổi OAuth/DNS/backend. Cần publish GitHub Pages để hiển thị trên tên miền.
+Dùng nguyên ảnh PNG logo người dùng cung cấp (32x32) tại docs/favicon.png, không vẽ lại/chỉnh sửa. Bốn trang index, entry, data-entry-login và privacy dùng favicon.png?v=2 thay biểu tượng chữ S SVG đã chọn nhầm trước đó. Chỉ thay biểu tượng tab; không đổi OAuth/DNS/backend. Publish GitHub Pages; không cần cập nhật Apps Script.
 
 ## Giao diện mobile — 08/10/2026
 
