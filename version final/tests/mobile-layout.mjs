@@ -47,6 +47,9 @@ try {
     document.getElementById('sg-kpis').innerHTML=`<div class="sg-kpi sg-kpi-received"><div class="sg-kpi-head"><div class="sg-kpi-label">Tiếp nhận trong kỳ</div><div class="sg-received-annual"><svg viewBox="0 0 200 80"><polyline points="0,70 100,35 200,5" fill="none" stroke="#ff7900"/></svg><div class="sg-received-legend">${['Tích lũy','2024','2025','2026'].map(x=>`<span><i>●</i><em>${x}</em><b>1.234</b></span>`).join('')}</div></div></div><div class="sg-kpi-value">15 <small>thiết bị</small></div><div class="sg-kpi-note">Tháng trước: 22 ↓ 7</div></div>${['Hoàn tất kỹ thuật','Chờ giao','Đã giao trong kỳ','Đạt SLA 7 ngày'].map(x=>`<div class="sg-kpi"><div class="sg-kpi-head"><div class="sg-kpi-label">${x}</div></div><div class="sg-kpi-value">98</div><div class="sg-kpi-note">Theo kỳ đang chọn</div></div>`).join('')}`;
     document.getElementById('sg-month-center-table').innerHTML='<div class="sg-compare-list-head">Center Tiếp nhận Đã giao Tồn</div><div class="sg-compare-list-body">'+['Sungrow','DAT','BKE'].map(x=>`<div class="sg-compare-list-row"><span><strong>${x}</strong><small>223 tồn từ kỳ trước</small></span>${['10','0','233','217','10 ngày'].map(v=>`<span><strong>${v}</strong><small>Đầu kỳ: 223</small></span>`).join('')}<span><span class="sg-trend-badge">Cần hành động</span></span></div>`).join('')+'</div>';
     document.getElementById('sg-tickets-table').innerHTML=tickets;
+    document.getElementById('sg-model-bars').innerHTML='<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient(#ff7900 0 70%,#3f5f73 70% 100%)"><div><strong>10</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body"><div class="sg-donut-item"><i class="sg-dot"></i><span>SG110CX-P2-CN</span><strong>7</strong><small>70%</small></div></div></div></div>';
+    document.getElementById('sg-errors').innerHTML='<div class="sg-mini-table-head sg-error-list-head"><span>Lỗi xác nhận</span><span>Mức độ</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-error-list-body"><div class="sg-error-line"><span class="sg-error-name">Quá nhiệt module công suất</span><div class="sg-track"><i style="width:70%"></i></div><b class="sg-error-count">7</b><small class="sg-error-share">70%</small></div></div>';
+    document.getElementById('sg-overview-part-table').innerHTML='<div class="sg-mini-table-head sg-part-list-head"><span>Part number</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-part-list-body"><div class="sg-part-list-row"><span class="sg-sn">BP004914-IGBT</span><span>7</span><span>70%</span></div></div>';
     document.getElementById('sg-live-title')?.remove();
   },tickets);
   await page.evaluate(() => {
@@ -63,6 +66,19 @@ try {
       cards:getComputedStyle(document.querySelector('.sg-device-table')).display}));
     if(width<=760){assert.ok(state.scroll<=width+1,`Dashboard overflow at ${width}: ${state.scroll}`);assert.equal(state.cards,'block');}
     else assert.notEqual(state.cards,'block','Desktop table must remain a table');
+    if(width<=760){
+      for(const cls of ['sg-command-model','sg-command-errors','sg-command-parts']){
+        assert.equal(await page.locator('.'+cls+' h2').evaluate(el=>getComputedStyle(el).fontSize),'17px');
+      }
+      assert.equal(await page.locator('#sg-model-type').evaluate(el=>getComputedStyle(el).fontSize),'16px');
+      const filterWidths=await page.locator('#sg-model-type').evaluate(el=>[el,el.parentElement,el.parentElement.parentElement,el.closest('.sg-panel-head')].map(x=>({width:x.getBoundingClientRect().width,maxWidth:getComputedStyle(x).maxWidth,display:getComputedStyle(x).display,columns:getComputedStyle(x).gridTemplateColumns})));
+      assert.ok(Math.abs(filterWidths[0].width-filterWidths[3].width)<2,'Model filter should fill mobile card header: '+JSON.stringify(filterWidths));
+      assert.equal(await page.locator('.sg-model-donut').evaluate(el=>Math.round(el.getBoundingClientRect().height)),156);
+      assert.ok(await page.evaluate(()=>Math.abs(document.querySelector('.sg-model-list-head>span:nth-child(2)').getBoundingClientRect().right-document.querySelector('.sg-donut-item strong').getBoundingClientRect().right)<1),'Model quantity heading must occupy the numeric column');
+      for(const [head,row] of [['.sg-model-list-head','.sg-donut-item'],['.sg-error-list-head','.sg-error-line'],['.sg-part-list-head','.sg-part-list-row']]){
+        assert.equal(await page.locator(head).evaluate(el=>getComputedStyle(el).gridTemplateColumns),await page.locator(row).first().evaluate(el=>getComputedStyle(el).gridTemplateColumns),'Mobile column headers must align with rows');
+      }
+    }
   }
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>{
@@ -99,6 +115,7 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Open mobile filters must fit phone');
   await page.locator('.mobile-filter-toggle').click();
   await page.screenshot({path:path.join(out,'dashboard-390.png'),fullPage:true});
+  for(const cls of ['sg-command-model','sg-command-errors','sg-command-parts'])await page.locator('.'+cls).screenshot({path:path.join(out,cls+'-390.png')});
   await page.evaluate(()=>{document.querySelector('#sg-overview').classList.add('sg-hidden');document.querySelector('#sg-tickets').classList.remove('sg-hidden')});
   assert.equal(await page.locator('.sg-device-table tbody tr').count(),3);
   assert.equal(await page.locator('.sg-device-table tbody td[data-label="Thiết bị / S/N"]').count(),3);

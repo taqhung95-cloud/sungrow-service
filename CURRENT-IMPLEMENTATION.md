@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chữ và header thẻ mobile — 08/10/2026
+
+JS86/entry76/mobile CSSv3 (mobile JSv2): title17px, body14px, helper12px, input/select16px. Ba thẻ model/errors/parts dùng header riêng một cột, bỏ eyebrow trùng, bộ lọc model fullwidth dưới title, link chi tiết hàng riêng; donut trên legend. Header và rows model/error/parts dùng cùng grid và căn số phải, tên được wrap không cắt mất. Mobile <=760px; không thay desktop/API/KPI/schema. Kiểm thử headless fixtures có rows thật cấu trúc tại360/390/430px, font/column alignment và regressions; không phải Safari live. Chỉ GitHub Pages, không cần Apps Script.
+
 ## Tổng quan mobile gọn — 08/10/2026
 
 JS85/entry75/mobile-ui v2: sửa mobile v1 đã mở toàn bộ card-list-body thành trang quá dài. Trên Tổng quan <=760px, attention/model/error/parts hiển thị5 mục, Xem thêm tăng5 và Thu gọn về5; count chỉ số mục trong preview đang có, không giả là toàn database. Center comparison mặc định summary tồn cuối/quá hạn và mở chi tiết theo nút. Dùng cùng DOM/dữ liệu, không thêm API hoặc sửa KPI/role/cache; desktop giữ mọi hàng. Fixture250 attention kiểm chứng5→10→5 trên phone/250 trên desktop, center toggle và giới hạn chiều dài trang; chưa smoke Safari/Zalo thật. Chỉ deploy GitHub Pages.
