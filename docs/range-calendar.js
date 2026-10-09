@@ -15,7 +15,7 @@
         return '<section class="sg-calendar-month"><header>'+(!offset?navigation:'')+'<strong>Tháng '+pad(first.getUTCMonth()+1)+' / '+first.getUTCFullYear()+'</strong>'+(offset?navigation:'')+'</header><div class="sg-calendar-weekdays">'+['CN','T2','T3','T4','T5','T6','T7'].map(x=>'<span>'+x+'</span>').join('')+'</div><div class="sg-calendar-days">'+days+'</div></section>';
       }).join('');
     }
-    function place(){if(!dialog.open||!anchor)return;const r=anchor.getBoundingClientRect(),width=Math.min(790,innerWidth-24);dialog.style.width=width+'px';dialog.style.left=Math.max(12,Math.min(r.left+r.width/2-width/2,innerWidth-width-12))+'px';dialog.style.top=Math.max(8,Math.min(r.bottom+8,innerHeight-dialog.offsetHeight-12))+'px';}
+    function place(){if(!dialog.open||!anchor)return;const r=anchor.getBoundingClientRect(),width=Math.min(650,innerWidth-24);dialog.style.width=width+'px';dialog.style.left=Math.max(12,Math.min(r.left+r.width/2-width/2,innerWidth-width-12))+'px';dialog.style.top=Math.max(8,Math.min(r.bottom+8,innerHeight-dialog.offsetHeight-12))+'px';}
     dialog.addEventListener('click',e=>{const nav=e.target.closest('[data-nav]'),quick=e.target.closest('[data-last]'),button=e.target.closest('[data-day]');
       if(nav){month.setUTCMonth(month.getUTCMonth()+Number(nav.dataset.nav));draw();}
       if(quick){const d=parse(today);d.setUTCDate(d.getUTCDate()-Number(quick.dataset.last)+1);from.value=iso(d)<'2024-01-01'?'2024-01-01':iso(d);to.value=today;month=parse(today);month.setUTCDate(1);choosing='start';draw();}

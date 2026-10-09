@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thẻ SLA và lịch gọn hơn — 09/10/2026
+
+Frontend JS96/dashboard-period CSSv3/range-calendar JSv2: ô center desktop170px giữ đủ Tất cả trung tâm; KPI chia1.45/.9/.9/.9/1.45, mở rộng SLA, số đạt/TB ngang phần trăm bằng wrapper flex, giữ font hiện hành, giảm hàng xuống khoảng128px. Lịch rộng650px, ô ngày28px, nút Hủy/Áp dụng12px/32px, giảm khoảng cách. Header một hàng giữ nguyên; màn hình hẹp bỏ ghi chú thừa để tránh tràn. Actual frontend fixture1920/1440/1280/1024 kiểm tra textfit, percent/note alignment, KPIheight, width, calendar/cancel/API và regression đạt. Chỉ GitHub frontend; không đổi backend/KPI/dữ liệu, không cần cập nhật Apps Script thêm.
+
+
 ## Lịch chọn khoảng ngày hai tháng — 09/10/2026
 
 Frontend dashboard-period v2 + range-calendar v1: ô ngày mở bảng lịch neo dưới header, hai tháng cạnh nhau, nhanh2/7/30ngày, chọn hai đầu khoảng/tô vùng và Áp dụng/Hủy. Ngày VN dd/mm/yyyy, thời gian cố định00:00–23:59; ngày tương lai/ngoài phạm vi khóa. Mobile hiển thị một tháng trong popup để vừa màn hình. Chỉ frontend, giữ gate backend1.10.15 và toàn bộ layout/KPI; không cập nhật Apps Script thêm cho riêng lịch này. Actual frontend local kiểm tra click/navigate/quick/cancel/header/table/fallback; không ghi dữ liệu nguồn.

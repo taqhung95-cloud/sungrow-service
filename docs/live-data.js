@@ -385,7 +385,7 @@
         const note = item.value === null ? 'Chưa đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đạt · TB (ngày)';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
         const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
-        return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note" title="' + esc(note) + '">' + note + '</div>' + slaPair(s,true) + '</div>';
+        return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-sla-main"><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note" title="' + esc(note) + '">' + note + '</div></div>' + slaPair(s,true) + '</div>';
       }
       const p = item.previous === undefined ? null : item.previous;
       const delta = p === null || item.value === null ? null : item.value-p;
