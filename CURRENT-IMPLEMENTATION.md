@@ -1,4 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
+
+## Lịch chọn khoảng ngày hai tháng — 09/10/2026
+
+Frontend dashboard-period v2 + range-calendar v1: ô ngày mở bảng lịch neo dưới header, hai tháng cạnh nhau, nhanh2/7/30ngày, chọn hai đầu khoảng/tô vùng và Áp dụng/Hủy. Ngày VN dd/mm/yyyy, thời gian cố định00:00–23:59; ngày tương lai/ngoài phạm vi khóa. Mobile hiển thị một tháng trong popup để vừa màn hình. Chỉ frontend, giữ gate backend1.10.15 và toàn bộ layout/KPI; không cập nhật Apps Script thêm cho riêng lịch này. Actual frontend local kiểm tra click/navigate/quick/cancel/header/table/fallback; không ghi dữ liệu nguồn.
+
 ## Khoảng ngày và SLA thực tế — 09/10/2026
 
 Frontend JS95 + dashboard-period v1 giữ header, năm KPI và bố cục panel; filter một hàng Day/Week/Month/Year/Custom, lịch native trong hộp chọn ngày, center và cùng kỳ tháng/năm. Cột SLA duy nhất có hai thời gian ngày TB; tỷ lệ đạt7ngày chỉ xét thực tế. Backend local1.10.15-dashboard-range đọc thêm bảng Tạm dừng SLA trong snapshot theo revision, gộp khoảng chồng nhau/cắt vòng đời, trung bình theo số lượng; range qua năm và tồn đầu/cuối kỳ giữ hồ sơ trước kỳ. Bootstrap dashboardRanges gate giữ Month/Year cho backend cũ. Regression và actual frontend fixture desktop1920/1440/1280/1024 đạt; ảnh analysis/dashboard-preview chỉ dữ liệu tổng hợp. Apps Script do người dùng thay Code/Legacy rồi Save/New version cùngURL theo DEPLOY-1.10.15.md; không migration/rebuild. Chưa xác minh backend production1.10.15.

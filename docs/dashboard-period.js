@@ -18,11 +18,11 @@
       ['#sg-period','#sg-period-year','#sg-period-month'].forEach(selector=>root.querySelector(selector)?.closest('label')?.classList.add('sg-range-legacy'));
       const compare=root.querySelector('#sg-compare-mode');compare.innerHTML='<option value="month">Tháng trước</option><option value="year">Năm trước</option>';compare.title='So sánh cùng khoảng ngày của tháng trước hoặc năm trước';
       root.querySelector('#sg-center option[value=all]').textContent='Tất cả center';
-      const dialog=document.createElement('dialog');dialog.className='sg-range-dialog';dialog.innerHTML='<form method="dialog"><h3>Chọn khoảng ngày</h3><div class="sg-range-fields"><label>Từ ngày<input type="date" name="start" required></label><label>Đến ngày<input type="date" name="end" required></label></div><p role="alert"></p><div class="sg-range-actions"><button type="button" data-cancel>Hủy</button><button type="submit">Áp dụng</button></div></form>';root.append(dialog);
-      const from=dialog.querySelector('[name=start]'),to=dialog.querySelector('[name=end]');from.min=to.min='2024-01-01';from.max=to.max=day(new Date());
+      const calendar=window.SungrowRangeCalendar(root,day(new Date()));
+      const {dialog,from,to}=calendar;
       const display=value=>{const [y,m,d]=value.split('-');return d+'/'+m+'/'+y;};
       function render(){toolbar.querySelector('.sg-range-button').textContent=display(start)+' 00:00 – '+display(end)+' 23:59';toolbar.querySelectorAll('[data-range-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rangeMode===mode)));}
-      function open(){from.value=start;to.value=end;dialog.querySelector('[role=alert]').textContent='';dialog.showModal();}
+      function open(){calendar.open(start,end,toolbar.querySelector('.sg-range-button'));}
       toolbar.querySelector('.sg-range-button').addEventListener('click',open);
       toolbar.querySelectorAll('[data-range-mode]').forEach(button=>button.addEventListener('click',()=>{const choice=button.dataset.rangeMode;if(choice==='custom'){open();return;}mode=choice;end=day(new Date());start=end;if(mode==='week'){const d=date(end);d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));start=iso(d);}if(mode==='month')start=end.slice(0,8)+'01';if(mode==='year')start=end.slice(0,4)+'-01-01';render();onChange();}));
       dialog.querySelector('[data-cancel]').addEventListener('click',()=>dialog.close());

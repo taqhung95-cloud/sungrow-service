@@ -1,4 +1,32 @@
 /* Keep the existing header, five KPI cards and overview panels. */
+#sg-preview .sg-range-dialog.sg-calendar-dialog{position:fixed;margin:0;max-width:none;padding:0;box-shadow:0 8px 25px rgba(20,30,40,.16);overflow:auto;max-height:calc(100vh - 24px)}
+#sg-preview .sg-range-dialog.sg-calendar-dialog::backdrop{background:transparent}
+#sg-preview .sg-calendar-layout{display:grid;grid-template-columns:145px minmax(0,1fr)}
+#sg-preview .sg-calendar-quick{padding:16px 10px;border-right:1px solid #e2e6ea;display:flex;flex-direction:column;gap:8px}
+#sg-preview .sg-calendar-quick button{background:#f4f5f6;border:0;border-radius:5px;padding:10px 7px;font:12px Arial;color:#434c55;white-space:nowrap}
+#sg-preview .sg-calendar-dialog .sg-range-fields{padding:12px 16px;border-bottom:1px solid #e2e6ea;align-items:center;gap:12px}
+#sg-preview .sg-calendar-dialog .sg-range-fields label{display:flex;align-items:center;gap:5px;font-size:0}
+#sg-preview .sg-calendar-dialog .sg-range-fields label>span{font-size:12px;color:#65717b}
+#sg-preview .sg-calendar-dialog .sg-range-fields input{border:0;padding:5px 2px;font-size:12px;background:transparent;min-width:0;color:#46525e}
+#sg-preview .sg-calendar-dialog .sg-range-fields input::-webkit-calendar-picker-indicator{display:none}
+#sg-preview .sg-calendar-dialog .sg-range-fields .is-active{box-shadow:0 2px 0 #ed7c21}
+#sg-preview .sg-calendar-months{display:grid;grid-template-columns:1fr 1fr}
+#sg-preview .sg-calendar-month{padding:12px 14px;min-width:0}
+#sg-preview .sg-calendar-month+section{border-left:1px solid #e2e6ea}
+#sg-preview .sg-calendar-month header{display:flex;align-items:center;gap:3px;height:36px;margin-bottom:8px}
+#sg-preview .sg-calendar-month header strong{flex:1;text-align:center;font-size:14px;font-weight:500;white-space:nowrap;color:#46525e}
+#sg-preview .sg-calendar-month header button{border:0;background:transparent;padding:4px 6px;color:#65717b;font-size:20px}
+#sg-preview .sg-calendar-weekdays,#sg-preview .sg-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center}
+#sg-preview .sg-calendar-weekdays{border-bottom:1px solid #edf0f2;padding-bottom:10px;font-size:12px;color:#66727d}
+#sg-preview .sg-calendar-days{row-gap:5px;padding-top:7px}
+#sg-preview .sg-calendar-days button{height:33px;padding:0;border:0;background:transparent;font:13px Arial;color:#444e57;border-radius:0}
+#sg-preview .sg-calendar-days button.in-range{background:#fff0e3}
+#sg-preview .sg-calendar-days button.selected{width:33px;justify-self:center;border-radius:50%;background:#30363b;color:#fff}
+#sg-preview .sg-calendar-days button:disabled{color:#adb5bd;background:#f5f6f7}
+#sg-preview .sg-calendar-days button.outside{background:transparent}
+#sg-preview .sg-calendar-dialog p:empty{display:none}
+#sg-preview .sg-calendar-dialog .sg-range-actions{border-top:1px solid #e2e6ea;padding:10px 14px}
+@media(max-width:600px){#sg-preview .sg-calendar-layout{grid-template-columns:1fr}#sg-preview .sg-calendar-quick{flex-direction:row;border-right:0;border-bottom:1px solid #e2e6ea;padding:10px}#sg-preview .sg-calendar-quick button{flex:1;font-size:11px}#sg-preview .sg-calendar-months{grid-template-columns:1fr}#sg-preview .sg-calendar-month+section{display:none}#sg-preview .sg-calendar-days button{height:38px}#sg-preview .sg-calendar-dialog .sg-range-fields{padding:10px 8px;gap:5px}}
 #sg-preview .sg-range-legacy{display:none!important}
 #sg-preview .sg-top .sg-filter-panel{min-width:0!important;flex:1 1 auto!important}
 #sg-preview .sg-top .sg-controls{display:flex!important;flex-wrap:nowrap!important;gap:0!important;min-width:0!important}

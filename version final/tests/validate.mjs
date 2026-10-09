@@ -7,6 +7,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const readDocs = name => fs.readFileSync(path.resolve(root, '..', 'docs', name), 'utf8');
 new vm.Script(readDocs('form-drafts.js'), {filename:'docs/form-drafts.js'});
+new vm.Script(readDocs('range-calendar.js'), {filename:'docs/range-calendar.js'});
 
 for (const file of ['Code.gs', 'ManagerDashboard.gs', 'LegacyDashboardApi.gs', 'XBSolarMigrationPlan.gs', 'XBSolarMigration.gs']) {
   new vm.Script(read(file), {filename:file});
