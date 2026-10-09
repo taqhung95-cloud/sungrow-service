@@ -15,10 +15,10 @@
 #sg-preview .sg-range-dialog.sg-calendar-dialog .sg-range-actions button{font-size:12px;line-height:16px;min-height:32px;padding:6px 12px}
 @media(min-width:761px) and (max-width:1100px){#sg-preview .sg-top .sg-demo,#sg-preview .sg-top .sg-period{display:none!important}#sg-preview .sg-top .sg-live-box{flex:0 0 auto!important;min-width:0!important;width:auto!important}#sg-preview .sg-top .sg-period-toolbar{gap:3px}#sg-preview .sg-period-toolbar .sg-control-label:has(#sg-compare-mode){flex:0 0 98px!important;min-width:98px!important}#sg-preview .sg-top .sg-period-toolbar .sg-range-button{min-width:155px;font-size:9px}#sg-preview .sg-top .sg-period-segments button{padding:0 3px;font-size:10px}}
 #sg-preview .sg-top .sg-period-toolbar .sg-control-label:has(#sg-center){flex:0 0 170px!important;min-width:170px!important}
-#sg-preview #sg-overview .sg-sla-main{display:flex;align-items:center;gap:12px;min-width:0;margin:0 0 3px}
+#sg-preview #sg-overview .sg-sla-main{display:flex;align-items:baseline;gap:12px;min-width:0;margin:0 0 3px}
 #sg-preview #sg-overview .sg-sla-main .sg-kpi-value{flex:0 0 auto;margin:0!important}
 #sg-preview #sg-overview .sg-sla-main .sg-kpi-note{margin:0!important;flex:1;min-width:0}
-@media(min-width:1101px){#sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(280px,1.45fr) repeat(3,minmax(0,.9fr)) minmax(240px,1.45fr)!important}#sg-preview #sg-overview .sg-kpi{min-height:122px!important}#sg-preview #sg-overview .sg-kpi-sla .sg-sla-card-times{margin-top:auto;margin-bottom:0}}
+@media(min-width:1101px){#sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(280px,1.55fr) repeat(3,minmax(0,.95fr)) minmax(240px,1.15fr)!important}#sg-preview #sg-overview .sg-kpi{min-height:122px!important}#sg-preview #sg-overview .sg-kpi-sla .sg-sla-card-times{margin-top:auto;margin-bottom:0}}
 @media(min-width:1101px) and (max-width:1500px){#sg-preview #sg-overview .sg-kpi:not(.sg-kpi-received):not(.sg-kpi-sla) .sg-mini-trend{width:40px!important;flex-basis:40px!important}}
 @media(max-width:1100px){#sg-preview .sg-top .sg-period-toolbar .sg-control-label:has(#sg-center){flex:0 0 145px!important;min-width:145px!important}}
 @media(max-width:760px){#sg-preview .sg-top .sg-period-toolbar .sg-control-label:has(#sg-center){flex:0 0 110px!important;min-width:110px!important}}

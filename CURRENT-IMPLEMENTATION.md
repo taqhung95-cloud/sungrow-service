@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## SLA thu hẹp và canh chân chữ — 09/10/2026
+
+Dashboard-period CSSv5 cân lại hàng KPI1.55/.95/.95/.95/1.15 để giảm độ rộng thẻ SLA; chú thích số đạt/TB dùng align-items:baseline với phần trăm, giữ nguyên font. Chỉ frontend; không thay backend, quy tắc KPI hoặc dữ liệu. Regression và layout desktop đạt.
+
+
 ## Header bỏ tên tài khoản — 09/10/2026
 
 Dashboard-period CSSv4 chỉ ẩn #sg-login-slot trong .sg-top để bộ lọc có thêm không gian; thông tin tài khoản sidebar và đăng nhập/phân quyền giữ nguyên. Chỉ frontend, không Apps Script. Regression đạt.
