@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Header bỏ tên tài khoản — 09/10/2026
+
+Dashboard-period CSSv4 chỉ ẩn #sg-login-slot trong .sg-top để bộ lọc có thêm không gian; thông tin tài khoản sidebar và đăng nhập/phân quyền giữ nguyên. Chỉ frontend, không Apps Script. Regression đạt.
+
+
 ## Thẻ SLA và lịch gọn hơn — 09/10/2026
 
 Frontend JS96/dashboard-period CSSv3/range-calendar JSv2: ô center desktop170px giữ đủ Tất cả trung tâm; KPI chia1.45/.9/.9/.9/1.45, mở rộng SLA, số đạt/TB ngang phần trăm bằng wrapper flex, giữ font hiện hành, giảm hàng xuống khoảng128px. Lịch rộng650px, ô ngày28px, nút Hủy/Áp dụng12px/32px, giảm khoảng cách. Header một hàng giữ nguyên; màn hình hẹp bỏ ghi chú thừa để tránh tràn. Actual frontend fixture1920/1440/1280/1024 kiểm tra textfit, percent/note alignment, KPIheight, width, calendar/cancel/API và regression đạt. Chỉ GitHub frontend; không đổi backend/KPI/dữ liệu, không cần cập nhật Apps Script thêm.

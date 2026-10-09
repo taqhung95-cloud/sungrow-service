@@ -1,4 +1,5 @@
 /* Keep the existing header, five KPI cards and overview panels. */
+#sg-preview .sg-top #sg-login-slot{display:none!important}
 #sg-preview .sg-range-dialog.sg-calendar-dialog .sg-calendar-layout{grid-template-columns:125px minmax(0,1fr)}
 #sg-preview .sg-range-dialog.sg-calendar-dialog .sg-calendar-month{padding:9px 10px}
 #sg-preview .sg-range-dialog.sg-calendar-dialog .sg-calendar-month header{height:30px;margin-bottom:5px}
