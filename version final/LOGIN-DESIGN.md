@@ -1,5 +1,7 @@
 # Trang đăng nhập theo bố cục tham khảo
 
+09/10/2026 — JS94/theme v5: slogan “Clean Power For All” một hàng. Nền ngoài dùng ảnh ESS từ [trang Sungrow](https://www.sungrowpower.com/vt/vi/ess-utility-scale); [ảnh gốc](https://official-oversears-file.sungrowpower.com/page-assets/8356cc88-2f29-414e-8751-1d2d035a7b93.jpg) 2560×1440, 1711082 bytes giữ tại analysis/login-ess-source.jpg. Runtime docs/login-ess-background.jpg JPEG78/354977bytes, không sửa nội dung ảnh, không hotlink. Hero bên trái vẫn dùng login-solar.jpg, khác ảnh nền ngoài. Welcome logo+h1 và entry/popup classic giữ nguyên.
+
 09/10/2026 — JS93/theme v4: slogan English “Powering a sustainable future.” center-top trên ảnh; logo trái và welcome Vietnamese phải trên một hàng (không br/wrap). Entry82 và popup classic không thay đổi.
 
 09/10/2026 — bản JS92/entry82/theme v3: chỉ trang login tổng dùng thiết kế mới; khung860×420 với icon cam, căn trái và bỏ viền bọc nút thừa. Entry và popup giữ giao diện classic trước91ae00a, không dùng ảnh/theme mới. Các mô tả áp dụng cả3 login bên dưới là lịch sử của v1, không còn là phạm vi v3.

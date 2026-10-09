@@ -35,7 +35,11 @@ try{
    const layout=page.locator('.sg-auth-layout').first();await layout.waitFor({state:'visible'});
    assert.equal(await layout.locator('h1').count(),1);
    assert.equal(await layout.locator('h1 br').count(),0,'Welcome must not contain line breaks');
-   assert.equal(await layout.locator('.sg-auth-hero h2').textContent(),'Powering a sustainable future.');
+   assert.equal(await layout.locator('.sg-auth-hero h2').textContent(),'Clean Power For All');
+   assert.ok(await layout.locator('.sg-auth-hero h2').evaluate(el=>el.scrollWidth<=el.parentElement.clientWidth),'One-line slogan fits');
+   assert.equal(await layout.locator('.sg-auth-hero h2').evaluate(el=>getComputedStyle(el).whiteSpace),'nowrap');
+   assert.ok(await layout.evaluate(el=>getComputedStyle(el,'::before').backgroundImage.includes('login-ess-background.jpg')),'ESS outside background');
+   assert.ok(await layout.locator('.sg-auth-hero').evaluate(el=>getComputedStyle(el).backgroundImage.includes('login-solar.jpg')),'Different solar photo inside');
    assert.equal(await layout.locator('.sg-auth-hero h2').evaluate(el=>getComputedStyle(el).textAlign),'center');
    assert.ok(await layout.locator('.sg-auth-heading').evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Logo and one-line welcome must fit');
    const welcome=await layout.locator('h1').boundingBox(),mark=await layout.locator('.sg-auth-heading img').boundingBox();

@@ -1,7 +1,7 @@
 /* Shared presentation only. Google authentication and permissions remain unchanged. */
 .sg-auth-layout{box-sizing:border-box;min-height:100svh;display:grid;grid-template-rows:auto 1fr auto;gap:32px;padding:32px 48px;background:#f7f8fa;color:#252a2e;font-family:'Sungrow Montserrat',Montserrat,Arial,sans-serif;isolation:isolate}
 .sg-auth-layout *{box-sizing:border-box}
-.sg-auth-layout::before{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradient(#fffffff0,#ffffffe3),url('./login-solar.jpg') center 65%/cover no-repeat;pointer-events:none}
+.sg-auth-layout::before{content:'';position:fixed;inset:0;z-index:-1;background:linear-gradient(#fffffff0,#ffffffe3),url('./login-ess-background.jpg') center/cover no-repeat;pointer-events:none}
 .sg-auth-layout[hidden],.sg-auth-layout.hidden{display:none!important}
 .sg-auth-layout .sg-auth-top{display:flex;justify-content:space-between;align-items:center;gap:24px;width:100%;min-height:48px}
 .sg-auth-layout .sg-auth-brand{display:block;border:0;padding:0;text-align:left}
@@ -14,7 +14,7 @@
 .sg-auth-layout .sg-auth-footer-brand .sg-auth-separator{height:11px}
 .sg-auth-layout .sg-auth-card{display:grid;grid-template-columns:.9fr 1.1fr;align-self:center;justify-self:center;width:min(100%,860px);min-height:420px;padding:0;border:1px solid #e9ecef;border-radius:18px;background:#fff;box-shadow:0 18px 55px #26334418;overflow:hidden;text-align:left}
 .sg-auth-layout .sg-auth-hero{position:relative;display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding:48px 36px;color:white;background:linear-gradient(180deg,#16394b88 0%,#123f5333 55%,#09243366 100%),url('./login-solar.jpg') center 65%/cover no-repeat;text-align:left}
-.sg-auth-layout .sg-auth-hero h2{margin:0 auto;max-width:340px;font-size:27px;line-height:1.45;font-weight:600;letter-spacing:-.5px;text-wrap:balance;text-align:center}
+.sg-auth-layout .sg-auth-hero h2{margin:0 auto;max-width:100%;font-size:27px;line-height:1.45;font-weight:600;letter-spacing:-.5px;white-space:nowrap;text-align:center}
 .sg-auth-layout .sg-auth-hero p{margin:14px 0 0;font-size:14px;line-height:1.8;color:#fff}
 .sg-auth-layout .sg-auth-hero-foot{font-size:11px;letter-spacing:1.8px;color:#ffffffe8}
 .sg-auth-layout .sg-auth-form{display:flex;flex-direction:column;justify-content:center;align-items:stretch;min-width:0;padding:44px 32px;background:radial-gradient(ellipse at 100% 0%,#fff7ee 0%,#fff 55%)}

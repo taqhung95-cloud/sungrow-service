@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Nền ESS và slogan Clean Power For All — 09/10/2026
+
+JS94/entry82/login-theme v5: login tổng dùng ảnh ESS Sungrow làm nền ngoài (docs/login-ess-background.jpg354977bytes, JPEG78 từ nguồn2560×1440), hero trong khung giữ login-solar.jpg để hai ảnh khác nhau. Nguồn https://www.sungrowpower.com/vt/vi/ess-utility-scale, banner page-assets/8356cc88-2f29-414e-8751-1d2d035a7b93.jpg; bản gốc giữ analysis/login-ess-source.jpg, không hotlink khi tải web. Slogan đúng Clean Power For All, center-top/nowrap; welcome logo+h1 một hàng giữ nguyên. Entry/popup classic, auth/backend/data không đổi. Test ảnh CSS khác nhau+slogan nowrap/fits+mobile/desktop; validate đạt. Chỉ publish GitHub.
+
 ## Slogan English và welcome một hàng — 09/10/2026
 
 JS93/entry82/login-theme v4, chỉ login tổng: slogan Powering a sustainable future. center-top trên ảnh; header form là img logo gốc bên trái+h1 Chào mừng đến với Service Center bên phải, bỏ br, nowrap, cùng hàng/cùng tâm. Grid .9:1.1 và font20 desktop/mobile clamp12–14 để vừa; vẫn khung860×420. Không sửa entry/popup/auth/backend/dữ liệu. Test geometry logo/welcome/no-overflow/hero center và classic secondary; validate đạt. Chỉ GitHub.
