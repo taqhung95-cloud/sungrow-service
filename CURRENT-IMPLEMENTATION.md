@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thông báo lỗi gọn — 09/10/2026
+
+Frontend JS97 chỉ hiển thị message lỗi từ API, bỏ tiền tố mã kỹ thuật như INTERNAL_ERROR trên đăng nhập/dashboard. error.code vẫn giữ cho logic retry và phân loại lỗi. Regression đạt; chỉ GitHub frontend.
+
+
 ## SLA thu hẹp và canh chân chữ — 09/10/2026
 
 Dashboard-period CSSv5 cân lại hàng KPI1.55/.95/.95/.95/1.15 để giảm độ rộng thẻ SLA; chú thích số đạt/TB dùng align-items:baseline với phần trăm, giữ nguyên font. Chỉ frontend; không thay backend, quy tắc KPI hoặc dữ liệu. Regression và layout desktop đạt.

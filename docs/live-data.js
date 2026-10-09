@@ -209,7 +209,7 @@
           const response = await fetch(cfg.appsScriptUrl, {method:'POST',body,redirect:'follow',signal:requestController.signal,cache:'no-store'});
           if (!response.ok) throw new Error('HTTP ' + response.status);
           const result = await response.json();
-          if (!result.ok) { const error = new Error([result.error?.code,result.error?.message].filter(Boolean).join(': ') || 'API error'); error.code = result.error?.code || ''; throw error; }
+          if (!result.ok) { const error = new Error(result.error?.message || 'Không thể xử lý yêu cầu.'); error.code = result.error?.code || ''; throw error; }
           return result.data;
         })(), stopped]);
         return result;
