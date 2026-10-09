@@ -1,0 +1,30 @@
+/* Keep the existing header, five KPI cards and overview panels. */
+#sg-preview .sg-range-legacy{display:none!important}
+#sg-preview .sg-top .sg-filter-panel{min-width:0!important;flex:1 1 auto!important}
+#sg-preview .sg-top .sg-controls{display:flex!important;flex-wrap:nowrap!important;gap:0!important;min-width:0!important}
+#sg-preview .sg-period-toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:7px;width:100%;min-width:0}
+#sg-preview .sg-period-segments{display:flex;flex:0 0 auto;border:1px solid #c9ced3;border-radius:6px;overflow:hidden}
+#sg-preview .sg-period-segments button{height:34px;border:0;border-right:1px solid #c9ced3;border-radius:0;padding:0 9px;background:#fff;color:#818b94;font-size:12px;white-space:nowrap}
+#sg-preview .sg-period-segments button:last-child{border-right:0}
+#sg-preview .sg-period-segments button[aria-pressed=true]{color:#222;box-shadow:inset 0 0 0 1px #30363b;font-weight:600}
+#sg-preview .sg-period-segments button:disabled{opacity:.45}
+#sg-preview .sg-range-button{flex:1 1 230px;min-width:190px;height:34px;background:#f4f5f6;border:0;border-radius:6px;padding:0 7px;font-size:11px;color:#26343e;white-space:nowrap}
+#sg-preview .sg-period-toolbar .sg-control-label{display:block!important;flex:0 1 140px;min-width:0;font-size:0!important;margin:0!important}
+#sg-preview .sg-period-toolbar .sg-control{width:100%!important;min-width:0!important;height:34px!important;font-size:11px!important}
+#sg-preview .sg-top .sg-period-toolbar #sg-center,#sg-preview .sg-top .sg-period-toolbar #sg-compare-mode{width:100%!important;min-width:0!important;max-width:100%!important}
+#sg-preview .sg-top .sg-controls{width:100%!important}
+#sg-preview .sg-range-dialog{border:1px solid #dde2e6;border-radius:10px;padding:20px;max-width:440px;width:calc(100% - 32px);color:#30363b}
+#sg-preview .sg-range-dialog::backdrop{background:rgba(20,30,40,.3)}
+#sg-preview .sg-range-dialog h3{margin:0 0 18px;font-size:16px}
+#sg-preview .sg-range-fields{display:flex;gap:12px}#sg-preview .sg-range-fields label{display:grid;gap:6px;flex:1;min-width:0;font-size:12px}
+#sg-preview .sg-range-fields input{width:100%;min-width:0;padding:9px;border:1px solid #ccd3d9;border-radius:6px;font:14px Arial}
+#sg-preview .sg-range-actions{display:flex;justify-content:flex-end;gap:10px}#sg-preview .sg-range-actions button{padding:8px 14px;border:1px solid #ccd3d9;border-radius:6px;background:#fff}#sg-preview .sg-range-actions button[type=submit]{background:#ed7c21;color:#fff;border-color:#ed7c21}
+#sg-preview .sg-range-dialog p{font-size:12px;color:#ad3b30}
+#sg-preview #sg-overview .sg-compare-list-head,#sg-preview #sg-overview .sg-compare-list-row{grid-template-columns:minmax(0,16fr) minmax(0,11fr) minmax(0,10fr) minmax(0,12fr) minmax(0,10fr) minmax(0,18fr) minmax(0,9fr) minmax(0,14fr)!important;gap:6px!important}
+#sg-preview .sg-sla-pair{display:grid;gap:4px}#sg-preview .sg-sla-pair>i{display:grid;grid-template-columns:58px max-content;justify-content:start;column-gap:8px;font-style:normal;font-size:11px;white-space:nowrap}#sg-preview .sg-sla-pair b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+#sg-preview .sg-sla-card-times{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin:3px 0;font-size:10px;line-height:13px}
+#sg-preview .sg-sla-card-times i{font-style:normal;white-space:nowrap;color:#687780}#sg-preview .sg-sla-card-times b{display:block;color:#30363b;font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
+#sg-preview .sg-kpi-note,#sg-preview #sg-compare-note{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:1500px){#sg-preview .sg-period-toolbar{gap:5px}#sg-preview .sg-period-segments button{padding:0 6px;font-size:11px}#sg-preview .sg-range-button{min-width:178px;font-size:10px;padding:0 4px}#sg-preview .sg-period-toolbar .sg-control-label{flex-basis:125px}#sg-preview .sg-top .sg-account-name{max-width:110px!important}}
+@media(min-width:761px) and (max-width:1200px){#sg-preview .sg-top{display:flex!important;flex-wrap:nowrap!important}#sg-preview .sg-top .sg-breadcrumb{display:none!important}#sg-preview .sg-live-box{gap:4px!important}#sg-preview .sg-live-text{display:none!important}#sg-preview .sg-login-slot{display:none!important}#sg-preview .sg-period-toolbar .sg-control-label{flex-basis:115px}#sg-preview .sg-period-segments button{padding:0 5px;font-size:10px}}
+@media(max-width:760px){#sg-preview.mobile-filters-open .sg-main:not(.sg-portal-mode) .sg-filter-panel{display:block!important}#sg-preview .sg-period-toolbar{gap:3px}#sg-preview .sg-period-segments button{padding:0 3px;font-size:9px}#sg-preview .sg-range-button{min-width:0;font-size:9px;text-overflow:ellipsis;overflow:hidden}#sg-preview .sg-period-toolbar .sg-control-label{flex:0 1 70px}#sg-preview .sg-period-toolbar .sg-control{font-size:10px!important;padding:5px!important}#sg-preview .sg-range-dialog input{font-size:16px}}

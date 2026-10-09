@@ -1,4 +1,8 @@
 # Sungrow Service Center - Current Implementation Handbook
+## Khoảng ngày và SLA thực tế — 09/10/2026
+
+Frontend JS95 + dashboard-period v1 giữ header, năm KPI và bố cục panel; filter một hàng Day/Week/Month/Year/Custom, lịch native trong hộp chọn ngày, center và cùng kỳ tháng/năm. Cột SLA duy nhất có hai thời gian ngày TB; tỷ lệ đạt7ngày chỉ xét thực tế. Backend local1.10.15-dashboard-range đọc thêm bảng Tạm dừng SLA trong snapshot theo revision, gộp khoảng chồng nhau/cắt vòng đời, trung bình theo số lượng; range qua năm và tồn đầu/cuối kỳ giữ hồ sơ trước kỳ. Bootstrap dashboardRanges gate giữ Month/Year cho backend cũ. Regression và actual frontend fixture desktop1920/1440/1280/1024 đạt; ảnh analysis/dashboard-preview chỉ dữ liệu tổng hợp. Apps Script do người dùng thay Code/Legacy rồi Save/New version cùngURL theo DEPLOY-1.10.15.md; không migration/rebuild. Chưa xác minh backend production1.10.15.
+
 
 ## Nền ESS và slogan Clean Power For All — 09/10/2026
 
