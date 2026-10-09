@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Ô kỳ theo chế độ và mũi tên — 09/10/2026
+
+Dashboard-period JSv3/CSSv6: Day hiện một ngày, Week khoảng7ngày như mẫu, Month tháng/năm, Year năm; hai mũi tên chuyển kỳ, khóa kỳ tương lai. Custom giữ hai ngày+00:00/23:59 và lịch hiện hành, ẩn mũi tên. Ô thời gian desktop tối thiểu290px (tablet270px), không cắt chữ, giữ filter một hàng; thu gọn phần header phụ để đủ chỗ. Kỳ tháng/năm hiện tại chốt hôm nay, kỳ quá khứ đủ kỳ. Regression và actual frontend kiểm tra1024/1280/1440/1920, chuyển tới/lui từng chế độ, textfit và calendar/cancel/fallback đạt. Chỉ frontend, không Apps Script.
+
+
 ## Thông báo lỗi gọn — 09/10/2026
 
 Frontend JS97 chỉ hiển thị message lỗi từ API, bỏ tiền tố mã kỹ thuật như INTERNAL_ERROR trên đăng nhập/dashboard. error.code vẫn giữ cho logic retry và phân loại lỗi. Regression đạt; chỉ GitHub frontend.
