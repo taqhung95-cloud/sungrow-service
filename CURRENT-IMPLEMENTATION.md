@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Frontend danh mục loại thiết bị — 10/10/2026
+
+Frontend JS98/entry83 lấy deviceTypes từ bootstrap của backend1.10.18; Đồng bộ refreshCatalog và giữ nháp/loại cũ, dùng cùng dropdown cho tiếp nhận/sửa hồ sơ. GET backend production đã trả1.10.18-sheet-device-catalog; trước release GitHub Pages cònJS97/entry82. Test device-catalog và portal-realtime đạt. Release frontend chỉ ba file docs và ghi chú này, không đưa các thay đổi backend/migration local khác lên GitHub. Không đổi Sheet/config/phân quyền.
+
 ## Ô kỳ theo chế độ và mũi tên — 09/10/2026
 
 Dashboard-period JSv3/CSSv6: Day hiện một ngày, Week khoảng7ngày như mẫu, Month tháng/năm, Year năm; hai mũi tên chuyển kỳ, khóa kỳ tương lai. Custom giữ hai ngày+00:00/23:59 và lịch hiện hành, ẩn mũi tên. Ô thời gian desktop tối thiểu290px (tablet270px), không cắt chữ, giữ filter một hàng; thu gọn phần header phụ để đủ chỗ. Kỳ tháng/năm hiện tại chốt hôm nay, kỳ quá khứ đủ kỳ. Regression và actual frontend kiểm tra1024/1280/1440/1920, chuyển tới/lui từng chế độ, textfit và calendar/cancel/fallback đạt. Chỉ frontend, không Apps Script.

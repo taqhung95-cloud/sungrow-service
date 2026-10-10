@@ -191,11 +191,22 @@
       google.accounts.id.renderButton($('#googleButton'),{theme:'outline',size:'large',text:'signin_with',locale:'vi',width:Math.min(300,Math.max(200,window.innerWidth-64))});
     }
 
+    function applyDeviceTypes(data){
+      if(!Array.isArray(data.deviceTypes))return; // Older backend keeps its legacy options.
+      const select=document.querySelector('#receiveForm [name="deviceType"]');
+      const current=select.value;
+      const types=[...new Set(data.deviceTypes.filter(v=>typeof v==='string'&&v.trim()))];
+      select.innerHTML='<option value="">Chọn loại thiết bị</option>'+types.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if(current&&!types.includes(current))select.innerHTML+=`<option value="${esc(current)}">${esc(current)} (không còn trong danh mục đang dùng)</option>`;
+      select.value=current;
+    }
+
     function onCredential(response){
       state.token=response.credential;
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
       call('getBootstrap',[state.token]).then(data=>{
+        applyDeviceTypes(data);
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.uploadCategories=!!data.uploadCategories;state.customerPicker?.sync();
         applyActorCapabilities();
         $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
@@ -694,6 +705,12 @@
 
     async function syncPortalNow() {
       if (!state.token) return;
+      const catalogToken=state.token;
+      try{
+        const data=await call('getBootstrap',[catalogToken,{refreshCatalog:true}]);
+        if(state.token!==catalogToken)return;
+        applyDeviceTypes(data);
+      }catch(err){showMessage(err.message,true);return}
       state.caseCache = {};
       if (hasOpenCaseEditor()) {
         showRealtimeNotice();
