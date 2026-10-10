@@ -1312,3 +1312,9 @@
 #sg-preview #sg-overview .sg-compare-list-head>span,
 #sg-preview #sg-overview .sg-compare-list-row small,
 #sg-preview #sg-overview .sg-compare-list-row .sg-cell-delta{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+
+/* Keep the opening-stock note and its existing comparison on one line. */
+#sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4){white-space:nowrap!important}
+#sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>small,
+#sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>.sg-cell-delta{display:inline!important;white-space:nowrap!important;overflow:visible!important;margin-top:0!important}
+#sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>.sg-cell-delta{margin-left:6px!important}

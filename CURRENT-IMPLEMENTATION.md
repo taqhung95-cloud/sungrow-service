@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tồn cuối: so sánh cùng dòng đầu kỳ — 10/10/2026
+
+Frontend visual-polish CSS34 giữ số tăng/giảm trong cột Tồn cuối ngay cạnh Đầu kỳ trên một dòng, áp dụng desktop/mobile với selector riêng cột4. Không đổi delta, màu, KPI, backend hoặc dữ liệu. Chỉ publish CSS và cache key index cùng ghi chú này.
+
 ## Frontend danh mục loại thiết bị — 10/10/2026
 
 Frontend JS98/entry83 lấy deviceTypes từ bootstrap của backend1.10.18; Đồng bộ refreshCatalog và giữ nháp/loại cũ, dùng cùng dropdown cho tiếp nhận/sửa hồ sơ. GET backend production đã trả1.10.18-sheet-device-catalog; trước release GitHub Pages cònJS97/entry82. Test device-catalog và portal-realtime đạt. Release frontend chỉ ba file docs và ghi chú này, không đưa các thay đổi backend/migration local khác lên GitHub. Không đổi Sheet/config/phân quyền.
