@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sidebar icon gọn và bộ lọc tiếng Việt — 11/10/2026
+
+Frontend JS102/dashboard-period JSv4/compact-sidebar CSS+JSv1: rail94px desktop >760, logo icon gốc, Quản lý/Nhập liệu icon+chữ, giữ các button/handler và role guards; submenu chuyển vào root thành flyout210px để không chiếm bề ngang, chọn/outside/Esc đóng, ArrowDown/keyboard mở, mobile trả nodes về drawer cũ. Account avatar+tooltip/aria giữ identity, Transparency còn ở chân sidebar. Sync chỉ SVG icon+title/aria Đồng bộ dữ liệu, disabled quay tròn (reduced-motion tắt animation); routing sync iframe giữ nguyên. Ngày/Tuần/Tháng/Năm/Tùy chọn và Tháng10/2026, dd/mm/yyyy, giá trị API và gate backend không đổi. Runtime fixture local1024/1280/1440/1920 kiểm tra header/table/no overflow, flyout vị trí94/width210, logo, đóng menu/mobile/Transparency; validate đạt. Chỉ frontend, không Apps Script/KPI/schema/data.
+
 ## Transparency gọn và màu ảnh gốc — 11/10/2026
 
 Frontend JS101/entry86/glass-theme CSSv3/controller+controls v2: nhãn Transparency, bỏ chữ trạng thái Bật/Tắt và border-bottom của slot công tắc; giữ checkbox role switch/aria-checked, vị trí trên account, lưu preference và đồng bộ iframe. Theo yêu cầu mới, khôi phục gradient22–32% và màu ảnh gốc trước saturate/contrast/brightness; chưa đổi ảnh khi người dùng chưa chọn ảnh mới. Test glass-layout desktop/mobile/reload/iframe/nháp/nhãn/border/filter-none và validate đạt. Chỉ frontend, không thay dữ liệu/backend.

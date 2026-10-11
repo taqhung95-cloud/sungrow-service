@@ -12,18 +12,17 @@
     install(element,onChange){
       root=element;const old=root.querySelector('.sg-filter-panel'),controls=root.querySelector('.sg-controls');
       const toolbar=document.createElement('div');toolbar.className='sg-period-toolbar';
-      toolbar.innerHTML='<div class="sg-period-segments" role="group" aria-label="Kỳ báo cáo">'+['Day','Week','Month','Year','Custom'].map(name=>'<button type="button" data-range-mode="'+name.toLowerCase()+'" aria-pressed="false">'+name+'</button>').join('')+'</div><div class="sg-period-picker"><button type="button" class="sg-range-prev" aria-label="Kỳ trước">‹</button><button type="button" class="sg-range-button" aria-haspopup="dialog"></button><button type="button" class="sg-range-next" aria-label="Kỳ sau">›</button></div>';
+      toolbar.innerHTML='<div class="sg-period-segments" role="group" aria-label="Kỳ báo cáo">'+[['day','Ngày'],['week','Tuần'],['month','Tháng'],['year','Năm'],['custom','Tùy chọn']].map(([value,label])=>'<button type="button" data-range-mode="'+value+'" aria-pressed="false">'+label+'</button>').join('')+'</div><div class="sg-period-picker"><button type="button" class="sg-range-prev" aria-label="Kỳ trước">‹</button><button type="button" class="sg-range-button" aria-haspopup="dialog"></button><button type="button" class="sg-range-next" aria-label="Kỳ sau">›</button></div>';
       ['#sg-center','#sg-compare-mode'].forEach(selector=>{const input=root.querySelector(selector);toolbar.append(input.closest('label'));});
       controls.prepend(toolbar);
       ['#sg-period','#sg-period-year','#sg-period-month'].forEach(selector=>root.querySelector(selector)?.closest('label')?.classList.add('sg-range-legacy'));
       const compare=root.querySelector('#sg-compare-mode');compare.innerHTML='<option value="month">Tháng trước</option><option value="year">Năm trước</option>';compare.title='So sánh cùng khoảng ngày của tháng trước hoặc năm trước';
-      root.querySelector('#sg-center option[value=all]').textContent='Tất cả center';
+      root.querySelector('#sg-center option[value=all]').textContent='Tất cả trung tâm';
       const calendar=window.SungrowRangeCalendar(root,day(new Date()));
       const {dialog,from,to}=calendar;
-      const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const display=value=>{const [y,m,d]=value.split('-');return d+'/'+months[Number(m)-1]+'/'+y;};
+      const display=value=>{const [y,m,d]=value.split('-');return d+'/'+m+'/'+y;};
       function render(){
-        const label=mode==='day'?display(start):mode==='week'?display(start)+' - '+display(end):mode==='month'?months[Number(start.slice(5,7))-1]+'/'+start.slice(0,4):mode==='year'?start.slice(0,4):display(start)+' 00:00 - '+display(end)+' 23:59';
+        const label=mode==='day'?display(start):mode==='week'?display(start)+' - '+display(end):mode==='month'?'Tháng '+Number(start.slice(5,7))+'/'+start.slice(0,4):mode==='year'?'Năm '+start.slice(0,4):display(start)+' 00:00 - '+display(end)+' 23:59';
         const picker=toolbar.querySelector('.sg-period-picker');picker.classList.toggle('is-custom',mode==='custom');
         toolbar.querySelector('.sg-range-button').textContent=label;
         toolbar.querySelector('.sg-range-button').title=display(start)+' 00:00 - '+display(end)+' 23:59';

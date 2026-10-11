@@ -42,7 +42,7 @@
   if (authBrand) document.getElementById('sg-auth-brand').appendChild(authBrand);
   const host = document.createElement('div');
   host.className = 'sg-live-box';
-  host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" disabled>↻ Đồng bộ</button><span class="sg-login-slot" id="sg-login-slot"></span>';
+  host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" title="Đồng bộ dữ liệu" aria-label="Đồng bộ dữ liệu" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M18 18a8 8 0 0 1-13-3"/></svg></button><span class="sg-login-slot" id="sg-login-slot"></span>';
   q('.sg-top').appendChild(host);
 
   installPortalSidebar();
@@ -140,7 +140,7 @@
       frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=86#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh:true},window.location.origin);
-    root.querySelectorAll('.sg-nav button[data-page]').forEach(button => button.removeAttribute('aria-current'));
+    root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
     setNavGroup(q('.sg-dashboard-parent'),q('.sg-dashboard-subnav'),false);
     setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),true);
     root.querySelectorAll('[data-portal-view]').forEach(button => {
@@ -157,7 +157,7 @@
 
   function showDashboardView() {
     closePortalView();
-    const overview = q('.sg-nav button[data-page="overview"]');
+    const overview = q('button[data-page="overview"]');
     if (overview) overview.click();
   }
 
@@ -993,7 +993,7 @@
           element.classList.add('sg-role-hidden');
           element.setAttribute('aria-hidden','true');
         });
-        root.querySelectorAll('.sg-nav button[data-page]').forEach(button => {
+        root.querySelectorAll('button[data-page]').forEach(button => {
           button.hidden = true;
           button.classList.add('sg-role-hidden');
           button.setAttribute('aria-hidden','true');

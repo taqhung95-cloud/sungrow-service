@@ -1,0 +1,34 @@
+#sg-preview #sg-refresh{display:inline-flex!important;align-items:center;justify-content:center;width:34px!important;height:34px!important;padding:6px!important;min-width:34px!important}
+#sg-preview #sg-refresh svg{width:19px;height:19px;flex:none}
+#sg-preview #sg-refresh:disabled svg{animation:sg-sync-spin 1s linear infinite}
+@keyframes sg-sync-spin{to{transform:rotate(360deg)}}
+.sg-rail-brand,.sg-rail-name{display:none}
+@media(min-width:761px){
+ #sg-preview.compact-sidebar .sg-shell{grid-template-columns:94px minmax(0,1fr)!important}
+ #sg-preview.compact-sidebar .sg-side{width:94px!important;padding:18px 6px 12px!important;gap:18px!important;overflow:visible!important}
+ #sg-preview.compact-sidebar .sg-side .sg-brand{display:flex!important;justify-content:center;align-items:center;min-height:54px;padding:0!important}
+ #sg-preview.compact-sidebar .sg-side .sg-brand .sg-official-logo,#sg-preview.compact-sidebar .sg-side .sg-brand small,#sg-preview.compact-sidebar .sg-nav-label{display:none!important}
+ #sg-preview.compact-sidebar .sg-rail-brand{display:block;width:42px;height:42px}
+ #sg-preview.compact-sidebar .sg-nav{display:flex!important;flex-direction:column;gap:12px!important;margin:0!important}
+ #sg-preview.compact-sidebar .sg-nav-parent{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:76px!important;margin:0!important;padding:10px 3px!important;border:0!important;border-radius:10px!important;white-space:normal!important;text-align:center!important;font-size:11px!important;font-weight:500!important;color:#4b5a65!important}
+ #sg-preview.compact-sidebar .sg-nav-parent::after{display:none!important}
+ #sg-preview.compact-sidebar .sg-rail-icon{display:block!important;width:25px!important;height:25px!important}
+ #sg-preview.compact-sidebar .sg-rail-name{display:block;line-height:15px}
+ #sg-preview.compact-sidebar .sg-rail-full{display:none}
+ #sg-preview.compact-sidebar .sg-nav-parent[aria-expanded=true],#sg-preview.compact-sidebar .sg-nav-parent[data-active=true]{background:#fff1e5!important;color:#ae510b!important}
+ #sg-preview.compact-sidebar>.sg-nav-children{position:fixed;z-index:120;left:94px;width:210px;max-height:calc(100dvh - 24px);overflow:auto;display:grid;gap:5px;margin:0!important;padding:12px!important;background:rgba(255,255,255,.98)!important;border:1px solid #dce3e8!important;border-radius:0 12px 12px 0;box-shadow:8px 8px 28px #20344226;animation:sg-rail-menu .13s ease-out}
+ #sg-preview.compact-sidebar>.sg-nav-children[hidden]{display:none!important}
+ #sg-preview.compact-sidebar>.sg-nav-children button{min-height:42px;padding:10px 12px;text-align:left;border:0;border-radius:6px;background:transparent;color:#3d4b56;font-size:13px}
+ #sg-preview.compact-sidebar>.sg-nav-children button:hover,#sg-preview.compact-sidebar>.sg-nav-children button:focus-visible{background:#f1f5f7}
+ #sg-preview.compact-sidebar>.sg-nav-children button[aria-current=page],#sg-preview.compact-sidebar>.sg-nav-children button.active{background:#fff1e5;color:#ae510b}
+ #sg-preview.compact-sidebar .sg-glass-toggle-slot{padding:6px 0 10px}
+ #sg-preview.compact-sidebar .sg-glass-toggle{flex-direction:column;gap:5px;font-size:10px}
+ #sg-preview.compact-sidebar .sg-side-foot{padding:10px 0 0!important;text-align:center}
+ #sg-preview.compact-sidebar .sg-side-foot>div:first-child{justify-content:center}
+ #sg-preview.compact-sidebar .sg-side-foot>div:first-child span:last-child,#sg-preview.compact-sidebar .sg-account-role{display:none!important}
+ #sg-preview.compact-sidebar .sg-avatar{margin:0}
+ #sg-preview.compact-sidebar .sg-signout{width:100%;text-align:center;font-size:10px!important}
+}
+@keyframes sg-rail-menu{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+@media(max-width:760px){#sg-preview .sg-rail-name{display:none}#sg-preview .sg-rail-full{display:inline}#sg-preview .sg-rail-brand{display:none}#sg-preview .sg-nav-parent .sg-rail-icon{display:none!important}}
+@media(prefers-reduced-motion:reduce){#sg-preview #sg-refresh:disabled svg,#sg-preview.compact-sidebar>.sg-nav-children{animation:none}}
