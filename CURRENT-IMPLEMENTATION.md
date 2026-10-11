@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Nền ESS và bề mặt trắng mờ — 11/10/2026
+
+Frontend JS99/entry84/glass-theme v1 dùng lại ảnh ESS Sungrow login-ess-background.jpg355KB, nền fixed và surface trắng86% desktop/95% mobile; chrome82%/96%, controls96%. Không opacity chữ hoặc filter nội dung; chữ phụ đậm hơn, blur10px chỉ sidebar/header desktop, mobile/forced-colors/reduced-transparency có fallback. Entry embedded trong suốt dùng ảnh parent, giữ form/draft/auth/KPI/API/role. Login hiện hành giữ bố cục. Test local Edge1440/390 với markup thật và fixture, no overflow, iframe/no double backdrop, text opacity1, controls, forced colors, contrast chữ phụ tối thiểu4.59:1 trong mô hình nền đen; dashboard runtime1024/1280/1440/1920 và validate đạt. Chỉ publish frontend và test glass-layout, không deploy Apps Script hoặc ghi Sheet.
+
 ## Tồn cuối: so sánh cùng dòng đầu kỳ — 10/10/2026
 
 Frontend visual-polish CSS34 giữ số tăng/giảm trong cột Tồn cuối ngay cạnh Đầu kỳ trên một dòng, áp dụng desktop/mobile với selector riêng cột4. Không đổi delta, màu, KPI, backend hoặc dữ liệu. Chỉ publish CSS và cache key index cùng ghi chú này.
