@@ -8,7 +8,7 @@ const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),file=path.join(docs,url.pathname==='/'?'index.html':url.pathname.slice(1));
  if(!file.startsWith(docs+path.sep)||!fs.existsSync(file)){res.writeHead(404).end();return;}
  const data=fs.readFileSync(file);res.setHeader('Content-Type',file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':file.endsWith('.jpg')?'image/jpeg':'text/javascript');
- res.end(file.endsWith('.html')?data.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,''):data);
+ res.end(file.endsWith('.html')?data.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>','<script src="glass-theme.js?v=1"></script></body>'):data);
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let browser;
 try{
@@ -26,16 +26,37 @@ try{
   const dashboard=await page.evaluate(()=>{
    const card=document.querySelector('.sg-kpi'),side=document.querySelector('.sg-side');
    return {background:getComputedStyle(card).backgroundColor,opacity:getComputedStyle(card).opacity,
-    blur:getComputedStyle(side).backdropFilter,image:getComputedStyle(document.body,'::before').backgroundImage,
+    blur:getComputedStyle(side).backdropFilter,image:getComputedStyle(document.body,'::before').backgroundImage,filter:getComputedStyle(document.body,'::before').filter,
     overflow:document.documentElement.scrollWidth>innerWidth};
   });
   assert.match(dashboard.background,/rgba/);assert.equal(dashboard.opacity,'1');assert.match(dashboard.image,/login-ess-background/);assert.equal(dashboard.overflow,false);
   assert.equal(dashboard.blur,width===390?'none':'blur(10px)');
+  assert.match(dashboard.filter,/saturate\(0.2\)/);
+  const markup=await page.locator('#sg-kpis').innerHTML();
+  const toggle=page.locator('[data-glass-switch]');await toggle.evaluate(el=>el.click());
+  assert.equal(await page.locator('#sg-glass-theme').evaluate(el=>el.media),'not all');
+  await page.reload({waitUntil:'networkidle'});
+  await page.addStyleTag({content:runtimeStyle.textContent});
+  await page.evaluate(markup=>{document.getElementById('sg-preview').hidden=false;document.getElementById('sg-kpis').innerHTML=markup;},markup);
+  await page.addScriptTag({url:base+'/mobile-ui.js'});
+  assert.equal(await toggle.isChecked(),false,'Off preference survives reload');
+  await toggle.evaluate(el=>el.click());
+  assert.equal(await page.locator('#sg-glass-theme').evaluate(el=>el.media),'all');
+  await page.evaluate(()=>{const frame=document.createElement('iframe');frame.id='glass-test-frame';frame.hidden=true;frame.src='/entry.html';document.body.appendChild(frame);});
+  await page.waitForFunction(()=>document.querySelector('#glass-test-frame').contentDocument?.querySelector('#sg-glass-theme')?.media==='all');
+  await toggle.evaluate(el=>el.click());
+  await page.waitForFunction(()=>document.querySelector('#glass-test-frame').contentDocument?.querySelector('#sg-glass-theme')?.media==='not all');
+  await toggle.evaluate(el=>el.click());
+  await page.waitForFunction(()=>document.querySelector('#glass-test-frame').contentDocument?.querySelector('#sg-glass-theme')?.media==='all');
+  await page.evaluate(()=>window.dispatchEvent(new StorageEvent('storage',{key:'sungrow-glass-enabled-v1',newValue:'on'})));
   await page.screenshot({path:path.join(out,'dashboard-'+width+'.png'),fullPage:false});
   await page.goto(base+'/entry.html',{waitUntil:'networkidle'});
   await page.evaluate(()=>{document.querySelector('#loginView').classList.add('hidden');document.querySelector('#appView').classList.remove('hidden');document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));document.querySelector('#receive').classList.remove('hidden');});
   const entry=await page.evaluate(()=>{const input=document.querySelector('#receiveForm input'),card=document.querySelector('#receive');return {background:getComputedStyle(card).backgroundColor,opacity:getComputedStyle(input).opacity,input:getComputedStyle(input).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};});
   assert.match(entry.background,/rgba/);assert.equal(entry.opacity,'1');assert.match(entry.input,/0\.96/);assert.equal(entry.overflow,false);
+  const model=page.locator('#receiveForm [name=model]');await model.fill('Draft model');
+  await page.locator('[data-glass-switch]').evaluate(el=>el.click());assert.equal(await model.inputValue(),'Draft model');
+  await page.locator('[data-glass-switch]').evaluate(el=>el.click());
   await page.screenshot({path:path.join(out,'entry-'+width+'.png'),fullPage:false});
   await page.evaluate(()=>document.documentElement.classList.add('embedded'));
   assert.equal(await page.evaluate(()=>getComputedStyle(document.body,'::before').display),'none','Embedded entry must reuse parent backdrop');

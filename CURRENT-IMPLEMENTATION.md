@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Nền giảm màu và công tắc Bóng mờ — 11/10/2026
+
+Frontend JS100/entry85/glass-theme CSSv2/controller+controls v1: nền ESS saturate20%, contrast82%, brightness104% và phủ trắng42–54%, chỉ filter pseudo nền, không đổi chữ/biểu đồ/status. Switch Bóng mờ trên khối tài khoản sidebar dashboard/entry, nhớ browser-local sungrow-glass-enabled-v1; tắt bằng media not all trả nguyên CSS cũ, giữ control. Storage event đồng bộ iframe/các tab cùng origin; lỗi storage không chặn web, không API/auth/data writes. Test local glass-layout desktop/mobile, reload preference, iframe storage sync, giữ model đang nhập, runtime dashboard placement/click và validate đạt. Chỉ publish frontend/test glass và ghi chú riêng; không deploy Apps Script.
+
 ## Nền ESS và bề mặt trắng mờ — 11/10/2026
 
 Frontend JS99/entry84/glass-theme v1 dùng lại ảnh ESS Sungrow login-ess-background.jpg355KB, nền fixed và surface trắng86% desktop/95% mobile; chrome82%/96%, controls96%. Không opacity chữ hoặc filter nội dung; chữ phụ đậm hơn, blur10px chỉ sidebar/header desktop, mobile/forced-colors/reduced-transparency có fallback. Entry embedded trong suốt dùng ảnh parent, giữ form/draft/auth/KPI/API/role. Login hiện hành giữ bố cục. Test local Edge1440/390 với markup thật và fixture, no overflow, iframe/no double backdrop, text opacity1, controls, forced colors, contrast chữ phụ tối thiểu4.59:1 trong mô hình nền đen; dashboard runtime1024/1280/1440/1920 và validate đạt. Chỉ publish frontend và test glass-layout, không deploy Apps Script hoặc ghi Sheet.
