@@ -9,7 +9,7 @@
  const icon=document.createElement('img');icon.className='sg-rail-brand';icon.src='./favicon-tight.svg?v=1';icon.alt='Sungrow';root.querySelector('.sg-brand')?.append(icon);
  function close(focus=false){const owner=groups.find(g=>g.button.getAttribute('aria-expanded')==='true');groups.forEach(g=>{g.button.setAttribute('aria-expanded','false');g.panel.hidden=true;});if(focus)owner?.button.focus();}
  function place(g){if(g.panel.hidden)return;const rect=g.button.getBoundingClientRect();g.panel.style.top=Math.max(12,Math.min(rect.top,innerHeight-g.panel.offsetHeight-12))+'px';}
- function active(){const portal=main.classList.contains('sg-portal-mode');groups[0].button.dataset.active=String(!portal);groups[1].button.dataset.active=String(portal);}
+ function active(){const portal=main.classList.contains('sg-portal-mode'),report=main.classList.contains('sg-reports-mode');groups[0].button.dataset.active=String(!portal&&!report);groups[1].button.dataset.active=String(portal&&!report);}
  groups.forEach((g,i)=>{
   g.button.innerHTML='<svg class="sg-rail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+g.path+'"/></svg><span class="sg-rail-name">'+g.short+'</span><span class="sg-rail-full">'+g.full+'</span>';
   g.button.title=g.full;g.button.setAttribute('aria-label',g.full);g.panel.id='sg-rail-subnav-'+i;g.button.setAttribute('aria-controls',g.panel.id);g.panel.setAttribute('aria-label',g.full);

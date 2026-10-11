@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Báo cáo Excel quản lý toàn bộ trung tâm — 12/10/2026
+
+Frontend JS103, compact-sidebar JS2, reports JS/CSS1 và report-xlsx JS1 thêm mục Báo cáo chỉ cho isGlobalManager===true: Chi tiết hồ sơ/Tổng hợp trung tâm, lọc kỳ/center và trường chi tiết, chọn cột, preview20, export toàn bộ kết quả thành XLSX hai sheet ngay trong browser. Liên hệ/ghi chú mặc định tắt; số/ngày/% có kiểu, text không thành công thức. Có loading/progress/Hủy; chốt revision/asOf/fingerprint qua các trang200, kiểm tra lại trước download, lỗi dữ liệu đổi không xuất file thiếu. Backend local Code/Legacy1.10.19-manager-reports + ReportExport.gs kiểm tra global quyền ở server, whitelist cột, shared canonical cache/no history scan/no Sheet writes, giới hạn20.000 dòng/32MB. Stock/flow/SLA giữ quy tắc dashboard, thông tin hiện tại không tái dựng lịch sử center/status. Trước deploy backend, frontend báo cần cập nhật và không gọi export. Kiểm thử local reports/reports-ui/reports-xlsx/validate đạt:404 dòng đầy đủ, quyền center chặn, VN boundaries, privacy, cancel/revision, desktop/mobile, Excel mở đúng. Release GitHub chỉ frontend và ghi chú/guide riêng; backend hiện hành còn local, cần thay Code.gs/LegacyDashboardApi.gs/thêm ReportExport.gs rồi Save/New version cùngURL theo DEPLOY-1.10.19.md. Không migration/schema/data/Drive writes.
+
 ## Chiều cao bộ lọc thiết bị 42px — 11/10/2026
 
 Frontend visual-polish CSS35 đặt input tìm kiếm, select trạng thái và nút Ngày nhận của toolbar Danh sách thiết bị về42px trên desktop >760; không đổi chiều rộng/font, header kỳ hoặc phân trang. Mobile giữ touch targets cũ. Glass-layout đo cùng viewport1440 xác nhận cả ba42px; validate đạt. Chỉ CSS/cache index, không backend/dữ liệu.

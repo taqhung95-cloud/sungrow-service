@@ -1,0 +1,35 @@
+#sg-preview .sg-reports-view[hidden],#sg-preview .sg-reports-view [hidden]{display:none!important}
+#sg-preview .sg-main.sg-reports-mode .mobile-filter-toggle,#sg-preview .sg-main.sg-reports-mode .mobile-filter-summary,#sg-preview .sg-report-parent::after{display:none!important}
+#sg-preview .sg-main.sg-reports-mode>.sg-content,#sg-preview .sg-main.sg-reports-mode>.sg-portal-frame,#sg-preview .sg-main.sg-reports-mode .sg-filter-panel{display:none!important}
+#sg-preview .sg-reports-view{padding:20px;min-height:0;overflow:auto;flex:1}
+#sg-preview .sg-report-pane{background:var(--glass-panel,#fff);border:1px solid #e0e6eb;border-radius:12px;padding:22px;color:#26343e}
+#sg-preview .sg-report-pane h1{font-size:22px;margin:0 0 8px}
+#sg-preview .sg-report-muted,#sg-preview .sg-report-pane small{color:#53636e;font-size:12px;line-height:1.6}
+#sg-preview .sg-report-templates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+#sg-preview .sg-report-templates button{display:flex;flex-direction:column;text-align:left;gap:7px;padding:18px;background:#fff;border:1px solid #d8e0e5;border-radius:10px;color:#26343e}
+#sg-preview .sg-report-templates button[aria-pressed=true]{border-color:#ed7c23;box-shadow:inset 0 0 0 1px #ed7c23;background:#fff8f2}
+#sg-preview .sg-report-templates span{font-size:12px;color:#53636e}
+#sg-preview .sg-report-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}
+#sg-preview .sg-report-grid label{display:grid;gap:6px;color:#455763;font-size:12px;min-width:0}
+#sg-preview .sg-report-grid input,#sg-preview .sg-report-grid select{width:100%;min-width:0;height:42px;box-sizing:border-box;padding:8px 10px;background:#fff;border:1px solid #cfd8df;border-radius:6px;color:#26343e}
+#sg-preview .sg-report-wide{grid-column:span 2}
+#sg-preview .sg-report-pane fieldset{border:1px solid #dce3e8;border-radius:8px;margin:16px 0;padding:14px;min-width:0}
+#sg-preview .sg-report-pane legend{padding:0 6px;font-weight:600;font-size:13px}
+#sg-preview .sg-report-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 10px}
+#sg-preview .sg-report-checks label{display:flex;align-items:center;gap:7px;font-size:12px;color:#374853;line-height:1.5}
+#sg-preview .sg-report-checks input{width:16px;height:16px;flex:none;accent-color:#ed7c23}
+#sg-preview .sg-report-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+#sg-preview .sg-report-actions button{min-height:42px;padding:8px 16px;border:1px solid #d2dce3;border-radius:6px;background:#fff;color:#344853}
+#sg-preview .sg-report-actions [data-export]{background:#ec7a20;color:#fff;border-color:#ec7a20}
+#sg-preview .sg-report-pane button:disabled{opacity:.5;cursor:default}
+#sg-preview .sg-report-status{font-size:13px;color:#455763;min-height:24px}
+#sg-preview .sg-report-status.error{color:#a2382c}
+#sg-preview .sg-report-status[data-busy=true]::before{content:'';display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:middle;border:2px solid #dce3e8;border-top-color:#ed7c23;border-radius:50%;animation:sg-report-spin .8s linear infinite}
+#sg-preview .sg-report-pane progress{width:100%;height:8px;accent-color:#ec7a20}
+#sg-preview .sg-report-table{max-height:420px;overflow:auto;border-radius:6px}
+#sg-preview .sg-report-table table{border-collapse:collapse;width:100%;font-size:12px;background:rgba(255,255,255,.96)}
+#sg-preview .sg-report-table th,#sg-preview .sg-report-table td{border-bottom:1px solid #e0e6eb;padding:10px;text-align:left;white-space:nowrap}
+#sg-preview .sg-report-table th{position:sticky;top:0;background:#edf3f6}
+@keyframes sg-report-spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){#sg-preview .sg-reports-view{padding:12px}#sg-preview .sg-report-pane{padding:14px}#sg-preview .sg-report-grid,#sg-preview .sg-report-checks,#sg-preview .sg-report-templates{grid-template-columns:1fr}#sg-preview .sg-report-wide{grid-column:auto}#sg-preview .sg-report-grid input,#sg-preview .sg-report-grid select{font-size:16px;height:44px}#sg-preview .sg-report-checks label{min-height:38px}}
+@media(prefers-reduced-motion:reduce){#sg-preview .sg-report-status[data-busy=true]::before{animation:none}}

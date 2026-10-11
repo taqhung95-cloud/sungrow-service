@@ -227,6 +227,7 @@
   }
 
   async function checkDashboardRevision() {
+    if (window.SungrowReports?.isOpen()) return;
     if (!token || document.hidden || revisionCheckBusy || activeController) return;
     const main = q('.sg-main');
     if (main && main.classList.contains('sg-portal-mode')) return;
@@ -256,6 +257,7 @@
   }
 
   async function loadLive(options = {}) {
+    if (window.SungrowReports?.isOpen()) return;
     if (!token) return;
     const forceRefresh = options.force === true;
     if (forceRefresh) failureRateCache.clear();
@@ -985,6 +987,7 @@
       window.SungrowPeriod?.activate(bootstrap.dashboardRanges===true);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
+      window.SungrowReports?.configure({actor:bootstrap.actor,available:bootstrap.reportExports===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1)});
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {
@@ -1009,6 +1012,7 @@
       loadLive();
     } catch (error) {
       token = '';
+      window.SungrowReports?.configure(null);
       sessionStorage.removeItem('sungrow_id_token');
       sessionStorage.removeItem('sungrow_portal_actor');
       status('Không thể đăng nhập', error.message || 'Tài khoản không được cấp quyền', 'error');
@@ -1053,6 +1057,7 @@
 
   function signOut() {
     token = '';
+    window.SungrowReports?.configure(null);
     sessionStorage.removeItem('sungrow_id_token');
     sessionStorage.removeItem('sungrow_portal_actor');
     try {
@@ -1090,7 +1095,7 @@
     if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ loadTicketPage(true); },0);
     if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
   });
-  q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');frame?.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}else loadLive({force:true});});
+  q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(window.SungrowReports?.isOpen()){window.SungrowReports.refresh();return;}if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');frame?.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}else loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
