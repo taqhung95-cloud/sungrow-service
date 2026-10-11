@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chiều cao bộ lọc thiết bị 42px — 11/10/2026
+
+Frontend visual-polish CSS35 đặt input tìm kiếm, select trạng thái và nút Ngày nhận của toolbar Danh sách thiết bị về42px trên desktop >760; không đổi chiều rộng/font, header kỳ hoặc phân trang. Mobile giữ touch targets cũ. Glass-layout đo cùng viewport1440 xác nhận cả ba42px; validate đạt. Chỉ CSS/cache index, không backend/dữ liệu.
+
 ## Sidebar icon gọn và bộ lọc tiếng Việt — 11/10/2026
 
 Frontend JS102/dashboard-period JSv4/compact-sidebar CSS+JSv1: rail94px desktop >760, logo icon gốc, Quản lý/Nhập liệu icon+chữ, giữ các button/handler và role guards; submenu chuyển vào root thành flyout210px để không chiếm bề ngang, chọn/outside/Esc đóng, ArrowDown/keyboard mở, mobile trả nodes về drawer cũ. Account avatar+tooltip/aria giữ identity, Transparency còn ở chân sidebar. Sync chỉ SVG icon+title/aria Đồng bộ dữ liệu, disabled quay tròn (reduced-motion tắt animation); routing sync iframe giữ nguyên. Ngày/Tuần/Tháng/Năm/Tùy chọn và Tháng10/2026, dd/mm/yyyy, giá trị API và gate backend không đổi. Runtime fixture local1024/1280/1440/1920 kiểm tra header/table/no overflow, flyout vị trí94/width210, logo, đóng menu/mobile/Transparency; validate đạt. Chỉ frontend, không Apps Script/KPI/schema/data.

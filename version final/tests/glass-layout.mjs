@@ -31,6 +31,12 @@ try{
   });
   assert.match(dashboard.background,/rgba/);assert.equal(dashboard.opacity,'1');assert.match(dashboard.image,/login-ess-background/);assert.equal(dashboard.overflow,false);
   assert.equal(dashboard.blur,width===390?'none':'blur(10px)');
+  if(width===1440){
+   await page.evaluate(()=>{document.getElementById('sg-overview').classList.add('sg-hidden');document.getElementById('sg-tickets').classList.remove('sg-hidden');document.getElementById('sg-status').insertAdjacentHTML('afterend','<button class="sg-control sg-date-sort">Ngày nhận</button>');});
+   const heights=await page.locator('#sg-tickets .sg-toolbar .sg-control').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height));
+   assert.deepEqual(heights,[42,42,42],'Search, status and date sort must all be 42px');
+   await page.evaluate(()=>{document.getElementById('sg-overview').classList.remove('sg-hidden');document.getElementById('sg-tickets').classList.add('sg-hidden');});
+  }
   assert.equal(dashboard.filter,'none','Keep the original photo colors');
   const markup=await page.locator('#sg-kpis').innerHTML();
   const toggle=page.locator('[data-glass-switch]');await toggle.evaluate(el=>el.click());

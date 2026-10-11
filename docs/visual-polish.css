@@ -1318,3 +1318,8 @@
 #sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>small,
 #sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>.sg-cell-delta{display:inline!important;white-space:nowrap!important;overflow:visible!important;margin-top:0!important}
 #sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>.sg-cell-delta{margin-left:6px!important}
+
+/* Match the case-list filters without shrinking mobile touch targets. */
+@media(min-width:761px){
+ #sg-preview #sg-tickets .sg-toolbar .sg-control{height:42px!important;min-height:42px!important;padding-top:8px!important;padding-bottom:8px!important;line-height:22px!important}
+}
