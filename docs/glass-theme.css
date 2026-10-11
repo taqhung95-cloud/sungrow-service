@@ -2,7 +2,7 @@
 :root{--glass-panel:rgba(255,255,255,.86);--glass-chrome:rgba(255,255,255,.82);--glass-border:rgba(255,255,255,.72)}
 html{background:#e8eff3}
 body{position:relative;isolation:isolate;background:transparent!important}
-body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(120deg,rgba(245,247,249,.42),rgba(255,255,255,.54)),url('./login-ess-background.jpg') center/cover no-repeat;filter:saturate(.2) contrast(.82) brightness(1.04)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(120deg,rgba(238,245,249,.22),rgba(255,255,255,.32)),url('./login-ess-background.jpg') center/cover no-repeat}
 #sg-preview,#sg-preview .sg-shell,#sg-preview .sg-main,#sg-preview .sg-content,
 .app-shell,.workspace,.content{background:transparent!important}
 #sg-preview .sg-side,#sg-preview .sg-top,.sidebar,.topbar{background:var(--glass-chrome)!important;border-color:rgba(211,222,229,.75)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}

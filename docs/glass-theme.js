@@ -10,13 +10,12 @@
     theme.media=enabled?'all':'not all';
     document.documentElement.dataset.glassTheme=enabled?'on':'off';
     document.querySelectorAll('[data-glass-switch]').forEach(input=>{input.checked=enabled;input.setAttribute('aria-checked',String(enabled));});
-    document.querySelectorAll('[data-glass-state]').forEach(el=>el.textContent=enabled?'Bật':'Tắt');
   }
   function mount(){
     const anchor=document.querySelector('#sg-preview .sg-side-foot')||document.querySelector('#appView .sidebar-user');
     if(!anchor||anchor.parentElement.querySelector('.sg-glass-toggle-slot'))return;
     const slot=document.createElement('div');slot.className='sg-glass-toggle-slot';
-    slot.innerHTML='<label class="sg-glass-toggle" title="Bật/tắt nền ảnh và bề mặt bóng mờ"><span class="sg-glass-toggle-copy">Bóng mờ <span class="sg-glass-toggle-state" data-glass-state></span></span><input type="checkbox" role="switch" aria-label="Bóng mờ" data-glass-switch></label>';
+    slot.innerHTML='<label class="sg-glass-toggle" title="Nền ảnh và giao diện trong suốt"><span class="sg-glass-toggle-copy">Transparency</span><input type="checkbox" role="switch" aria-label="Transparency" data-glass-switch></label>';
     slot.querySelector('input').addEventListener('change',event=>{
       enabled=event.target.checked;
       try{localStorage.setItem(key,enabled?'on':'off')}catch{}

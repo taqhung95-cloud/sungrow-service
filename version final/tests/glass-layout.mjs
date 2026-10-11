@@ -8,7 +8,7 @@ const server=http.createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),file=path.join(docs,url.pathname==='/'?'index.html':url.pathname.slice(1));
  if(!file.startsWith(docs+path.sep)||!fs.existsSync(file)){res.writeHead(404).end();return;}
  const data=fs.readFileSync(file);res.setHeader('Content-Type',file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':file.endsWith('.jpg')?'image/jpeg':'text/javascript');
- res.end(file.endsWith('.html')?data.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>','<script src="glass-theme.js?v=1"></script></body>'):data);
+ res.end(file.endsWith('.html')?data.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>','<script src="glass-theme.js?v=2"></script></body>'):data);
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let browser;
 try{
@@ -31,9 +31,13 @@ try{
   });
   assert.match(dashboard.background,/rgba/);assert.equal(dashboard.opacity,'1');assert.match(dashboard.image,/login-ess-background/);assert.equal(dashboard.overflow,false);
   assert.equal(dashboard.blur,width===390?'none':'blur(10px)');
-  assert.match(dashboard.filter,/saturate\(0.2\)/);
+  assert.equal(dashboard.filter,'none','Keep the original photo colors');
   const markup=await page.locator('#sg-kpis').innerHTML();
   const toggle=page.locator('[data-glass-switch]');await toggle.evaluate(el=>el.click());
+  assert.equal(await toggle.getAttribute('aria-label'),'Transparency');
+  assert.equal((await page.locator('.sg-glass-toggle-copy').textContent()).trim(),'Transparency');
+  assert.equal(await page.locator('[data-glass-state]').count(),0);
+  assert.equal(await page.locator('.sg-glass-toggle-slot').evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px');
   assert.equal(await page.locator('#sg-glass-theme').evaluate(el=>el.media),'not all');
   await page.reload({waitUntil:'networkidle'});
   await page.addStyleTag({content:runtimeStyle.textContent});

@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Transparency gọn và màu ảnh gốc — 11/10/2026
+
+Frontend JS101/entry86/glass-theme CSSv3/controller+controls v2: nhãn Transparency, bỏ chữ trạng thái Bật/Tắt và border-bottom của slot công tắc; giữ checkbox role switch/aria-checked, vị trí trên account, lưu preference và đồng bộ iframe. Theo yêu cầu mới, khôi phục gradient22–32% và màu ảnh gốc trước saturate/contrast/brightness; chưa đổi ảnh khi người dùng chưa chọn ảnh mới. Test glass-layout desktop/mobile/reload/iframe/nháp/nhãn/border/filter-none và validate đạt. Chỉ frontend, không thay dữ liệu/backend.
+
 ## Nền giảm màu và công tắc Bóng mờ — 11/10/2026
 
 Frontend JS100/entry85/glass-theme CSSv2/controller+controls v1: nền ESS saturate20%, contrast82%, brightness104% và phủ trắng42–54%, chỉ filter pseudo nền, không đổi chữ/biểu đồ/status. Switch Bóng mờ trên khối tài khoản sidebar dashboard/entry, nhớ browser-local sungrow-glass-enabled-v1; tắt bằng media not all trả nguyên CSS cũ, giữ control. Storage event đồng bộ iframe/các tab cùng origin; lỗi storage không chặn web, không API/auth/data writes. Test local glass-layout desktop/mobile, reload preference, iframe storage sync, giữ model đang nhập, runtime dashboard placement/click và validate đạt. Chỉ publish frontend/test glass và ghi chú riêng; không deploy Apps Script.

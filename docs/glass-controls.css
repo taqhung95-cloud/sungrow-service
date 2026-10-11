@@ -1,8 +1,7 @@
 /* This small control remains available when the glass stylesheet is disabled. */
-.sg-glass-toggle-slot{margin-top:auto;padding:12px 4px 14px;border-bottom:1px solid rgba(115,130,140,.18)}
+.sg-glass-toggle-slot{margin-top:auto;padding:12px 4px 14px}
 .sg-glass-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;color:#45545f;font-size:12px;line-height:1.5;min-height:32px}
 .sg-glass-toggle-copy{display:flex;align-items:center;gap:8px}
-.sg-glass-toggle-state{color:#586772;font-size:11px}
 :is(#sg-preview,#appView) .sg-glass-toggle input{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:34px!important;height:20px!important;min-height:20px!important;margin:0!important;padding:0!important;border:1px solid #a5b2ba!important;border-radius:20px!important;background:#cbd3d8!important;cursor:pointer;transition:background .15s}
 .sg-glass-toggle input::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #20344222;transition:transform .15s}
 :is(#sg-preview,#appView) .sg-glass-toggle input:checked{background:#e87518!important;border-color:#e87518!important}
