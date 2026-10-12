@@ -7,7 +7,7 @@ globalThis.portalUploads = (() => {
   let form,panel,input,items=[],sessionId='',requestId='',key='',center='',epoch=0,working=false,restoreFailed=false;
   const enabled=()=>typeof state!=='undefined'&&!!state.temporaryUploads;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId}));}catch(_){}};
+  const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId,uploadStarted:true}));}catch(_){}};
   function draw(){
     if(!panel)return;
     if(restoring||restoreFailed){panel.innerHTML=`<div role="status" aria-live="polite">${restoring?'Đang kiểm tra file đính kèm của trung tâm…':escape(restoreError||'Không kiểm tra được phiên đính kèm. Các file cũ vẫn được giữ.')} ${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}</div>`;return;}
@@ -31,9 +31,9 @@ globalThis.portalUploads = (() => {
     try{
       const saved=JSON.parse(localStorage.getItem(key)||'null');
       if(saved){sessionId=saved.sessionId;requestId=saved.requestId;restoring=true;disable(true);draw();
-        const created=await call('getCreationStatus',[state.token,requestId]);
-        if(generation!==epoch)return;
-        if(created.found){localStorage.removeItem(key);sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();disable(false);showMessage('Phiên upload trước đã tạo hồ sơ '+created.caseId+'. Không cần gửi lại các file cũ.');return;}
+        // Explicitly unused drafts need no server reads. Legacy records have no flag,
+        // so retain their recovery checks once to protect files from older versions.
+        if(saved.uploadStarted===false){localStorage.removeItem(key);disable(false);return;}
         let result;
         try{result=await call('getCaseUploadSession',[state.token,sessionId]);}
         catch(error){
@@ -41,18 +41,27 @@ globalThis.portalUploads = (() => {
           // A locally reserved ID may never have started an upload. Keep the IDs:
           // beginCaseUpload rechecks ownership/center before creating or resuming it.
           if(String(error.message).trim()==='Không tìm thấy phiên upload của tài khoản này.'){
+            const created=await call('getCreationStatus',[state.token,requestId]);
+            if(generation!==epoch)return;
+            localStorage.removeItem(key);
+            if(created.found){sessionId=crypto.randomUUID();requestId=crypto.randomUUID();showMessage('Phiên upload trước đã tạo hồ sơ '+created.caseId+'. Không cần gửi lại các file cũ.');}
             disable(false);return;
           }
           throw error;
         }
         if(generation!==epoch)return;
-        if(result.state==='CLAIMED'){merge(result);disable(true);showMessage('Phiên file đang gắn vào yêu cầu tạo hồ sơ. Bấm Tạo hồ sơ để kiểm tra kết quả cũ.');return;}
-        if(result.state!=='OPEN'||result.expiresAt<=Date.now()){try{localStorage.removeItem(key);}catch(_){}sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();disable(false);showMessage('Phiên file tạm trước đã hết hạn. Vui lòng chọn lại file.',true);return;}
+        if(result.state==='CLAIMED'){
+          const created=await call('getCreationStatus',[state.token,requestId]);
+          if(generation!==epoch)return;
+          if(created.found){localStorage.removeItem(key);sessionId=crypto.randomUUID();requestId=crypto.randomUUID();disable(false);showMessage('Phiên upload trước đã tạo hồ sơ '+created.caseId+'. Không cần gửi lại các file cũ.');return;}
+          merge(result);disable(true);showMessage('Phiên file đang gắn vào yêu cầu tạo hồ sơ. Bấm Tạo hồ sơ để kiểm tra kết quả cũ.');return;
+        }
+        if(result.state!=='OPEN'||result.expiresAt<=Date.now()){try{localStorage.removeItem(key);}catch(_){}sessionId=crypto.randomUUID();requestId=crypto.randomUUID();disable(false);showMessage('Phiên file tạm trước đã hết hạn. Vui lòng chọn lại file.',true);return;}
         disable(false);merge(result);return;
       }
     }catch(error){if(generation!==epoch)return;restoreFailed=true;restoreError='Không đọc được phiên upload. Mã phiên và file cũ vẫn được giữ. '+error.message;disable(true);return;}
     finally{if(generation===epoch){restoring=false;draw();}}
-    sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();
+    sessionId=crypto.randomUUID();requestId=crypto.randomUUID();
   }
   async function pump(){
     if(working)return;working=true;
@@ -61,6 +70,8 @@ globalThis.portalUploads = (() => {
         const item=items.find(x=>x.status==='QUEUED'),generation=epoch,session=sessionId,target=center;
         item.status='SENDING';draw();
         try{
+          // Persist before the first request: a lost acknowledgement must remain recoverable.
+          store();
           await call('beginCaseUpload',[state.token,{sessionId:session,center:target}]);
           if(generation!==epoch)continue;
           const base64=await fileToBase64(item.file);

@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chọn center không kiểm tra phiên trống, một spinner — 12/10/2026
+
+Frontend liveJS116/entry99/case-uploads JS7: chỉ persist phiên với uploadStarted=true ngay trước beginCaseUpload để giữ retry khi mất ack; chọn/đổi center chưa upload không lưu phiên hoặc gọi API. Legacy chưa có flag vẫn kiểm tra một lần; getCaseUploadSession đọc metadata trước, getCreationStatus chỉ khi missing/CLAIMED để bảo vệ hồ sơ đã tạo. OPEN không scan bảng hồ sơ. Phiên empty xác nhận xong xóa local, lỗi mạng giữ nguyên. Loading decorator chỉ xử lý node status/loading phù hợp, bỏ spinner ancestor có status con; regression no-read/legacy/network/race và DOM một spinner đạt. Chỉ frontend, không cần deploy Apps Script.
+
 ## Nhóm Hình ảnh tại center — 12/10/2026
 
 Frontend liveJS115/entry98/case-uploads JS6 thêm centerPhotos: Hình ảnh tại center ở toolbar và dropdown file đã tải. Backend TemporaryUploads.gs chấp nhận nhóm mới, prefix 05_Hinh anh tai center khi gắn hồ sơ; giữ các prefix cũ. Cần thay TemporaryUploads.gs và Save/New version cùng URL để dùng nhóm mới; frontend publish riêng.

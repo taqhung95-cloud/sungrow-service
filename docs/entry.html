@@ -764,9 +764,14 @@
     const loadingText=/^Đang (tải|tìm kiếm|xử lý|đồng bộ|lưu|tạo|gửi|kiểm tra)/i;
     function decorate(root){
       const nodes=[];
-      if(root&&root.nodeType===1) nodes.push(root);
+      if(root&&root.nodeType===1&&root.matches('.empty-row td,.empty,button,[role="status"]')) nodes.push(root);
       if(root&&root.querySelectorAll) nodes.push(...root.querySelectorAll('.empty-row td,.empty,button,[role="status"]'));
       nodes.forEach(function(node){
+        if(node.querySelector('[role="status"]')){
+          const duplicate=node.querySelector(':scope > .loading-spinner');
+          if(duplicate)duplicate.remove();
+          return;
+        }
         if(!loadingText.test((node.textContent||'').trim())){
           const staleSpinner=node.querySelector(':scope > .loading-spinner');
           if(staleSpinner) staleSpinner.remove();
@@ -798,5 +803,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=4"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=6"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=7"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script></body>
+<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=4"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=7"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=7"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script></body>
 </html>
