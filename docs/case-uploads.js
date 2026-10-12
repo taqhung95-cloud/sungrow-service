@@ -1,7 +1,7 @@
 /* Staged uploads: one file at a time, progress counts Drive-confirmed files, no fake byte %. */
 globalThis.portalUploads = (() => {
   const allowed=/\.(doc|docx|pdf|xls|xlsx|zip|rar|jpg|jpeg|png|txt|csv)$/i;
-  const groups={incident:'Mẫu thu thập thông tin sự cố',sitePhotos:'Hình ảnh thiết bị tại công trình',deviceLog:'Log file',waveform:'Log sóng sự cố (nếu có)'};
+  const groups={incident:'Mẫu thu thập thông tin sự cố',sitePhotos:'Hình ảnh thiết bị tại công trình',centerPhotos:'Hình ảnh tại center',deviceLog:'Log file',waveform:'Log sóng sự cố (nếu có)'};
   let pickers=[],categoryPending=0,restoring=false,restoreError='';
   const disable=value=>pickers.forEach(p=>{p.disabled=value});
   let form,panel,input,items=[],sessionId='',requestId='',key='',center='',epoch=0,working=false,restoreFailed=false;

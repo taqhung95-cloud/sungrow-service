@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Nhóm Hình ảnh tại center — 12/10/2026
+
+Frontend liveJS115/entry98/case-uploads JS6 thêm centerPhotos: Hình ảnh tại center ở toolbar và dropdown file đã tải. Backend TemporaryUploads.gs chấp nhận nhóm mới, prefix 05_Hinh anh tai center khi gắn hồ sơ; giữ các prefix cũ. Cần thay TemporaryUploads.gs và Save/New version cùng URL để dùng nhóm mới; frontend publish riêng.
+
 ## Đính kèm gọn, TXT/CSV và bỏ mức 8 MB/10 file — 12/10/2026
 
 Frontend liveJS114/entry97/case-uploads JS5 CSS4 dùng một toolbar chọn nhóm/Thêm file; hàng file gồm tên/trạng thái, dropdown nhóm và Xóa cùng cao; list max280px desktop/320px mobile cuộn riêng, progress chỉ lúc chưa xong. Không giới hạn số file, size hoặc một mẫu sự cố ở frontend. Backend TemporaryUploads.gs bỏ cùng giới hạn, thêm TXT/CSV; journal lớn chia Script Properties với publish pointer sau cùng/rollback và đọc tương thích journal cũ. Không bỏ quyền/center/idempotency/expiry/cleanup. Giới hạn thực tế Apps Script/Drive/browser/transport120s vẫn có, chưa resumable upload. Backend chưa deploy tự động: chỉ thay TemporaryUploads.gs, Save/New version cùng URL theo DEPLOY-UPLOAD-FLEXIBLE.md; không migration/Sheet writes. Kiểm thử backend9MB/12file/150metadata/rollback và UI14file desktop/mobile, Xóa/category/scroll/alignment.

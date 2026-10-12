@@ -1,5 +1,7 @@
 # Đính kèm gọn và bỏ giới hạn ứng dụng — 12/10/2026
 
+Cập nhật tiếp: liveJS115 / entry98 / case-uploads JS6 thêm nhóm **Hình ảnh tại center** (`centerPhotos`), prefix lưu file `05_Hinh anh tai center`. Vẫn chỉ cần thay TemporaryUploads.gs và deploy phiên bản mới theo hướng dẫn dưới đây.
+
 Frontend liveJS114 / entry97 / case-uploads JS5, CSS4 đã chuẩn bị cho thanh chọn nhóm + Thêm file, danh sách cuộn riêng, nút Xóa cùng hàng dropdown; TXT/CSV được chọn cùng các định dạng cũ.
 
 ## File cần thay trong Apps Script

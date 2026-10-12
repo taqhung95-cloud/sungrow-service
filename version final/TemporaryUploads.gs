@@ -4,7 +4,7 @@ const TU_PREFIX = 'TEMP_UPLOAD_V1:';
 const TU_CHUNK_PREFIX = 'TEMP_UPLOAD_CHUNK_V1:';
 const TU_TTL = 24 * 60 * 60 * 1000;
 const TU_LEASE = 10 * 60 * 1000;
-const TU_CATEGORIES = Object.freeze({incident:'01_Mau thu thap su co',sitePhotos:'02_Hinh anh cong trinh',deviceLog:'03_Log file',waveform:'04_Log song su co'});
+const TU_CATEGORIES = Object.freeze({incident:'01_Mau thu thap su co',sitePhotos:'02_Hinh anh cong trinh',centerPhotos:'05_Hinh anh tai center',deviceLog:'03_Log file',waveform:'04_Log song su co'});
 function uploadCategoriesEnabled_() { return temporaryUploadsEnabled_(); }
 function tuCategory_(value) { const category=clean_(value);if(category && !TU_CATEGORIES[category])throw publicError_('Nhóm file không hợp lệ.');return category; }
 function tuCheckCategory_(files,category,id) { tuCategory_(category); }
