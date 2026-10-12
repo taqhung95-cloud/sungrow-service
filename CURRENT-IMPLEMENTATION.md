@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Font Montserrat cho thông báo — 12/10/2026
+
+Notifications CSS2 dùng "Sungrow Montserrat",Montserrat,Arial,sans-serif cho popup, nội dung/nút kế thừa và badge. Tái sử dụng font Montserrat có sẵn trên trang, không thêm tải font ngoài; giữ kích thước/màu và nghiệp vụ. LiveJS105/entry88 cập nhật cache CSS2 cho dashboard và entry standalone. Chỉ frontend, không cần deploy Apps Script.
+
 ## Yêu cầu duyệt bảo hành và thông báo theo quyền — 12/10/2026
 
 Frontend liveJS104/entry87, notifications CSS+JS1/entry-notifications JS1, reports JS2/CSS2 thêm chuông cạnh Đồng bộ, số chưa đọc, popup phân trang, nhãn/màu cam riêng yêu cầu pending; một chuông parent khi entry embedded, deep link chỉ caseId và server rechecks. Actor không có approveWarranty dùng Yêu cầu duyệt (kể cả hồ sơ hoàn tất còn Chờ xác nhận); gửi không đổi trạng thái/khóa kỹ thuật, retry không tạo yêu cầu trùng. Backend local Code/Legacy1.10.20-warranty-notifications + Notifications.gs dùng metadata audit hiện có, không tab/header mới; kiểm tra viewCases/scope/approve ở server, global xem toàn phạm vi, center chỉ sự kiện liên quan, xóa chỉ xem sự kiện. Read state compact theo danh tính+phạm vi ở Script Properties, không token/PII/KPI writes. API đọc1000 dòng audit gần nhất, shared gzip/chunk cache/revision/lastRow, poll60–75s visible và refresh sau mutation, không history scan; chỉ sự kiện từ release mới, không hồi tố audit. Pending detail đọc targeted caseId, mutation request sync projection/index/revision. Sửa specificity sidebar để role-hidden không bị rail desktop ghi đè. Local notifications/notifications-ui/reports/validate đạt; chỉ publish frontend/guide/note, backend cần thay Code/Legacy/thêm Notifications và Save/New version cùngURL theo DEPLOY-1.10.20.md, giữ ReportExport nếu đã cài. Không deploy Apps Script tự động hoặc ghi test production.

@@ -2,8 +2,8 @@
 .sg-notification-bell{position:relative;display:inline-flex!important;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;padding:6px;border:1px solid #d9dee2;border-radius:5px;background:#fff;color:#4c5c66;cursor:pointer}
 .sg-notification-bell[hidden],.sg-notifications[hidden],.sg-notifications [hidden],.sg-notification-bell [hidden]{display:none!important}
 .sg-notification-bell svg{width:19px!important;height:19px!important}.sg-notification-bell:disabled{opacity:.5;cursor:default}
-.sg-notification-count{position:absolute;top:-6px;right:-6px;background:#b4490d;color:#fff;font:600 9px Arial;border-radius:10px;padding:2px 4px;min-width:16px}
-.sg-notifications{position:fixed;right:16px;z-index:1000;width:min(420px,calc(100vw - 24px));overflow:auto;background:#fff;color:#273946;box-shadow:0 10px 36px #172b3a33;border:1px solid #dce3e9;border-radius:12px;padding:14px;font:13px/1.5 Inter,Arial,sans-serif}
+.sg-notification-count{position:absolute;top:-6px;right:-6px;background:#b4490d;color:#fff;font:600 9px "Sungrow Montserrat",Montserrat,Arial,sans-serif;border-radius:10px;padding:2px 4px;min-width:16px}
+.sg-notifications{position:fixed;right:16px;z-index:1000;width:min(420px,calc(100vw - 24px));overflow:auto;background:#fff;color:#273946;box-shadow:0 10px 36px #172b3a33;border:1px solid #dce3e9;border-radius:12px;padding:14px;font:13px/1.5 "Sungrow Montserrat",Montserrat,Arial,sans-serif}
 .sg-notifications header,.sg-notification-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.sg-notifications button{font:inherit;cursor:pointer}.sg-notifications header>button{width:30px;height:30px;border:0;background:#f2f5f7;border-radius:5px;font-size:20px;color:#455663}
 .sg-notification-tools button,.sg-notifications [data-notification-more]{background:#fff;border:1px solid #d3dce3;border-radius:5px;padding:7px 10px;color:#425563;font-size:12px}
 .sg-notifications [data-notification-status]{font-size:12px;color:#536572}.sg-notifications .error{color:#ad3828}
