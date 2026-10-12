@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Người nhận noti và bố cục hai hàng — 12/10/2026
+
+Frontend liveJS106/entry89/notifications JS2/CSS3: noti đúng2 dòng đơn (Model - SN - thay đổi; Bởi - thời gian), ellipsis/tooltip/aria đầy đủ, Montserrat/màu urgent/click giữ nguyên. Người gửi request chỉ toast2,5s, không banner lớn; nút Đã gửi khóa chống trùng. Backend local Notifications.gs recipients-v2 (trên Code/Legacy1.10.20): request chỉ approver, loại sender; approval sender+actor+global; thao tác khác actor+center_manager liên quan+global, không broadcast staff cùngcenter. Scope guard trước audience; list/unread/mark-read đồng nhất. Ghi requester ở metadata approval và nối metadata cũ theo thứ tự audit trong cửa sổ; không tab/header/audit rewrite. Unit/UI/validate đạt. Chỉ frontend/guide/note publish; để đổi routing production chỉ thay Notifications.gs và New version cùngURL theo DEPLOY-NOTIFICATION-RECIPIENTS.md, không cần thay Code/Legacy nếu đã1.10.20.
+
 ## Font Montserrat cho thông báo — 12/10/2026
 
 Notifications CSS2 dùng "Sungrow Montserrat",Montserrat,Arial,sans-serif cho popup, nội dung/nút kế thừa và badge. Tái sử dụng font Montserrat có sẵn trên trang, không thêm tải font ngoài; giữ kích thước/màu và nghiệp vụ. LiveJS105/entry88 cập nhật cache CSS2 cho dashboard và entry standalone. Chỉ frontend, không cần deploy Apps Script.
