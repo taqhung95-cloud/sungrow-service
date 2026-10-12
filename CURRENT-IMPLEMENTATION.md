@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đính kèm gọn, TXT/CSV và bỏ mức 8 MB/10 file — 12/10/2026
+
+Frontend liveJS114/entry97/case-uploads JS5 CSS4 dùng một toolbar chọn nhóm/Thêm file; hàng file gồm tên/trạng thái, dropdown nhóm và Xóa cùng cao; list max280px desktop/320px mobile cuộn riêng, progress chỉ lúc chưa xong. Không giới hạn số file, size hoặc một mẫu sự cố ở frontend. Backend TemporaryUploads.gs bỏ cùng giới hạn, thêm TXT/CSV; journal lớn chia Script Properties với publish pointer sau cùng/rollback và đọc tương thích journal cũ. Không bỏ quyền/center/idempotency/expiry/cleanup. Giới hạn thực tế Apps Script/Drive/browser/transport120s vẫn có, chưa resumable upload. Backend chưa deploy tự động: chỉ thay TemporaryUploads.gs, Save/New version cùng URL theo DEPLOY-UPLOAD-FLEXIBLE.md; không migration/Sheet writes. Kiểm thử backend9MB/12file/150metadata/rollback và UI14file desktop/mobile, Xóa/category/scroll/alignment.
+
 ## Khôi phục đính kèm khi đổi trung tâm — 12/10/2026
 
 Frontend liveJS113/entry96/case-uploads JS4: mã phiên lưu local nhưng chưa upload không còn khóa picker khi getCaseUploadSession báo không tìm thấy; giữ cùng sessionId/requestId để beginCaseUpload kiểm tra quyền/center và khôi phục khi chọn file. Không tạo phiên/Drive lúc chỉ chọn center. Lỗi mạng giữ khóa và hiển thị lỗi/nút kiểm tra lại ngay cạnh file; trạng thái đang kiểm tra có thông báo, chặn submit/chọn file trong lúc restore. Guard epoch giữ phản hồi center cũ không đè center mới. Regression upload-restore kiểm tra missing/network/OPEN/CLAIMED/race. Chỉ frontend, không cần deploy Apps Script.

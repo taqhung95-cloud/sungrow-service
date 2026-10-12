@@ -1,13 +1,14 @@
 /** Private staged evidence. Drive I/O runs outside the database lock. */
 const TU_FOLDER_ID = '181f6qWxeV3N9Sv8ua7aqWjT-V7Ak4trY';
 const TU_PREFIX = 'TEMP_UPLOAD_V1:';
+const TU_CHUNK_PREFIX = 'TEMP_UPLOAD_CHUNK_V1:';
 const TU_TTL = 24 * 60 * 60 * 1000;
 const TU_LEASE = 10 * 60 * 1000;
 const TU_CATEGORIES = Object.freeze({incident:'01_Mau thu thap su co',sitePhotos:'02_Hinh anh cong trinh',deviceLog:'03_Log file',waveform:'04_Log song su co'});
 function uploadCategoriesEnabled_() { return temporaryUploadsEnabled_(); }
 function tuCategory_(value) { const category=clean_(value);if(category && !TU_CATEGORIES[category])throw publicError_('Nhóm file không hợp lệ.');return category; }
-function tuCheckCategory_(files,category,id) { if(category==='incident'&&files.some(function(f){return f.id!==id&&f.category==='incident';}))throw publicError_('Mẫu thu thập thông tin sự cố tối đa 1 file.'); }
-const TU_TYPES = Object.freeze({doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',pdf:'application/pdf',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',zip:'application/zip',rar:'application/vnd.rar',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png'});
+function tuCheckCategory_(files,category,id) { tuCategory_(category); }
+const TU_TYPES = Object.freeze({doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',pdf:'application/pdf',xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',zip:'application/zip',rar:'application/vnd.rar',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',txt:'text/plain',csv:'text/csv'});
 
 function tuLock_(work) {
   const lock = LockService.getScriptLock();
@@ -19,11 +20,31 @@ function tuId_(value) {
   if (!/^[a-zA-Z0-9-]{16,100}$/.test(id)) throw publicError_('Mã phiên upload không hợp lệ.');
   return id;
 }
-function tuRead_(id) { return parseJson_(PropertiesService.getScriptProperties().getProperty(TU_PREFIX + tuId_(id))); }
+function tuRead_(id) {
+  const props=PropertiesService.getScriptProperties(),record=parseJson_(props.getProperty(TU_PREFIX+tuId_(id)));
+  if(!record||!record.chunkIds)return record;
+  const raw=record.chunkIds.map(function(k){const part=props.getProperty(k);if(part===null)throw publicError_('Không đọc đủ thông tin phiên upload. Vui lòng thử lại.');return part;}).join('');
+  return JSON.parse(raw);
+}
+function tuDelete_(id) {
+  const props=PropertiesService.getScriptProperties(),key=TU_PREFIX+tuId_(id),old=parseJson_(props.getProperty(key));
+  props.deleteProperty(key);
+  if(old&&old.chunkIds)old.chunkIds.forEach(function(k){props.deleteProperty(k);});
+}
 function tuWrite_(record) {
-  const raw = JSON.stringify(record);
-  if (unescape(encodeURIComponent(raw)).length > 8000) throw publicError_('Thông tin phiên upload quá lớn. Vui lòng rút gọn tên file.');
-  PropertiesService.getScriptProperties().setProperty(TU_PREFIX + record.id, raw);
+  const props=PropertiesService.getScriptProperties(),key=TU_PREFIX+tuId_(record.id),raw=JSON.stringify(record),old=parseJson_(props.getProperty(key));
+  const chunkIds=[];
+  try{
+    if(unescape(encodeURIComponent(raw)).length<=8000)props.setProperty(key,raw);
+    else{
+      // Publish the pointer last, so a failed write leaves the previous journal readable.
+      const prefix=TU_CHUNK_PREFIX+record.id+':'+Utilities.getUuid()+':',parts=[];
+      let part='';for(const character of raw){part+=character;if(part.length>=1800){parts.push(part);part='';}}if(part)parts.push(part);
+      parts.forEach(function(value,i){const k=prefix+i;chunkIds.push(k);props.setProperty(k,value);});
+      props.setProperty(key,JSON.stringify({chunkIds:chunkIds}));
+    }
+  }catch(error){chunkIds.forEach(function(k){try{props.deleteProperty(k);}catch(_){}});throw error;}
+  if(old&&old.chunkIds)old.chunkIds.forEach(function(k){try{props.deleteProperty(k);}catch(_){}});
 }
 function tuActor_(token, center) {
   const actor = authenticate_(token);
@@ -79,21 +100,22 @@ function beginCaseUpload(idToken, payload) {
 function tuFileBytes_(payload) {
   const name = clean_(payload.name).replace(/[\\/:*?"<>|\r\n]/g,'_').slice(0,80);
   const ext = name.split('.').pop().toLowerCase();
-  if (!TU_TYPES[ext]) throw publicError_('Chỉ nhận DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG và PNG.');
+  if (!TU_TYPES[ext]) throw publicError_('Chỉ nhận DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG, TXT và CSV.');
   const base64 = String(payload.base64 || '');
-  if (!base64 || base64.length > Math.ceil(8*1024*1024/3)*4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw publicError_('File không hợp lệ hoặc vượt quá 8 MB.');
+  if (!base64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw publicError_('File không hợp lệ.');
   const bytes = Utilities.base64Decode(base64), signature = bytes.slice(0,8).map(function(b){return b&255;});
-  if (!bytes.length || bytes.length > 8*1024*1024) throw publicError_('Mỗi file phải lớn hơn 0 và tối đa 8 MB.');
+  if (!bytes.length) throw publicError_('File không được trống.');
   const starts = function(values){return values.every(function(v,i){return signature[i]===v;});};
   const zip = starts([80,75,3,4]) || starts([80,75,5,6]) || starts([80,75,7,8]);
-  const valid = ext==='pdf'?starts([37,80,68,70,45]):ext==='png'?starts([137,80,78,71,13,10,26,10]):/^(jpg|jpeg)$/.test(ext)?starts([255,216,255]):ext==='rar'?starts([82,97,114,33,26,7]):/^(doc|xls)$/.test(ext)?starts([208,207,17,224,161,177,26,225]):zip;
+  // Plain text has no universal magic signature (UTF-8/UTF-16 and legacy encodings).
+  const valid = /^(txt|csv)$/.test(ext)?true:ext==='pdf'?starts([37,80,68,70,45]):ext==='png'?starts([137,80,78,71,13,10,26,10]):/^(jpg|jpeg)$/.test(ext)?starts([255,216,255]):ext==='rar'?starts([82,97,114,33,26,7]):/^(doc|xls)$/.test(ext)?starts([208,207,17,224,161,177,26,225]):zip;
   if (!valid) throw publicError_('Nội dung file không khớp định dạng: '+name+'.');
   return {name:name,bytes:bytes,mime:TU_TYPES[ext],hash:Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,bytes)).replace(/=+$/g,'')};
 }
 function tuStoredName_(file) { return file.id + '--' + file.name; }
 function tuActiveUploads_() {
   const all=PropertiesService.getScriptProperties().getProperties();
-  return Object.keys(all).filter(function(k){return k.indexOf(TU_PREFIX)===0;}).reduce(function(n,k){const r=parseJson_(all[k]);return n+(r?r.files.filter(function(f){return f.status==='UPLOADING'&&f.startedAt+TU_LEASE>Date.now();}).length:0);},0);
+  return Object.keys(all).filter(function(k){return k.indexOf(TU_PREFIX)===0;}).reduce(function(n,k){const r=tuRead_(k.slice(TU_PREFIX.length));return n+(r?r.files.filter(function(f){return f.status==='UPLOADING'&&f.startedAt+TU_LEASE>Date.now();}).length:0);},0);
 }
 function tuRecoverFile_(record, file) {
   const found = DriveApp.getFolderById(record.folderId).getFilesByName(tuStoredName_(file));
@@ -124,7 +146,6 @@ function uploadCaseFile(idToken, payload) {
     if(tuActiveUploads_()>=4)throw publicError_('[UPLOAD_BUSY] Đang có nhiều file tải lên. Hệ thống sẽ chờ để giữ tốc độ đọc dữ liệu.');
     const existing = current.files.find(function(f){return f.id===fileId;});
     if (existing && (!file || existing.startedAt !== file.startedAt)) throw publicError_('Một yêu cầu khác đang tải file này.');
-    if (!existing && current.files.length>=10) throw publicError_('Mỗi hồ sơ tối đa 10 file.');
     tuCheckCategory_(current.files,category,fileId);
     file = {id:fileId,name:input.name,size:input.bytes.length,hash:input.hash,category:category,status:'UPLOADING',startedAt:Date.now()};
     if (existing) current.files[current.files.indexOf(existing)]=file;else current.files.push(file);
@@ -176,7 +197,7 @@ function tuPrepareCase_(actor, payload, folderName) {
     const current=tuOwned_(actor,id,false);
     if (current.center!==payload.intakeCenter) throw publicError_('Center hồ sơ khác center của file upload.');
     if (current.requestId && current.requestId!==payload.requestId) throw publicError_('Phiên file đã gắn với yêu cầu khác.');
-    if (!Array.isArray(ids)||!ids.length||ids.length>10||new Set(ids).size!==ids.length||ids.length!==current.files.length||current.files.some(function(f){return f.status!=='READY'||ids.indexOf(f.id)<0;})) throw publicError_('Các file đính kèm chưa tải xong hoặc danh sách file không khớp.');
+    if (!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length||ids.length!==current.files.length||current.files.some(function(f){return f.status!=='READY'||ids.indexOf(f.id)<0;})) throw publicError_('Các file đính kèm chưa tải xong hoặc danh sách file không khớp.');
     if (current.state==='COMMITTED') return current;
     current.files.forEach(function(f){tuCategory_(f.category);tuCheckCategory_(current.files,f.category,f.id);});
     if (!['OPEN','CLAIMED'].includes(current.state)||current.expiresAt<=Date.now()) throw publicError_('Phiên file tạm đã hết hạn 24 giờ.');
@@ -197,7 +218,7 @@ function tuCommitCase_(actor, payload, caseId) {
   const record=tuOwned_(actor,payload.uploadSessionId,false);
   if(record.requestId!==payload.requestId)throw publicError_('Mã yêu cầu file không khớp hồ sơ.');
   // Canonical case owns the folder now; drop this journal, never the actual files.
-  PropertiesService.getScriptProperties().deleteProperty(TU_PREFIX+record.id);
+  tuDelete_(record.id);
 }
 
 function initializeTemporaryUploads() {
@@ -209,13 +230,13 @@ function initializeTemporaryUploads() {
   if([DriveApp.Permission.EDIT,DriveApp.Permission.OWNER,DriveApp.Permission.ORGANIZER].indexOf(folder.getAccess(email))<0)throw publicError_('Tài khoản chạy script chưa có quyền ghi vào thư mục tạm.');
   PropertiesService.getScriptProperties().setProperty('TEMP_UPLOAD_ENABLED','1');
   if(!ScriptApp.getProjectTriggers().some(function(t){return t.getHandlerFunction()==='cleanupTemporaryUploads';}))ScriptApp.newTrigger('cleanupTemporaryUploads').timeBased().everyHours(1).create();
-  return {enabled:true,folderName:folder.getName(),folderId:TU_FOLDER_ID,expiresHours:24,maxFiles:10,maxFileMB:8};
+  return {enabled:true,folderName:folder.getName(),folderId:TU_FOLDER_ID,expiresHours:24,maxFiles:null,maxFileMB:null};
 }
 function cleanupTemporaryUploads() {
   if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
   if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
   const started=Date.now(),props=PropertiesService.getScriptProperties(),all=props.getProperties();
-  const expired=Object.keys(all).filter(function(k){return k.indexOf(TU_PREFIX)===0;}).map(function(k){return parseJson_(all[k]);}).filter(function(r){return r&&r.expiresAt<=Date.now()&&(!r.leaseUntil||r.leaseUntil<=Date.now());}).slice(0,10);
+  const expired=Object.keys(all).filter(function(k){return k.indexOf(TU_PREFIX)===0;}).map(function(k){return tuRead_(k.slice(TU_PREFIX.length));}).filter(function(r){return r&&r.expiresAt<=Date.now()&&(!r.leaseUntil||r.leaseUntil<=Date.now());}).slice(0,10);
   if(!expired.length)return {checked:0,trashed:0};
   // Read canonical evidence once, only in maintenance; never scan Drive for website lists.
   const cases=readTable_(SHEETS.cases),links=new Set(cases.map(function(c){return clean_(c['Liên kết hồ sơ Drive']);}));
@@ -228,16 +249,16 @@ function cleanupTemporaryUploads() {
       const claimed=tuLock_(function(){const current=tuRead_(r.id);if(!current||current.expiresAt>Date.now()||(current.leaseUntil||0)>Date.now())return null;
         if(current.files.some(function(f){return f.status==='UPLOADING'&&f.startedAt+TU_LEASE>Date.now();}))return null;
         const folderUrl=current.folderId?'https://drive.google.com/drive/folders/'+current.folderId:'';
-        if(current.state==='COMMITTED'||current.caseId||links.has(folderUrl)||folderIds.has(current.folderId)||(current.requestId&&requests.has(current.requestId))){props.deleteProperty(TU_PREFIX+current.id);return null;}
+        if(current.state==='COMMITTED'||current.caseId||links.has(folderUrl)||folderIds.has(current.folderId)||(current.requestId&&requests.has(current.requestId))){tuDelete_(current.id);return null;}
         current.state='CLEANING';tuWrite_(current);return current;});
       if(!claimed)return;
-      if(!claimed.folderId){const folders=DriveApp.getFolderById(TU_FOLDER_ID).getFoldersByName('TMP-'+claimed.id);if(!folders.hasNext()){props.deleteProperty(TU_PREFIX+claimed.id);return;}const found=folders.next();if(folders.hasNext())return;claimed.folderId=found.getId();tuWrite_(claimed);}
+      if(!claimed.folderId){const folders=DriveApp.getFolderById(TU_FOLDER_ID).getFoldersByName('TMP-'+claimed.id);if(!folders.hasNext()){tuDelete_(claimed.id);return;}const found=folders.next();if(folders.hasNext())return;claimed.folderId=found.getId();tuWrite_(claimed);}
       const folder=DriveApp.getFolderById(claimed.folderId),p=folder.getParents();
       if(!p.hasNext()||[TU_FOLDER_ID,claimed.targetParent].filter(Boolean).indexOf(p.next().getId())<0||p.hasNext())return;
       if(folder.getFolders().hasNext())return;
       const contents=folder.getFiles();
       while(contents.hasNext()){const file=contents.next();if(!claimed.files.some(function(f){return f.fileId===file.getId()||(tuStoredName_(f)===file.getName()&&f.size===file.getSize());}))return;}
-      folder.setTrashed(true);props.deleteProperty(TU_PREFIX+claimed.id);trashed++;
+      folder.setTrashed(true);tuDelete_(claimed.id);trashed++;
     }catch(error){console.error('TEMP_UPLOAD_CLEANUP '+r.id+': '+String(error));}
   });
   return {checked:expired.length,trashed:trashed};

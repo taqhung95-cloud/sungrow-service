@@ -6,15 +6,21 @@
 .upload-label{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .upload-label .upload-label-note{font-size:12px;font-weight:400;color:#667085}
 .upload-summary{font-size:12px;color:#59636f}
-.upload-list{display:grid;gap:8px}
-.upload-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e5e7eb;border-radius:7px;padding:10px 12px;background:#fafafa}
+.upload-list{display:grid;gap:6px;max-height:280px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;margin-top:8px}
+.upload-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,300px) auto;align-items:center;gap:12px;border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;background:#fafafa}
 .upload-item>div:first-child{min-width:0;flex:1}
 .upload-item strong,.upload-item small{display:block;overflow-wrap:anywhere}
 .upload-item strong{font-size:13px;font-weight:600}
 .upload-item small{font-size:12px;color:#667085;margin-top:4px}
-.upload-actions{display:flex;gap:7px;flex:0 0 auto}
+.upload-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.upload-item .upload-category,.upload-actions button{height:36px;min-height:36px;margin:0;font-size:12px;padding:6px 10px}
+.upload-toolbar{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.upload-toolbar label{margin:0;font-size:12px}
+.upload-toolbar select{width:auto;max-width:100%;flex:0 1 300px;height:38px;padding:6px 10px;font-size:13px}
+.upload-toolbar .upload-add{height:38px;padding:6px 14px;font-size:13px}
+.upload-formats{font-size:11px;color:#667085}
 .case-upload-panel>p{font-size:12px;margin-bottom:0}
-@media(max-width:760px){.upload-item{align-items:flex-start;flex-direction:column}.upload-actions{align-self:flex-end}.upload-item strong{font-size:14px}.upload-actions button{min-height:44px}}
+@media(max-width:760px){.upload-item{grid-template-columns:minmax(0,1fr) auto;gap:8px}.upload-file-info{grid-column:1/-1}.upload-item .upload-category{min-width:0;width:100%;height:42px}.upload-actions button{height:42px}.upload-toolbar select{flex:1;min-width:0;height:42px}.upload-toolbar .upload-add{height:42px}.upload-toolbar label,.upload-formats{width:100%}.upload-list{max-height:320px}}
 .upload-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
 .upload-group{border:1px solid #e0e4e9;border-radius:8px;padding:12px;min-width:0;background:#fff}
 .upload-group label{display:block;font-size:14px;margin-bottom:8px}.upload-group label small{display:block;font-size:12px;color:#788492;margin-top:4px}
