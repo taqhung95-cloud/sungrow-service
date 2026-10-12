@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Popup thông báo icon và cuộn riêng — 12/10/2026
+
+Frontend liveJS111/entry94/notifications JS7/CSS6: một hàng icon unread/history/filter/read-all/reload cạnh title/close, SVG nội bộ có title/aria/focus/pressed; filter mặc định ẩn, mở theo nhu cầu, chấm cam khi có lọc. Giữ menu lọc có label và toàn bộ hành vi cũ. Popup max440px/viewport, vùng items cuộn riêng max320px/flex-shrink, header/actions không cuộn; footer giới hạn lịch sử rút gọn. Ít noti co theo nội dung, nhiều không kéo dài trang; kiểm thử desktop/mobile và50 noti, không đổi backend/phân quyền.
+
 ## Thông báo chưa đọc và lịch sử phân loại — 12/10/2026
 
 Frontend liveJS110/entry93/notifications JS6/CSS5: mặc định chỉ hiện unread, receipt thành công tự ẩn (lỗi vẫn giữ). Lịch sử xem cả read/unread theo quyền, lọc loại request/confirmed/created/updated/transferred/returned/deleted và trạng thái đọc; không xóa audit hoặc tạo read state mới. API hiện hữu limit50, Xem thêm phân trang, bộ lọc trên các trang đã tải có thông báo rõ khi còn trang cũ; giữ phạm vi1000 dòng audit của backend và footer minh bạch, không tuyên bố lịch sử vô hạn. Click nhanh/receipt nền/guard account giữ nguyên. Chỉ frontend, không deploy Apps Script.
