@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Phiên đăng nhập cố định 8 giờ — 12/10/2026
+
+Frontend liveJS112/entry95/session-client JS1 trao đổi Google credential còn hạn qua createPortalSession khi bootstrap.portalSessions=true; token CSPRNG256-bit, sessionStorage của tab, reload/iframe dùng chung, không tự gia hạn/không lưu URL/localStorage. Backend local Code/Legacy1.10.21-eight-hour-session + PortalSessions.gs lưu hash/bản ghi expiry8h trong Script Properties, xác thực mỗi request bằng record+quyền Người dùng hiện tại, tombstone logout chặn retry hồi sinh, cleanup prefix riêng/cap1000; không source/schema/KPI/projection writes. Sửa Google actor cache không vượt exp; bind GoogleSub chỉ trong login Google, không bằng session. Logout ẩn/clear local ngay, thu hồi server, mạng lỗi báo chưa xác nhận; standalone có logout. Unit/client/browser/validate đạt: after1h/boundary8h/revoke/crossidentity/role/disabled/tab/iframe/reload/legacy fallback. Frontend publish; backend chưa deploy từ Codex, cần thay Code.gs/LegacyDashboardApi.gs và thêm PortalSessions.gs, Save/New version cùngURL theo DEPLOY-1.10.21.md. Portal cũ vẫn~1h đến khi backend sẵn sàng; Apps Script HTML trực tiếp cũ chưa đổi UI.
+
 ## Popup thông báo icon và cuộn riêng — 12/10/2026
 
 Frontend liveJS111/entry94/notifications JS7/CSS6: một hàng icon unread/history/filter/read-all/reload cạnh title/close, SVG nội bộ có title/aria/focus/pressed; filter mặc định ẩn, mở theo nhu cầu, chấm cam khi có lọc. Giữ menu lọc có label và toàn bộ hành vi cũ. Popup max440px/viewport, vùng items cuộn riêng max320px/flex-shrink, header/actions không cuộn; footer giới hạn lịch sử rút gọn. Ít noti co theo nội dung, nhiều không kéo dài trang; kiểm thử desktop/mobile và50 noti, không đổi backend/phân quyền.

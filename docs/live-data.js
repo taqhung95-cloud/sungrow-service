@@ -9,6 +9,7 @@
   const shortCenter = value => String(value || 'Chưa xác định').replace(/\s+Service\s+Center$/i,'').replace(/\s+Center$/i,'').trim();
   const statusTone = value => { const s=String(value||'').toLowerCase(); return /đã\s*(sửa|giao|trả)|chờ\s*giao/.test(s)?'done':/chờ\s*(linh kiện|part)|không\s*sửa/.test(s)?'wait':/(kiểm tra|test|đổi)/.test(s)?'test':'neutral'; };
   let token = '';
+  let authSequence = 0;
   let live = null;
   let previousLive = null;
   let loadSequence = 0;
@@ -137,7 +138,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=94#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=95#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -978,12 +979,17 @@
   }
 
   async function handleCredential(response) {
-    token = response?.credential || '';
+    const generation=++authSequence,credential=response?.credential||'';
+    token = credential;
     if (!token) return;
     setAuthMessage('Đang xác thực tài khoản và phân quyền…');
     sessionStorage.setItem('sungrow_id_token', token);
     try {
-      const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[token]}, new AbortController().signal, 3);
+      const bootstrap = await fetchDashboard({action:'portal.call', functionName:'getBootstrap', args:[credential]}, new AbortController().signal, 3);
+      if(bootstrap.portalSessions===true&&!window.SungrowSessionClient)throw new Error('Cần tải lại trang để dùng phiên đăng nhập 8 giờ.');
+      const adopted=window.SungrowSessionClient?await window.SungrowSessionClient.adopt(credential,bootstrap,(name,args)=>fetchDashboard({action:'portal.call',functionName:name,args},new AbortController().signal,1)):credential;
+      if(generation!==authSequence)return;
+      token=adopted;sessionStorage.setItem('sungrow_id_token',token);
       window.SungrowPeriod?.activate(bootstrap.dashboardRanges===true);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
@@ -1012,6 +1018,7 @@
       revealApplication();
       loadLive();
     } catch (error) {
+      if(generation!==authSequence)return;
       token = '';
       window.SungrowReports?.configure(null);
       window.SungrowNotifications?.configure(null);
@@ -1057,8 +1064,10 @@
     }
   }
 
-  function signOut() {
+  async function signOut() {
+    const previous=token;authSequence++;
     token = '';
+    activeController?.abort();ticketSearchController?.abort();
     window.SungrowReports?.configure(null);
     window.SungrowNotifications?.configure(null);
     sessionStorage.removeItem('sungrow_id_token');
@@ -1068,7 +1077,12 @@
     } catch (_) {
       // Google Identity Services may not be loaded yet.
     }
-    window.location.reload();
+    root.hidden=true;authPage.hidden=false;document.documentElement.classList.remove('sg-authenticated');document.documentElement.classList.add('sg-auth-pending');
+    const frame=q('.sg-portal-frame');if(frame)frame.remove();
+    setAuthMessage('Đang đăng xuất…');const operation=new AbortController(),timeout=setTimeout(()=>operation.abort(),10000);
+    try{await window.SungrowSessionClient?.revoke(previous,(name,args)=>fetchDashboard({action:'portal.call',functionName:name,args},operation.signal,1));window.location.reload();}
+    catch(error){sessionStorage.setItem('sungrow_logout_warning','Đã đăng xuất trên tab này, nhưng chưa xác nhận thu hồi phiên trên máy chủ. Vui lòng kiểm tra kết nối mạng.');window.location.reload();}
+    finally{clearTimeout(timeout);}
   }
 
   const formatDate = value => value ? value.split('-').reverse().join('/') : '—';
@@ -1113,7 +1127,7 @@
     setAuthMessage('Đang khôi phục phiên đăng nhập…');
     handleCredential({credential:savedToken});
   }
-  else initGoogle();
+  else {initGoogle();const warning=sessionStorage.getItem('sungrow_logout_warning');if(warning){sessionStorage.removeItem('sungrow_logout_warning');setAuthMessage(warning,true);}}
   window.addEventListener('message',event => {
     if (event.origin !== window.location.origin) return;
     const syncFrame=q('.sg-portal-frame');

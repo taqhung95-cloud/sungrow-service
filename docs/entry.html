@@ -181,7 +181,7 @@
       bindEvents();
       const savedToken=sessionStorage.getItem('sungrow_id_token');
       if(savedToken){if(EMBEDDED)$('#loginView .login-card').innerHTML='<h1>Đang mở platform nhập liệu…</h1><p class="muted">Đang dùng phiên đăng nhập hiện tại.</p>';onCredential({credential:savedToken})}
-      else initGoogle();
+      else {initGoogle();const warning=sessionStorage.getItem('sungrow_logout_warning');if(warning){sessionStorage.removeItem('sungrow_logout_warning');showLoginError(warning);}}
     };
 
     function initGoogle(){
@@ -202,10 +202,15 @@
     }
 
     function onCredential(response){
-      state.token=response.credential;
+      const generation=state.authSequence=(state.authSequence||0)+1,credential=response.credential;
+      state.token=credential;
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
-      call('getBootstrap',[state.token]).then(data=>{
+      call('getBootstrap',[credential]).then(async data=>{
+        if(data.portalSessions===true&&!window.SungrowSessionClient)throw new Error('Cần tải lại trang để dùng phiên đăng nhập 8 giờ.');
+        const adopted=window.SungrowSessionClient?await window.SungrowSessionClient.adopt(credential,data,(name,args)=>call(name,args)):credential;
+        if(generation!==state.authSequence)return;
+        state.token=adopted;sessionStorage.setItem('sungrow_id_token',state.token);
         applyDeviceTypes(data);
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.uploadCategories=!!data.uploadCategories;state.customerPicker?.sync();
         applyActorCapabilities();
@@ -215,14 +220,26 @@
         const initials=(data.actor.name||data.actor.email||'SC').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
         $('#userBox').innerHTML=`<div class="user-identity"><span class="user-avatar">${esc(initials)}</span><span class="user-copy"><strong title="${esc(data.actor.email)}">${esc(data.actor.email)}</strong><span class="user-role" title="${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}">${esc(data.actor.isGlobalManager?'Quản lý toàn bộ center':data.actor.role)} · ${esc(data.actor.homeCenter||data.actor.centers.join(', '))}</span></span></div>`;
         fillCenters();
+        if(!EMBEDDED){const logout=document.createElement('button');logout.type='button';logout.className='secondary';logout.textContent='Đăng xuất';logout.addEventListener('click',signOutEntry);$('#userBox').append(logout);}
         setupDashboardAccess();
         const requestedView=(location.hash||'#cases').slice(1);
         showView(['cases','receive','update','transfer'].includes(requestedView)?requestedView:'cases');
         if(EMBEDDED)parent.postMessage({type:'sungrow-portal-ready',actor:state.actor},location.origin);
       }).catch(err=>{
+        if(generation!==state.authSequence)return;
         if(isAuthError(err)){sessionStorage.removeItem('sungrow_id_token');state.token='';showLoginError(err.message);initGoogle();return}
         showLoginError(err.code==='ACTION_NOT_ALLOWED'?'Backend Apps Script chưa được cập nhật lên v1.4.3-form-state-sync. Hãy redeploy rồi tải lại trang.':err.message);
       });
+    }
+
+    async function signOutEntry(){
+      const previous=state.token;state.authSequence=(state.authSequence||0)+1;state.token='';state.actor=null;state.caseAbort?.abort();window.SungrowNotifications?.configure(null);
+      sessionStorage.removeItem('sungrow_id_token');sessionStorage.removeItem('sungrow_portal_actor');closeCaseDrawer();$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden');
+      try{window.google?.accounts?.id?.disableAutoSelect()}catch(_){}
+      const operation=new AbortController(),timeout=setTimeout(()=>operation.abort(),10000);
+      try{await window.SungrowSessionClient?.revoke(previous,(name,args)=>call(name,args,0,operation.signal));location.reload();}
+      catch(error){sessionStorage.setItem('sungrow_logout_warning','Đã đăng xuất trên tab này, nhưng chưa xác nhận thu hồi phiên trên máy chủ. Vui lòng kiểm tra kết nối mạng.');location.reload();}
+      finally{clearTimeout(timeout);}
     }
 
     function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Không đọc được file đính kèm.'));reader.onabort=()=>reject(new Error('Đã hủy đọc file đính kèm.'));reader.onload=()=>resolve(String(reader.result).split(',')[1]||'');reader.readAsDataURL(file)})}
@@ -593,7 +610,7 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0,signal){
-      const readOnly=['getBootstrap','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession','listNotifications','markNotificationsRead'].includes(name);
+      const readOnly=['getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession','listNotifications','markNotificationsRead'].includes(name);
       const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile','setCaseUploadCategory'].includes(name);
       const mutation=!readOnly&&!uploadOnly;
       if(mutation&&document.getElementById('mutationProgress'))throw new Error('Một thao tác đang được lưu. Vui lòng chờ kết quả trước khi gửi tiếp.');
@@ -781,5 +798,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=3"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=3"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=7"></script><script src="entry-notifications.js?v=1"></script></body>
+<link rel="stylesheet" href="mobile-ui.css?v=3"><link rel="stylesheet" href="case-uploads.css?v=3"><script src="form-drafts.js?v=2"></script><script src="mobile-ui.js?v=2"></script><script src="case-uploads.js?v=3"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=7"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script></body>
 </html>
