@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng nhất vị trí icon header — 12/10/2026
+
+Compact-sidebar CSS2 sửa header desktop >1500 về ba cột hiển thị, bỏ track rỗng sau cụm trạng thái/sync/chuông (trước lệch14px giữa Tổng quan và portal). 761–1100 dùng cùng header52px/padding dọc8px cho hai mode, không đổi mobile. Nút34px/SVG19px, cache index tăng; kiểm thử geometry cùng viewport1920/1600/1440/1024, không đổi nghiệp vụ/backend.
+
 ## Thông báo gọn và không cắt chữ — 12/10/2026
 
 Frontend liveJS109/entry92/notifications JS5/CSS4: Model | SN | kết quả (warranty_confirmed chỉ hiện tình trạng khi có), email | thời gian, bỏ Bởi và cụm xác nhận lặp. Popup desktop tối đa520px, nội dung12px/model12px, email10.5px, Montserrat; bỏ ellipsis/chiều cao cố định, tự wrap nội dung dài/mobile để không mất chữ. Vẫn hai khối thông tin, thường hai dòng trên desktop; ưu tiên đủ nội dung thay vì ép hai dòng khi không đủ chỗ. Giữ màu urgent, escaping, click nhanh/read receipt nền/phân quyền. Chỉ frontend, không deploy Apps Script.

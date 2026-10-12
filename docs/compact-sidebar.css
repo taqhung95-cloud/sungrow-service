@@ -1,5 +1,8 @@
 #sg-preview #sg-refresh{display:inline-flex!important;align-items:center;justify-content:center;width:34px!important;height:34px!important;padding:6px!important;min-width:34px!important}
 #sg-preview #sg-refresh svg{width:19px;height:19px;flex:none}
+/* Three visible header children: breadcrumb, filters, actions. No empty trailing track. */
+@media(min-width:1501px){#sg-preview .sg-main:not(.sg-portal-mode)>.sg-top{grid-template-columns:auto minmax(0,1fr) auto}}
+@media(min-width:761px) and (max-width:1100px){#sg-preview .sg-main>.sg-top{box-sizing:border-box;height:52px!important;min-height:52px!important;flex-basis:52px!important;padding-top:8px!important;padding-bottom:8px!important}}
 #sg-preview #sg-refresh:disabled svg{animation:sg-sync-spin 1s linear infinite}
 @keyframes sg-sync-spin{to{transform:rotate(360deg)}}
 .sg-rail-brand,.sg-rail-name{display:none}
