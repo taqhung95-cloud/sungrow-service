@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Dấu phân cách thông báo — 12/10/2026
+
+Frontend liveJS107/entry90/notifications JS3 dùng dấu | giữa Model, SN, thay đổi và giữa người thao tác, thời gian; giữ hai dòng, tooltip đầy đủ, font, quyền và click mở hồ sơ. Chỉ frontend, không cần deploy Apps Script.
+
 ## Người nhận noti và bố cục hai hàng — 12/10/2026
 
 Frontend liveJS106/entry89/notifications JS2/CSS3: noti đúng2 dòng đơn (Model - SN - thay đổi; Bởi - thời gian), ellipsis/tooltip/aria đầy đủ, Montserrat/màu urgent/click giữ nguyên. Người gửi request chỉ toast2,5s, không banner lớn; nút Đã gửi khóa chống trùng. Backend local Notifications.gs recipients-v2 (trên Code/Legacy1.10.20): request chỉ approver, loại sender; approval sender+actor+global; thao tác khác actor+center_manager liên quan+global, không broadcast staff cùngcenter. Scope guard trước audience; list/unread/mark-read đồng nhất. Ghi requester ở metadata approval và nối metadata cũ theo thứ tự audit trong cửa sổ; không tab/header/audit rewrite. Unit/UI/validate đạt. Chỉ frontend/guide/note publish; để đổi routing production chỉ thay Notifications.gs và New version cùngURL theo DEPLOY-NOTIFICATION-RECIPIENTS.md, không cần thay Code/Legacy nếu đã1.10.20.
