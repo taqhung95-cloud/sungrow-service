@@ -2,7 +2,7 @@
 globalThis.portalUploads = (() => {
   const allowed=/\.(doc|docx|pdf|xls|xlsx|zip|rar|jpg|jpeg|png)$/i;
   const groups={incident:'Mẫu thu thập thông tin sự cố',sitePhotos:'Hình ảnh thiết bị tại công trình',deviceLog:'Log file',waveform:'Log sóng sự cố (nếu có)'};
-  let pickers=[],categoryPending=0;
+  let pickers=[],categoryPending=0,restoring=false,restoreError='';
   const disable=value=>pickers.forEach(p=>{p.disabled=value});
   let form,panel,input,items=[],sessionId='',requestId='',key='',center='',epoch=0,working=false,restoreFailed=false;
   const enabled=()=>typeof state!=='undefined'&&!!state.temporaryUploads;
@@ -10,6 +10,7 @@ globalThis.portalUploads = (() => {
   const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId}));}catch(_){}};
   function draw(){
     if(!panel)return;
+    if(restoring||restoreFailed){panel.innerHTML=`<div role="status" aria-live="polite">${restoring?'Đang kiểm tra file đính kèm của trung tâm…':escape(restoreError||'Không kiểm tra được phiên đính kèm. Các file cũ vẫn được giữ.')} ${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}</div>`;return;}
     const ready=items.filter(x=>x.status==='READY').length;
     panel.innerHTML=`<div class="upload-summary" role="status" aria-live="polite">${ready}/${items.length} file đã tải lên</div>${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}<progress max="${items.length||1}" value="${ready}" aria-label="Số file đã upload thành công"></progress><div class="upload-list">${items.map(x=>`<div class="upload-item"><div><strong>${escape(x.name)}</strong>${state.uploadCategories?`<label class="upload-category-label">Nhóm file <select data-upload-category="${escape(x.id)}" ${x.status!=='READY'||restoreFailed?'disabled':''}><option value="">Chưa phân nhóm</option>${Object.entries(groups).map(([id,label])=>`<option value="${id}" ${x.category===id?'selected':''}>${label}</option>`).join('')}</select></label>`:''}<small>${(x.size/1024/1024).toFixed(2)} MB · ${x.status==='READY'?'Đã tải lên':x.status==='SENDING'?'Đang gửi / chờ Drive lưu':x.status==='QUEUED'?'Chờ tải':escape(x.error||'Chưa xác nhận kết quả')}</small></div><div class="upload-actions">${['ERROR','UPLOADING'].includes(x.status)?`<button type="button" class="secondary" data-upload-retry="${escape(x.id)}">${x.file?'Thử lại':'Kiểm tra'}</button>`:''}<button type="button" class="secondary" data-upload-remove="${escape(x.id)}" ${['SENDING','UPLOADING'].includes(x.status)?'disabled':''}>Bỏ</button></div></div>`).join('')}</div>`;
   }
@@ -24,22 +25,33 @@ globalThis.portalUploads = (() => {
     const next=form.elements.intakeCenter.value;
     const nextKey='sungrow:temp-uploads:v1:'+state.actor.email+':'+next;
     if(nextKey===key)return;
-    epoch++;center=next;key=nextKey;items=[];sessionId='';requestId='';restoreFailed=false;disable(false);pickers.forEach(p=>{p.value=''});draw();
+    epoch++;center=next;key=nextKey;items=[];sessionId='';requestId='';restoreFailed=false;restoring=false;restoreError='';disable(false);pickers.forEach(p=>{p.value=''});draw();
     const generation=epoch;
     if(!center)return;
     try{
       const saved=JSON.parse(localStorage.getItem(key)||'null');
-      if(saved){sessionId=saved.sessionId;requestId=saved.requestId;disable(true);
+      if(saved){sessionId=saved.sessionId;requestId=saved.requestId;restoring=true;disable(true);draw();
         const created=await call('getCreationStatus',[state.token,requestId]);
         if(generation!==epoch)return;
         if(created.found){localStorage.removeItem(key);sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();disable(false);showMessage('Phiên upload trước đã tạo hồ sơ '+created.caseId+'. Không cần gửi lại các file cũ.');return;}
-        const result=await call('getCaseUploadSession',[state.token,sessionId]);
+        let result;
+        try{result=await call('getCaseUploadSession',[state.token,sessionId]);}
+        catch(error){
+          if(generation!==epoch)return;
+          // A locally reserved ID may never have started an upload. Keep the IDs:
+          // beginCaseUpload rechecks ownership/center before creating or resuming it.
+          if(String(error.message).trim()==='Không tìm thấy phiên upload của tài khoản này.'){
+            disable(false);return;
+          }
+          throw error;
+        }
         if(generation!==epoch)return;
         if(result.state==='CLAIMED'){merge(result);disable(true);showMessage('Phiên file đang gắn vào yêu cầu tạo hồ sơ. Bấm Tạo hồ sơ để kiểm tra kết quả cũ.');return;}
         if(result.state!=='OPEN'||result.expiresAt<=Date.now()){try{localStorage.removeItem(key);}catch(_){}sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();disable(false);showMessage('Phiên file tạm trước đã hết hạn. Vui lòng chọn lại file.',true);return;}
         disable(false);merge(result);return;
       }
-    }catch(error){if(generation!==epoch)return;restoreFailed=true;disable(true);draw();showMessage('Không đọc được phiên upload. Mã phiên vẫn được giữ; bấm Kiểm tra lại, không tạo phiên mới. '+error.message,true);return;}
+    }catch(error){if(generation!==epoch)return;restoreFailed=true;restoreError='Không đọc được phiên upload. Mã phiên và file cũ vẫn được giữ. '+error.message;disable(true);return;}
+    finally{if(generation===epoch){restoring=false;draw();}}
     sessionId=crypto.randomUUID();requestId=crypto.randomUUID();store();
   }
   async function pump(){
@@ -84,6 +96,7 @@ globalThis.portalUploads = (() => {
     }
     for(const picker of pickers)picker.addEventListener('change',async()=>{
       await scope();
+      if(restoring||restoreFailed){picker.value='';return;}
       if(!center){showMessage('Chọn trung tâm tiếp nhận trước khi tải file.',true);picker.value='';return;}
       for(const file of [...picker.files]){
         const category=picker.dataset.category||'';
@@ -118,6 +131,7 @@ globalThis.portalUploads = (() => {
     scope();
   }
   function prepare(){
+    if(restoring)throw new Error('Đang kiểm tra phiên đính kèm. Vui lòng chờ.');
     if(restoreFailed)throw new Error('Cần kiểm tra lại phiên upload trước khi tạo hồ sơ.');
     if(!items.length)throw new Error('Vui lòng đính kèm ít nhất một file.');
     if(working||categoryPending||items.some(x=>x.status!=='READY'))throw new Error('Các file chưa tải xong. Chờ xác nhận hoặc xử lý file lỗi trước khi tạo hồ sơ.');

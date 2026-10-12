@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Khôi phục đính kèm khi đổi trung tâm — 12/10/2026
+
+Frontend liveJS113/entry96/case-uploads JS4: mã phiên lưu local nhưng chưa upload không còn khóa picker khi getCaseUploadSession báo không tìm thấy; giữ cùng sessionId/requestId để beginCaseUpload kiểm tra quyền/center và khôi phục khi chọn file. Không tạo phiên/Drive lúc chỉ chọn center. Lỗi mạng giữ khóa và hiển thị lỗi/nút kiểm tra lại ngay cạnh file; trạng thái đang kiểm tra có thông báo, chặn submit/chọn file trong lúc restore. Guard epoch giữ phản hồi center cũ không đè center mới. Regression upload-restore kiểm tra missing/network/OPEN/CLAIMED/race. Chỉ frontend, không cần deploy Apps Script.
+
 ## Phiên đăng nhập cố định 8 giờ — 12/10/2026
 
 Frontend liveJS112/entry95/session-client JS1 trao đổi Google credential còn hạn qua createPortalSession khi bootstrap.portalSessions=true; token CSPRNG256-bit, sessionStorage của tab, reload/iframe dùng chung, không tự gia hạn/không lưu URL/localStorage. Backend local Code/Legacy1.10.21-eight-hour-session + PortalSessions.gs lưu hash/bản ghi expiry8h trong Script Properties, xác thực mỗi request bằng record+quyền Người dùng hiện tại, tombstone logout chặn retry hồi sinh, cleanup prefix riêng/cap1000; không source/schema/KPI/projection writes. Sửa Google actor cache không vượt exp; bind GoogleSub chỉ trong login Google, không bằng session. Logout ẩn/clear local ngay, thu hồi server, mạng lỗi báo chưa xác nhận; standalone có logout. Unit/client/browser/validate đạt: after1h/boundary8h/revoke/crossidentity/role/disabled/tab/iframe/reload/legacy fallback. Frontend publish; backend chưa deploy từ Codex, cần thay Code.gs/LegacyDashboardApi.gs và thêm PortalSessions.gs, Save/New version cùngURL theo DEPLOY-1.10.21.md. Portal cũ vẫn~1h đến khi backend sẵn sàng; Apps Script HTML trực tiếp cũ chưa đổi UI.
