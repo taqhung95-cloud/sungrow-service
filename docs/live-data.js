@@ -120,7 +120,7 @@
     });
   }
 
-  function openEntryView(view) {
+  function openEntryView(view, refresh = true) {
     if(activeController){activeController.abort();activeController=null;loadSequence++;}
     if(ticketSearchController){ticketSearchController.abort();ticketSearchController=null;ticketSearchSequence++;}
     q('#sg-refresh').disabled=!token;
@@ -137,9 +137,9 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=90#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=91#' + view;
     }
-    else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh:true},window.location.origin);
+    else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
     setNavGroup(q('.sg-dashboard-parent'),q('.sg-dashboard-subnav'),false);
     setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),true);
@@ -988,7 +988,7 @@
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
       window.SungrowReports?.configure({actor:bootstrap.actor,available:bootstrap.reportExports===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1)});
-      window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{window.SungrowReports?.close();openEntryView('cases');const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
+      window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{window.SungrowReports?.close();openEntryView('cases',false);const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {

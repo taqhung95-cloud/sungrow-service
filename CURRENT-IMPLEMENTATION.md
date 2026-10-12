@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Mở hồ sơ từ thông báo không chờ read receipt — 12/10/2026
+
+Frontend liveJS108/entry91/notifications JS4: click mở hồ sơ ngay, lưu đã đọc chạy nền theo hàng đợi, không gọi listNotifications sau mark; badge giảm theo xác nhận thành công, lỗi giữ chưa đọc và cho thử lại. Không khóa click khi tải thông báo/lưu receipt; hủy response cũ và queue khi đổi account/logout. Notification routing không ép refresh danh sách khi đang ở cases, giữ getCaseDetail kiểm tra quyền. Không đổi backend/data; local UI mô phỏng receipt chậm/lỗi, validate đạt. Chỉ frontend, không deploy Apps Script.
+
 ## Dấu phân cách thông báo — 12/10/2026
 
 Frontend liveJS107/entry90/notifications JS3 dùng dấu | giữa Model, SN, thay đổi và giữa người thao tác, thời gian; giữ hai dòng, tooltip đầy đủ, font, quyền và click mở hồ sơ. Chỉ frontend, không cần deploy Apps Script.
