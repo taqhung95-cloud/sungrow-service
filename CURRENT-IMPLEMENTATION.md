@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thông báo chưa đọc và lịch sử phân loại — 12/10/2026
+
+Frontend liveJS110/entry93/notifications JS6/CSS5: mặc định chỉ hiện unread, receipt thành công tự ẩn (lỗi vẫn giữ). Lịch sử xem cả read/unread theo quyền, lọc loại request/confirmed/created/updated/transferred/returned/deleted và trạng thái đọc; không xóa audit hoặc tạo read state mới. API hiện hữu limit50, Xem thêm phân trang, bộ lọc trên các trang đã tải có thông báo rõ khi còn trang cũ; giữ phạm vi1000 dòng audit của backend và footer minh bạch, không tuyên bố lịch sử vô hạn. Click nhanh/receipt nền/guard account giữ nguyên. Chỉ frontend, không deploy Apps Script.
+
 ## Đồng nhất vị trí icon header — 12/10/2026
 
 Compact-sidebar CSS2 sửa header desktop >1500 về ba cột hiển thị, bỏ track rỗng sau cụm trạng thái/sync/chuông (trước lệch14px giữa Tổng quan và portal). 761–1100 dùng cùng header52px/padding dọc8px cho hai mode, không đổi mobile. Nút34px/SVG19px, cache index tăng; kiểm thử geometry cùng viewport1920/1600/1440/1024, không đổi nghiệp vụ/backend.
