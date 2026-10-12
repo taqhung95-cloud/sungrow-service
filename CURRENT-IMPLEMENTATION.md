@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thông báo gọn và không cắt chữ — 12/10/2026
+
+Frontend liveJS109/entry92/notifications JS5/CSS4: Model | SN | kết quả (warranty_confirmed chỉ hiện tình trạng khi có), email | thời gian, bỏ Bởi và cụm xác nhận lặp. Popup desktop tối đa520px, nội dung12px/model12px, email10.5px, Montserrat; bỏ ellipsis/chiều cao cố định, tự wrap nội dung dài/mobile để không mất chữ. Vẫn hai khối thông tin, thường hai dòng trên desktop; ưu tiên đủ nội dung thay vì ép hai dòng khi không đủ chỗ. Giữ màu urgent, escaping, click nhanh/read receipt nền/phân quyền. Chỉ frontend, không deploy Apps Script.
+
 ## Mở hồ sơ từ thông báo không chờ read receipt — 12/10/2026
 
 Frontend liveJS108/entry91/notifications JS4: click mở hồ sơ ngay, lưu đã đọc chạy nền theo hàng đợi, không gọi listNotifications sau mark; badge giảm theo xác nhận thành công, lỗi giữ chưa đọc và cho thử lại. Không khóa click khi tải thông báo/lưu receipt; hủy response cũ và queue khi đổi account/logout. Notification routing không ép refresh danh sách khi đang ở cases, giữ getCaseDetail kiểm tra quyền. Không đổi backend/data; local UI mô phỏng receipt chậm/lỗi, validate đạt. Chỉ frontend, không deploy Apps Script.

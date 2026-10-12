@@ -16,8 +16,8 @@
  function render(){
   const dates=v=>new Date(v).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   panel.querySelector('[data-notification-items]').innerHTML=data.items.map(item=>{
-   const change=(item.pending?'Yêu cầu duyệt bảo hành':item.kind==='warranty_request'?'Yêu cầu đã xử lý':item.title)+(item.warrantyStatus?': '+item.warrantyStatus:'');
-   const first=(item.model||item.caseId)+' | SN: '+(item.serialNumber||'Chưa có')+' | '+change,second='Bởi: '+(item.by||'—')+' | '+dates(item.at);
+   const change=item.kind==='warranty_confirmed'&&item.warrantyStatus?item.warrantyStatus:(item.pending?'Yêu cầu duyệt bảo hành':item.kind==='warranty_request'?'Yêu cầu đã xử lý':item.title)+(item.warrantyStatus?': '+item.warrantyStatus:'');
+   const first=(item.model||item.caseId)+' | SN: '+(item.serialNumber||'Chưa có')+' | '+change,second=(item.by||'—')+' | '+dates(item.at);
    return '<button type="button" class="sg-notification-item '+(item.pending?'priority ':'')+(item.unread?'unread':'')+'" data-notification-id="'+item.id+'" title="'+esc(first+'\n'+second+(!item.canOpen?'\nHồ sơ không còn mở được':''))+'" aria-label="'+esc(first+' | '+second)+'"><span class="sg-notification-line"><strong>'+esc(item.model||item.caseId)+'</strong> | SN: '+esc(item.serialNumber||'Chưa có')+' | <span class="sg-notification-type">'+esc(change)+'</span></span><small class="sg-notification-line">'+esc(second)+'</small></button>';
   }).join('');panel.querySelector('[data-notification-more]').hidden=data.nextBefore===null;badge(data.unreadCount);message(data.items.length?'':'Chưa có thông báo liên quan.');
  }
