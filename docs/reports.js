@@ -74,5 +74,5 @@
  }
  function close(){if(!pane)return;cancel();main.classList.remove('sg-reports-mode');main.dataset.reportMode='false';pane.hidden=true;navButton.dataset.active='false';}
  function configure(value){cancel();epoch++;config=value;schema=null;preview=null;install();setBusy(false);navButton.hidden=value?.actor?.isGlobalManager!==true;navButton.classList.toggle('sg-role-hidden',navButton.hidden);q('[name=query]').value='';q('[data-report-table]').innerHTML='';q('[data-report-count]').textContent='';q('[data-columns]').innerHTML='';q('[data-centers]').innerHTML='';status('');q('[data-progress]').hidden=true;q('[data-preview]').disabled=true;q('[data-export]').disabled=true;close();}
- window.SungrowReports={configure,isOpen:()=>!!main?.classList.contains('sg-reports-mode'),refresh:()=>run(false)};
+ window.SungrowReports={configure,close,isOpen:()=>!!main?.classList.contains('sg-reports-mode'),refresh:()=>run(false)};
 })();

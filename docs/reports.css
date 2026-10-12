@@ -1,4 +1,5 @@
 #sg-preview .sg-reports-view[hidden],#sg-preview .sg-reports-view [hidden]{display:none!important}
+#sg-preview .sg-nav .sg-nav-parent.sg-role-hidden,#sg-preview .sg-nav .sg-nav-parent[hidden]{display:none!important}
 #sg-preview .sg-main.sg-reports-mode .mobile-filter-toggle,#sg-preview .sg-main.sg-reports-mode .mobile-filter-summary,#sg-preview .sg-report-parent::after{display:none!important}
 #sg-preview .sg-main.sg-reports-mode>.sg-content,#sg-preview .sg-main.sg-reports-mode>.sg-portal-frame,#sg-preview .sg-main.sg-reports-mode .sg-filter-panel{display:none!important}
 #sg-preview .sg-reports-view{padding:20px;min-height:0;overflow:auto;flex:1}

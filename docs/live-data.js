@@ -137,7 +137,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=86#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=87#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh:true},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -988,6 +988,7 @@
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
       window.SungrowReports?.configure({actor:bootstrap.actor,available:bootstrap.reportExports===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1)});
+      window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{window.SungrowReports?.close();openEntryView('cases');const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {
@@ -1013,6 +1014,7 @@
     } catch (error) {
       token = '';
       window.SungrowReports?.configure(null);
+      window.SungrowNotifications?.configure(null);
       sessionStorage.removeItem('sungrow_id_token');
       sessionStorage.removeItem('sungrow_portal_actor');
       status('Không thể đăng nhập', error.message || 'Tài khoản không được cấp quyền', 'error');
@@ -1058,6 +1060,7 @@
   function signOut() {
     token = '';
     window.SungrowReports?.configure(null);
+    window.SungrowNotifications?.configure(null);
     sessionStorage.removeItem('sungrow_id_token');
     sessionStorage.removeItem('sungrow_portal_actor');
     try {
@@ -1114,6 +1117,7 @@
   window.addEventListener('message',event => {
     if (event.origin !== window.location.origin) return;
     const syncFrame=q('.sg-portal-frame');
+    if(event.data?.type==='sungrow-portal-notifications-changed'&&syncFrame&&event.source===syncFrame.contentWindow){window.SungrowNotifications?.refresh();return;}
     if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
       const text=String(event.data.text||'').slice(0,220);
       status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
@@ -1125,6 +1129,7 @@
       if (!frame || event.source !== frame.contentWindow) return;
       frame.dataset.ready = 'true';
       frame.contentWindow.postMessage({type:'sungrow-portal-view',view:frame.dataset.portalView || 'cases'},window.location.origin);
+      if(frame.dataset.notificationCase){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId:frame.dataset.notificationCase},window.location.origin);delete frame.dataset.notificationCase;}
     }
   });
 })();
