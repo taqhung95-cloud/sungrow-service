@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Bổ sung đính kèm và vùng kéo-thả theo nhóm — 13/10/2026
+
+Frontend liveJS117/entry100/case-uploads JS8 CSS5/attachment-ui JS1/supplement-attachments JS1: năm vùng nhóm chọn/kéo-thả/paste file; danh sách cuộn220px/group, icon xem/tải/Xóa, tên wrap đủ. Tái dùng cho tiếp nhận và Bổ sung đính kèm dưới Tài liệu thiết bị trong drawer; capability gate bootstrap/canSupplement. Tải staging rồi Lưu vào hồ sơ, giữ localsession trước request, restore+retry, busy chặn đổi/đóng/rời trang, commit lỗi giữ files. Backend local Code/Legacy1.10.22 + TemporaryUploads + SupplementalAttachments.gs: canonical folder scoped/ancestry, quyền updateWorkOrder/current center/editable work/closed global only; session ràng buộc case/owner/center/folder, file move idempotent, journal lease/receipt, không overwrite, validate lại dưới lock và từng file, Drive ngoài lock. Audit Bổ sung đính kèm dùng existing case_updated recipients, targeted audit id chặn duplicate, sync projection/index/revision. Unit/UI/validate đạt local; backend chưa deploy tự động, cần copy bốn file theo DEPLOY-1.10.22.md; giữ PortalSessions/Notifications và module hiện hành, không migration/schema/source test writes.
+
 ## Chọn center không kiểm tra phiên trống, một spinner — 12/10/2026
 
 Frontend liveJS116/entry99/case-uploads JS7: chỉ persist phiên với uploadStarted=true ngay trước beginCaseUpload để giữ retry khi mất ack; chọn/đổi center chưa upload không lưu phiên hoặc gọi API. Legacy chưa có flag vẫn kiểm tra một lần; getCaseUploadSession đọc metadata trước, getCreationStatus chỉ khi missing/CLAIMED để bảo vệ hồ sơ đã tạo. OPEN không scan bảng hồ sơ. Phiên empty xác nhận xong xóa local, lỗi mạng giữ nguyên. Loading decorator chỉ xử lý node status/loading phù hợp, bỏ spinner ancestor có status con; regression no-read/legacy/network/race và DOM một spinner đạt. Chỉ frontend, không cần deploy Apps Script.

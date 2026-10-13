@@ -16,9 +16,10 @@ async function fixture(mode){
       if(mode==='missing')throw Error('Không tìm thấy phiên upload của tài khoản này.');
       if(mode==='network')throw Error('Network failed');
       return {state:mode==='claimed'?'CLAIMED':'OPEN',expiresAt:Date.now()+60000,files:[{uploadId:'existing',name:'old.pdf',size:5,status:'READY'}]};},
-    testForm:form,testPanel:panel,testPicker:picker};
+    testForm:form,testPanel:panel,testPicker:picker,testUI:{setDisabled:value=>picker.disabled=value,update:(_,message)=>panel.innerHTML=message},};
   vm.createContext(ctx);
-  vm.runInContext(source.replace('return {enabled,prepare,reset,requestId:()=>requestId};','return {scope,prepare,setup(){form=testForm;panel=testPanel;pickers=[testPicker];},snapshot:()=>({sessionId,requestId,items,restoring,restoreFailed})};'),ctx);
+  ctx.document.createElement=()=>({});panel.querySelector=()=>({append:()=>panel.innerHTML+=' Kiểm tra lại phiên upload'});
+  vm.runInContext(source.replace('return {enabled,prepare,reset,requestId:()=>requestId};','return {scope,prepare,setup(){form=testForm;panel=testPanel;ui=testUI;},snapshot:()=>({sessionId,requestId,items,restoring,restoreFailed})};'),ctx);
   ctx.portalUploads.setup();ctx.state.temporaryUploads=true;
   return {ctx,picker,panel,form,storage,saved,calls,release:()=>release()};
 }
@@ -28,7 +29,7 @@ for(const mode of ['missing','network','ready','claimed','unused']){
   if(['missing','unused'].includes(mode))assert.equal(f.storage.size,0,'Discard confirmed empty local draft');
   else assert.equal(f.storage.values().next().value,f.saved,'Preserve uncertain/active sessions');
   assert.equal(f.calls.length,mode==='unused'?0:['missing','claimed'].includes(mode)?2:1,'Read upload metadata first; case scan only for missing/claimed');
-  if(mode==='network'){assert.match(f.panel.innerHTML,/Network failed/);assert.match(f.panel.innerHTML,/data-upload-check-session/);assert.throws(()=>f.ctx.portalUploads.prepare(),/kiểm tra lại/);}
+  if(mode==='network'){assert.match(f.panel.innerHTML,/Network failed/);assert.match(f.panel.innerHTML,/Kiểm tra lại phiên upload/);assert.throws(()=>f.ctx.portalUploads.prepare(),/kiểm tra lại/);}
   if(mode==='ready')assert.equal(f.ctx.portalUploads.prepare().uploadIds[0],'existing');
 }
 const empty=await fixture('ready');empty.storage.clear();

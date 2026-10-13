@@ -2,21 +2,21 @@
 globalThis.portalUploads = (() => {
   const allowed=/\.(doc|docx|pdf|xls|xlsx|zip|rar|jpg|jpeg|png|txt|csv)$/i;
   const groups={incident:'Mẫu thu thập thông tin sự cố',sitePhotos:'Hình ảnh thiết bị tại công trình',centerPhotos:'Hình ảnh tại center',deviceLog:'Log file',waveform:'Log sóng sự cố (nếu có)'};
-  let pickers=[],categoryPending=0,restoring=false,restoreError='';
-  const disable=value=>pickers.forEach(p=>{p.disabled=value});
+  let ui,categoryPending=0,restoring=false,restoreError='';
+  const disable=value=>ui?.setDisabled(value);
   let form,panel,input,items=[],sessionId='',requestId='',key='',center='',epoch=0,working=false,restoreFailed=false;
   const enabled=()=>typeof state!=='undefined'&&!!state.temporaryUploads;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId,uploadStarted:true}));}catch(_){}};
   function draw(){
-    if(!panel)return;
-    if(restoring||restoreFailed){panel.innerHTML=`<div role="status" aria-live="polite">${restoring?'Đang kiểm tra file đính kèm của trung tâm…':escape(restoreError||'Không kiểm tra được phiên đính kèm. Các file cũ vẫn được giữ.')} ${restoreFailed?'<button type="button" class="secondary" data-upload-check-session>Kiểm tra lại phiên upload</button>':''}</div>`;return;}
+    if(!ui)return;
     const ready=items.filter(x=>x.status==='READY').length;
-    panel.innerHTML=items.length?`<div class="upload-summary" role="status" aria-live="polite">${ready}/${items.length} file đã tải lên</div>${ready<items.length?`<progress max="${items.length}" value="${ready}" aria-label="Số file đã upload thành công"></progress>`:''}<div class="upload-list" role="region" aria-label="Danh sách file đính kèm" tabindex="0">${items.map(x=>`<div class="upload-item"><div class="upload-file-info"><strong>${escape(x.name)}</strong><small>${(x.size/1024/1024).toFixed(2)} MB · ${x.status==='READY'?'Đã tải lên':x.status==='SENDING'?'Đang gửi / chờ Drive lưu':x.status==='QUEUED'?'Chờ tải':escape(x.error||'Chưa xác nhận kết quả')}</small></div>${state.uploadCategories?`<select class="upload-category" aria-label="Nhóm file ${escape(x.name)}" data-upload-category="${escape(x.id)}" ${x.status!=='READY'?'disabled':''}><option value="">Chưa phân nhóm</option>${Object.entries(groups).map(([id,label])=>`<option value="${id}" ${x.category===id?'selected':''}>${label}</option>`).join('')}</select>`:''}<div class="upload-actions">${['ERROR','UPLOADING'].includes(x.status)?`<button type="button" class="secondary" data-upload-retry="${escape(x.id)}">${x.file?'Thử lại':'Kiểm tra'}</button>`:''}<button type="button" class="secondary" data-upload-remove="${escape(x.id)}" aria-label="Xóa ${escape(x.name)}" ${['SENDING','UPLOADING','REMOVING'].includes(x.status)?'disabled':''}>Xóa</button></div></div>`).join('')}</div>`:'';
+    ui.update(items,restoring?'Đang kiểm tra file đính kèm của trung tâm…':restoreFailed?restoreError:items.length?ready+'/'+items.length+' file đã tải lên':'',restoring);
+    if(restoreFailed){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Kiểm tra lại phiên upload';button.onclick=async()=>{key='';await scope();};panel.querySelector('.attachment-status').append(button);}
   }
   function merge(result){
     const locals=new Map(items.map(x=>[x.id,x]));
-    const remote=result.files.map(x=>({...locals.get(x.uploadId),id:x.uploadId,name:x.name,size:x.size,status:x.status,category:x.category||''}));
+    const remote=result.files.map(x=>({...locals.get(x.uploadId),id:x.uploadId,name:x.name,size:x.size,status:x.status,category:x.category||'',fileId:x.fileId||''}));
     const ids=new Set(remote.map(x=>x.id));
     items=[...remote,...items.filter(x=>!ids.has(x.id))];draw();
   }
@@ -25,7 +25,7 @@ globalThis.portalUploads = (() => {
     const next=form.elements.intakeCenter.value;
     const nextKey='sungrow:temp-uploads:v1:'+state.actor.email+':'+next;
     if(nextKey===key)return;
-    epoch++;center=next;key=nextKey;items=[];sessionId='';requestId='';restoreFailed=false;restoring=false;restoreError='';disable(false);pickers.forEach(p=>{p.value=''});draw();
+    epoch++;center=next;key=nextKey;items=[];sessionId='';requestId='';restoreFailed=false;restoring=false;restoreError='';disable(false);draw();
     const generation=epoch;
     if(!center)return;
     try{
@@ -98,45 +98,37 @@ globalThis.portalUploads = (() => {
     input.setAttribute('aria-describedby','uploadLabelNote');field.querySelector('.muted').hidden=true;
     panel=document.createElement('div');panel.className='case-upload-panel';input.after(panel);
     form.elements.intakeCenter.addEventListener('change',scope);
-    pickers=[input];
-    if(state.uploadCategories){
-      input.hidden=true;
-      const groupBox=document.createElement('div');groupBox.className='upload-toolbar';
-      groupBox.innerHTML=`<label for="uploadNewCategory">Nhóm file</label><select id="uploadNewCategory">${Object.entries(groups).map(([id,title])=>`<option value="${id}">${title}</option>`).join('')}</select><button type="button" class="secondary upload-add">＋ Thêm file</button><input type="file" hidden multiple accept="${input.accept}" aria-label="Chọn file đính kèm"><span class="upload-formats">Tài liệu, ảnh, ZIP/RAR, TXT, CSV</span>`;
-      input.after(groupBox);const filePicker=groupBox.querySelector('input'),addButton=groupBox.querySelector('button');pickers=[filePicker,addButton];
-      addButton.addEventListener('click',()=>{filePicker.dataset.category=groupBox.querySelector('select').value;filePicker.click();});
-    }
-    for(const picker of pickers)picker.addEventListener('change',async()=>{
+    input.hidden=true;
+    async function choose(files,category){
       await scope();
-      if(restoring||restoreFailed){picker.value='';return;}
-      if(!center){showMessage('Chọn trung tâm tiếp nhận trước khi tải file.',true);picker.value='';return;}
-      for(const file of [...picker.files]){
-        const category=picker.dataset.category||'';
+      if(restoring||restoreFailed)return;
+      if(!center){showMessage('Chọn trung tâm tiếp nhận trước khi tải file.',true);return;}
+      for(const file of files){
         if(!allowed.test(file.name)||!file.size){showMessage('File '+file.name+' trống hoặc không đúng định dạng được hỗ trợ.',true);continue;}
         const pending=items.find(x=>x.name===file.name&&x.size===file.size&&(x.category||'')===category&&['ERROR','UPLOADING'].includes(x.status)&&!x.file);
         if(pending){pending.file=file;pending.status='QUEUED';continue;}
         items.push({id:crypto.randomUUID(),file,category,name:file.name,size:file.size,status:'QUEUED'});
       }
-      picker.value='';draw();pump();
-    });
-    panel.addEventListener('change',async event=>{
-      const select=event.target.closest('[data-upload-category]');if(!select)return;
-      const item=items.find(x=>x.id===select.dataset.uploadCategory),generation=epoch;
-      if(!item)return;
-      categoryPending++;
-      select.disabled=true;
-      try{const result=await call('setCaseUploadCategory',[state.token,{sessionId,center,uploadId:item.id,category:select.value}]);if(generation===epoch)merge(result);}
-      catch(error){if(generation===epoch){draw();showMessage(error.message,true)}}
-      finally{categoryPending--;}
-    });
-    panel.addEventListener('click',async event=>{
-      if(event.target.closest('[data-upload-check-session]')){key='';await scope();return;}
-      const retry=event.target.closest('[data-upload-retry]'),remove=event.target.closest('[data-upload-remove]');
-      const item=items.find(x=>x.id===(retry?.dataset.uploadRetry||remove?.dataset.uploadRemove));if(!item)return;
-      if(retry){if(item.file){item.status='QUEUED';draw();pump();}else{try{merge(await call('getCaseUploadSession',[state.token,sessionId]));if(items.find(x=>x.id===item.id)?.status!=='READY')showMessage('Chưa xác nhận được file. Chọn lại đúng file này để thử lại; mã upload cũ sẽ được giữ.',true);}catch(e){showMessage(e.message,true)}}return;}
-      const old=item.status,generation=epoch;
-      try{if(['READY','REMOVING'].includes(old)){item.status='REMOVING';draw();await call('removeCaseUploadFile',[state.token,{sessionId,center,uploadId:item.id}]);}else if(old!=='QUEUED')throw new Error('Kiểm tra/thử lại file chưa xác định trước khi bỏ.');if(generation===epoch){items=items.filter(x=>x!==item);draw();}}
-      catch(e){if(generation===epoch){item.status=old;draw();showMessage(e.message,true);}}
+      draw();pump();
+    }
+    ui=SungrowAttachmentUI.mount(panel,{categories:state.uploadCategories,onFiles:choose,
+      async onCategory(item,category){
+        if(!item)return;const generation=epoch;categoryPending++;
+        try{const result=await call('setCaseUploadCategory',[state.token,{sessionId,center,uploadId:item.id,category}]);if(generation===epoch)merge(result);}
+        catch(e){if(generation===epoch)showMessage(e.message,true);}finally{categoryPending--;}
+      },
+      async onRetry(item){
+        if(item.file){item.status='QUEUED';draw();pump();}
+        else try{merge(await call('getCaseUploadSession',[state.token,sessionId]));}catch(e){showMessage(e.message,true);}
+      },
+      async onRemove(item){
+        const old=item.status,generation=epoch;
+        try{
+          if(['READY','REMOVING'].includes(old)){item.status='REMOVING';draw();await call('removeCaseUploadFile',[state.token,{sessionId,center,uploadId:item.id}]);}
+          else if(old!=='QUEUED')throw new Error('Kiểm tra/thử lại file chưa xác định trước khi xóa.');
+          if(generation===epoch){items=items.filter(x=>x!==item);draw();}
+        }catch(e){if(generation===epoch){item.status=old;draw();showMessage(e.message,true);}}
+      }
     });
     scope();
   }

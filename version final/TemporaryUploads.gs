@@ -46,9 +46,11 @@ function tuWrite_(record) {
   }catch(error){chunkIds.forEach(function(k){try{props.deleteProperty(k);}catch(_){}});throw error;}
   if(old&&old.chunkIds)old.chunkIds.forEach(function(k){try{props.deleteProperty(k);}catch(_){}});
 }
-function tuActor_(token, center) {
-  const actor = authenticate_(token);
-  assertCapability_(actor, 'createCase'); assertCenterAllowed_(actor, center);
+function tuActor_(token, center, caseId) {
+  const scope=caseId?saScope_(token,caseId):null;
+  if(scope&&scope.center!==center)throw publicError_('Center hồ sơ đã thay đổi.');
+  const actor = scope?scope.actor:authenticate_(token);
+  if(!caseId)assertCapability_(actor, 'createCase'); assertCenterAllowed_(actor, center);
   if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
   if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
   return actor;
@@ -61,20 +63,24 @@ function tuOwned_(actor, id, editable) {
   return record;
 }
 function tuPublic_(record) {
-  return {sessionId:record.id,center:record.center,state:record.state,expiresAt:record.expiresAt,
-    files:record.files.map(function(f){return {uploadId:f.id,name:f.name,size:f.size,status:f.status,category:f.category||''};})};
+  return {sessionId:record.id,center:record.center,state:record.state,expiresAt:record.expiresAt,supplementalCaseId:record.supplementalCaseId||'',receipt:record.receipt||null,
+    files:record.files.map(function(f){return {uploadId:f.id,name:f.name,size:f.size,status:f.status,category:f.category||'',fileId:f.status==='READY'?f.fileId:''};})};
 }
 function temporaryUploadsEnabled_() { return PropertiesService.getScriptProperties().getProperty('TEMP_UPLOAD_ENABLED') === '1'; }
 
 function beginCaseUpload(idToken, payload) {
   if (!temporaryUploadsEnabled_()) throw publicError_('Upload tạm chưa được quản lý khởi tạo.');
   const center = required_(payload && payload.center, 'Trung tâm tiếp nhận');
-  const actor = tuActor_(idToken, center), id = tuId_(payload.sessionId);
+  const scope=payload.caseId?saScope_(idToken,payload.caseId):null;
+  if(scope&&scope.center!==center)throw publicError_('Center hồ sơ đã thay đổi.');
+  if(scope)saVerifyFolder_(scope);
+  const actor = tuActor_(idToken, center,payload.caseId), id = tuId_(payload.sessionId);
   let newSession = false;
   let record = tuLock_(function(){
     const current = tuRead_(id);
     if (current) {
       if (current.owner !== actor.email || current.center !== center) throw publicError_('Phiên upload không thuộc tài khoản/center này.');
+      if((current.supplementalCaseId||'')!==(payload.caseId||'')||scope&&current.targetFolderId!==scope.folderId)throw publicError_('Phiên upload thuộc hồ sơ hoặc thư mục khác.');
       if (current.expiresAt <= Date.now()) throw publicError_('Phiên upload đã hết hạn 24 giờ.');
       if (!['OPEN','INIT'].includes(current.state)) throw publicError_('Phiên upload đã được sử dụng.');
       return current;
@@ -83,6 +89,7 @@ function beginCaseUpload(idToken, payload) {
     const sessions = Object.keys(all).filter(function(k){return k.indexOf(TU_PREFIX)===0;});
     if (sessions.length >= 40 || unescape(encodeURIComponent(JSON.stringify(all))).length > 350000) throw publicError_('Kho phiên upload tạm đang đầy. Quản lý cần chạy cleanupTemporaryUploads trước khi tải thêm.');
     const next = {id:id,owner:actor.email,center:center,state:'INIT',createdAt:Date.now(),expiresAt:Date.now()+TU_TTL,files:[]};
+    if(scope){next.supplementalCaseId=payload.caseId;next.targetFolderId=scope.folderId;}
     newSession = true;
     tuWrite_(next);return next;
   });
@@ -98,8 +105,9 @@ function beginCaseUpload(idToken, payload) {
 }
 
 function tuFileBytes_(payload) {
-  const name = clean_(payload.name).replace(/[\\/:*?"<>|\r\n]/g,'_').slice(0,80);
-  const ext = name.split('.').pop().toLowerCase();
+  const original=clean_(payload.name).replace(/[\\/:*?"<>|\x00-\x1f]/g,'_');
+  const ext = original.split('.').pop().toLowerCase();
+  const name=original.length>80?original.slice(0,Math.max(1,79-ext.length))+'.'+ext:original;
   if (!TU_TYPES[ext]) throw publicError_('Chỉ nhận DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG, TXT và CSV.');
   const base64 = String(payload.base64 || '');
   if (!base64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) throw publicError_('File không hợp lệ.');
@@ -125,7 +133,8 @@ function tuRecoverFile_(record, file) {
   return saved.getId();
 }
 function uploadCaseFile(idToken, payload) {
-  const actor = tuActor_(idToken, required_(payload && payload.center,'Trung tâm tiếp nhận'));
+  const initial=tuRead_(tuId_(payload.sessionId));
+  const actor = tuActor_(idToken, required_(payload && payload.center,'Trung tâm tiếp nhận'),initial&&initial.supplementalCaseId);
   const id = tuId_(payload.sessionId), fileId = tuId_(payload.uploadId);
   let record = tuOwned_(actor,id,true);
   if (record.center !== payload.center) throw publicError_('Center của file không khớp phiên upload.');
@@ -159,12 +168,13 @@ function uploadCaseFile(idToken, payload) {
 }
 function getCaseUploadSession(idToken, sessionId) {
   const actor=authenticate_(idToken),record=tuOwned_(actor,sessionId,false);
-  assertCapability_(actor,'createCase');
+  if(record.supplementalCaseId)saScope_(idToken,record.supplementalCaseId);else assertCapability_(actor,'createCase');
   // No scans of Drive on the read path. Reconcile only an uncertain upload explicitly on retry.
   return tuPublic_(record);
 }
 function setCaseUploadCategory(idToken,payload) {
-  const actor=tuActor_(idToken,required_(payload&&payload.center,'Trung tâm tiếp nhận'));
+  const initial=tuRead_(tuId_(payload.sessionId));
+  const actor=tuActor_(idToken,required_(payload&&payload.center,'Trung tâm tiếp nhận'),initial&&initial.supplementalCaseId);
   const category=tuCategory_(payload.category);
   if(!category)throw publicError_('Chọn nhóm file.');
   return tuLock_(function(){const current=tuOwned_(actor,tuId_(payload.sessionId),true);
@@ -175,7 +185,8 @@ function setCaseUploadCategory(idToken,payload) {
   });
 }
 function removeCaseUploadFile(idToken, payload) {
-  const actor=tuActor_(idToken,required_(payload && payload.center,'Trung tâm tiếp nhận'));
+  const initial=tuRead_(tuId_(payload.sessionId));
+  const actor=tuActor_(idToken,required_(payload && payload.center,'Trung tâm tiếp nhận'),initial&&initial.supplementalCaseId);
   const id=tuId_(payload.sessionId),uploadId=tuId_(payload.uploadId);
   const record=tuLock_(function(){const current=tuOwned_(actor,id,true),file=current.files.find(function(f){return f.id===uploadId;});
     if (!file) return current;
@@ -195,6 +206,7 @@ function tuPrepareCase_(actor, payload, folderName) {
   const id=tuId_(payload.uploadSessionId),ids=payload.uploadIds;
   const record=tuLock_(function(){
     const current=tuOwned_(actor,id,false);
+    if(current.supplementalCaseId)throw publicError_('Phiên bổ sung không được dùng để tạo hồ sơ mới.');
     if (current.center!==payload.intakeCenter) throw publicError_('Center hồ sơ khác center của file upload.');
     if (current.requestId && current.requestId!==payload.requestId) throw publicError_('Phiên file đã gắn với yêu cầu khác.');
     if (!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length||ids.length!==current.files.length||current.files.some(function(f){return f.status!=='READY'||ids.indexOf(f.id)<0;})) throw publicError_('Các file đính kèm chưa tải xong hoặc danh sách file không khớp.');
