@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sửa dashboard mobile với bộ lọc hiện hành — 13/10/2026
+
+Frontend liveJS124/entry106/mobile-ui CSS4 JS3: CSS mobile tải sau period/glass/compact để không bị desktop override. Toolbar chia dòng segments/picker/center/compare, controls16px và nút44px; summary lấy range hiện hành và comparison. Chi tiết center hai cột với nhãn SLA/TAT đúng, ghi chú wrap, KPI hai cột cả360px. Annual SVG có stroke/fill rõ và legend màu; donut112px với hole thật, model buttons/legend styles đầy đủ trên mobile. Giữ preview5/Xem thêm nhưng selector hidden đủ mạnh, list scroll320px/center380px, footer nền sáng. Kiểm thử dùng actual CSS/JS + dữ liệu giả (khác test mobile cũ đã strip scripts): tái hiện toolbar155px chứa picker260px và8cột trước sửa; sau sửa360/390/430, range/calendar, mở center, preview, glass và desktop đạt; mobile-layout và validate đạt. Chỉ frontend, không Apps Script hay dữ liệu.
+
 ## Mở rộng tên lỗi xác nhận — 13/10/2026
 
 Frontend liveJS123/entry105: ô Tên lỗi chiếm cả cột trống phía số lượng linh kiện, giữ nguyên vị trí cột mã/ngày/Xóa/Thêm. Mobile reset span về auto. Chỉ CSS/cache, không đổi nghiệp vụ hoặc Apps Script. Cập nhật kiểm thử bố cục theo yêu cầu tên lỗi rộng hơn; validate và kiểm tra trình duyệt đạt.

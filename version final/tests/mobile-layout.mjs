@@ -73,7 +73,7 @@ try {
       assert.equal(await page.locator('#sg-model-type').evaluate(el=>getComputedStyle(el).fontSize),'16px');
       const filterWidths=await page.locator('#sg-model-type').evaluate(el=>[el,el.parentElement,el.parentElement.parentElement,el.closest('.sg-panel-head')].map(x=>({width:x.getBoundingClientRect().width,maxWidth:getComputedStyle(x).maxWidth,display:getComputedStyle(x).display,columns:getComputedStyle(x).gridTemplateColumns})));
       assert.ok(Math.abs(filterWidths[0].width-filterWidths[3].width)<2,'Model filter should fill mobile card header: '+JSON.stringify(filterWidths));
-      assert.equal(await page.locator('.sg-model-donut').evaluate(el=>Math.round(el.getBoundingClientRect().height)),156);
+      assert.equal(await page.locator('.sg-model-donut').evaluate(el=>Math.round(el.getBoundingClientRect().height)),112);
       assert.ok(await page.evaluate(()=>Math.abs(document.querySelector('.sg-model-list-head>span:nth-child(2)').getBoundingClientRect().right-document.querySelector('.sg-donut-item strong').getBoundingClientRect().right)<1),'Model quantity heading must occupy the numeric column');
       for(const [head,row] of [['.sg-model-list-head','.sg-donut-item'],['.sg-error-list-head','.sg-error-line'],['.sg-part-list-head','.sg-part-list-row']]){
         assert.equal(await page.locator(head).evaluate(el=>getComputedStyle(el).gridTemplateColumns),await page.locator(row).first().evaluate(el=>getComputedStyle(el).gridTemplateColumns),'Mobile column headers must align with rows');

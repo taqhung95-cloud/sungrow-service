@@ -221,7 +221,56 @@
  #message{max-width:calc(100vw - 24px)!important;right:12px!important;top:12px!important}
 }
 @media(max-width:379px){
- #sg-preview #sg-overview .sg-kpis{grid-template-columns:minmax(0,1fr)!important}
+ #sg-preview #sg-overview .sg-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  #sg-preview #sg-tickets .sg-controls{grid-template-columns:minmax(0,1fr)!important}
  #sg-preview .sg-live-box{gap:5px!important}
+}
+
+/* Current range toolbar and charts share the phone layout, including glass mode. */
+@media(max-width:760px){
+ #sg-preview .sg-top .sg-filter-panel .sg-controls{display:block!important}
+ #sg-preview .sg-top .sg-period-toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;min-width:0}
+ #sg-preview .sg-top .sg-period-toolbar .sg-period-segments{grid-column:1/-1;display:flex;width:100%;min-width:0}
+ #sg-preview .sg-top .sg-period-segments button{flex:1;min-width:0;min-height:44px;height:44px;padding:0 3px;font-size:13px}
+ #sg-preview .sg-top .sg-period-toolbar .sg-period-picker{grid-column:1/-1;min-width:0;width:100%;height:44px;flex:none}
+ #sg-preview .sg-top .sg-period-picker .sg-range-button{font-size:14px!important;height:44px;white-space:normal;line-height:1.35}
+ #sg-preview .sg-top .sg-period-picker .sg-range-prev,#sg-preview .sg-top .sg-period-picker .sg-range-next{width:44px;height:44px;flex:0 0 44px}
+ #sg-preview .sg-top .sg-period-toolbar>.sg-control-label{width:100%!important;min-width:0!important;flex:none!important;display:grid!important;gap:4px;font-size:12px!important;white-space:normal}
+ #sg-preview .sg-top .sg-period-toolbar>.sg-control-label:has(#sg-center),#sg-preview .sg-top .sg-period-toolbar>.sg-control-label:has(#sg-compare-mode){grid-column:1/-1}
+ #sg-preview .sg-top .sg-period-toolbar .sg-control{min-height:44px!important;height:44px!important;font-size:16px!important}
+ #sg-preview .sg-top .sg-filter-panel .sg-period{display:none!important}
+ #sg-preview .mobile-filter-summary{line-height:1.5;font-size:13px}
+ #sg-preview .sg-refresh-button,#sg-preview .sg-notification-bell{width:44px!important;height:44px!important;min-width:44px!important;padding:10px!important}
+ #sg-preview .sg-live-text,#sg-preview .sg-live-text strong{font-size:12px!important}
+ #sg-preview .sg-footer{background:rgba(255,255,255,.95)!important;color:#45545f!important}
+ #sg-preview #sg-overview .sg-kpi{min-height:128px!important;padding:12px!important}
+ #sg-preview #sg-overview .sg-kpi-value{font-size:30px!important}
+ #sg-preview #sg-overview .sg-kpi-note{white-space:normal!important;overflow:visible!important;text-overflow:clip;line-height:1.5!important}
+ #sg-preview #sg-overview .sg-sla-main{flex-wrap:wrap;gap:4px}
+ #sg-preview #sg-overview .sg-sla-main .sg-kpi-note{flex-basis:100%;font-size:11px!important}
+ #sg-preview #sg-overview .sg-sla-card-times{font-size:10px;gap:3px}
+ #sg-preview #sg-overview .sg-received-annual{margin-top:8px;padding-top:8px;gap:10px!important}
+ #sg-preview .sg-received-annual .sg-annual-series polyline{fill:none;stroke:var(--series);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+ #sg-preview .sg-received-annual .sg-annual-baseline{stroke:#c7d0d6;stroke-width:1}
+ #sg-preview .sg-received-legend i{width:7px;height:7px;border-radius:50%;background:var(--series);display:block}
+ #sg-preview #sg-overview .sg-model-donut{width:112px!important;height:112px!important;min-width:112px;position:relative;background:var(--donut,#edf0f2);border-radius:50%}
+ #sg-preview #sg-overview .sg-model-donut::after{display:none!important}
+ #sg-preview #sg-overview .sg-model-donut>div{width:76px;height:76px;position:relative;background:#fff;border-radius:50%;text-align:center}
+ #sg-preview #sg-overview .sg-model-donut strong{font-size:26px!important}
+ #sg-preview #sg-overview .sg-model-donut span{font-size:11px!important}
+ #sg-preview #sg-overview .sg-donut-item{width:100%;border:0;border-bottom:1px solid #edf0f2;border-radius:0;background:transparent;color:#273946;text-align:left;min-height:44px}
+ #sg-preview #sg-overview .sg-donut-item i{width:8px;height:8px;border-radius:50%;display:block}
+ #sg-preview #sg-overview .sg-donut-item em{font-size:13px!important;font-style:normal;text-align:right;color:#65727b;white-space:nowrap}
+ #sg-preview #sg-overview .sg-donut-item[aria-pressed=true]{background:#fff3e8}
+ #sg-preview #sg-overview .sg-card-list-body{max-height:320px!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:thin}
+ #sg-preview #sg-overview .sg-card-list-body>.mobile-preview-hidden{display:none!important}
+ #sg-preview #sg-overview .sg-compare-list-body{max-height:380px!important;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain}
+ #sg-preview #sg-overview .sg-compare-list-row{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;padding:10px 0!important}
+ #sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4){white-space:normal!important}
+ #sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>small,#sg-preview #sg-overview .sg-compare-list-row>span:nth-child(4)>.sg-cell-delta{display:block!important;margin-left:0!important;white-space:normal!important}
+ #sg-preview .sg-compare-list-row>span:nth-child(6)::before{content:'SLA · ngày trung bình'}
+ #sg-preview .sg-compare-list-row>span:nth-child(7)::before{content:'TAT hồ sơ'}
+ #sg-preview .sg-sla-pair>i{font-size:12px;white-space:normal}
+ #sg-preview #sg-overview .mobile-center-expand{margin-top:5px;min-height:40px}
+ #sg-preview #sg-overview .sg-command-model>.sg-panel-head,#sg-preview #sg-overview .sg-command-errors>.sg-panel-head,#sg-preview #sg-overview .sg-command-parts>.sg-panel-head{gap:8px!important;margin-bottom:8px!important;padding-bottom:8px!important}
 }

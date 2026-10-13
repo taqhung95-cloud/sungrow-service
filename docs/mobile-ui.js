@@ -71,7 +71,9 @@
       const month = root.querySelector('#sg-period-month');
       const center = root.querySelector('#sg-center');
       const selected = el => el?.selectedOptions?.[0]?.textContent || '';
-      const value = [year?.value, selected(month), selected(center)].filter(Boolean).join(' · ');
+      const range = root.querySelector('.sg-range-button')?.textContent?.trim();
+      const comparison = root.querySelector('#sg-compare-mode');
+      const value = [range || [year?.value, selected(month)].filter(Boolean).join(' · '), selected(center), selected(comparison)].filter(Boolean).join(' | ');
       if (summary.textContent !== value) summary.textContent = value;
     };
     toggle.addEventListener('click', () => {
