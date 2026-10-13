@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chi tiết thiết bị giữ layout cũ, bỏ thông tin trùng — 13/10/2026
+
+Frontend liveJS127/entry109: khôi phục detail-grid phẳng hai cột như layout cũ, bỏ nhóm/accordion mới. Ngày nhận từ khách/Người tạo hồ sơ dùng nhãn rõ; giao nhận dùng Công ty/Người liên hệ/Địa chỉ giao nhận, không lấy tên khách hàng điền thay người liên hệ. Nơi gửi hàng chỉ hiển thị khi không trống và khác tên khách/người liên hệ sau chuẩn hóa NFC, khoảng trắng và hoa thường; giữ giá trị khác của dữ liệu cũ. Giá trị thiếu vẫn --. Chỉ render frontend, không đổi database/API/form tạo/logic lưu. Kiểm tra render trùng/khác/thiếu và layout desktop/mobile; validate đạt. Không Apps Script.
+
 ## Giá trị chưa nhập trong Chi tiết thiết bị — 13/10/2026
 
 Frontend liveJS126/entry108: giá trị thiếu/null/chuỗi trống trong drawer hiển thị --, gồm thông tin giao nhận, email, người/ngày xác nhận bảo hành, ngày/kết quả kỹ thuật và tài liệu Drive. Giữ các trạng thái nghiệp vụ thực tế Mới tiếp nhận/Chờ xác nhận/Đã nhận hàng; summary giao nhận không thêm chữ Chưa nhập. Chỉ cách hiển thị, không ghi -- xuống database, không thay đổi API hay nhập liệu. Render kiểm tra hồ sơ mới và validate đạt; không Apps Script.
