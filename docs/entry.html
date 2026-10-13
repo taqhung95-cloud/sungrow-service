@@ -734,21 +734,27 @@
     }
 
     async function syncPortalNow() {
-      if (!state.token) return;
+      if (!state.token){$('#portalSyncStatus').textContent='Chưa đồng bộ · Vui lòng chờ đăng nhập';return;}
+      if(state.manualSyncBusy)return;
+      state.manualSyncBusy=true;
+      $('#caseSync').disabled=true;
+      $('#portalSyncStatus').textContent='Đang đồng bộ…';
       const catalogToken=state.token;
       try{
         const data=await call('getBootstrap',[catalogToken,{refreshCatalog:true}]);
         if(state.token!==catalogToken)return;
         applyDeviceTypes(data);
-      }catch(err){showMessage(err.message,true);return}
       state.caseCache = {};
       if (hasOpenCaseEditor()) {
         showRealtimeNotice();
         document.getElementById('portalRealtimeNotice').textContent='Đóng phần chi tiết / biểu mẫu rồi bấm Đồng bộ để xem dữ liệu mới';
+        $('#portalSyncStatus').textContent='Chưa đồng bộ · Đang mở hồ sơ';
         return;
       }
       document.getElementById('portalRealtimeNotice')?.remove();
       await loadCases(false,true);
+      }catch(err){$('#portalSyncStatus').textContent='Chưa đồng bộ · '+err.message;showMessage(err.message,true);}
+      finally{state.manualSyncBusy=false;$('#caseSync').disabled=false;if($('#portalSyncStatus').textContent.startsWith('Đang'))$('#portalSyncStatus').textContent='Chưa đồng bộ';}
     }
     globalThis.portalRealtime={sync:syncPortalNow,check:checkPortalRevision};
     window.addEventListener('portal-data-changed',()=>{state.caseDataRevision='';checkPortalRevision()});

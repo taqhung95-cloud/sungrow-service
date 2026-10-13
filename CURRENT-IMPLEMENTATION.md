@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Icon đồng bộ xoay trong phần nhập liệu — 13/10/2026
+
+Frontend liveJS118/entry101: parent khóa icon ngay khi gửi sync và giữ disabled khi trạng thái iframe bắt đầu Đang (dùng animation Dashboard hiện có); child báo loading từ đầu bước refreshCatalog đến loadCases, chặn manual sync trùng, finally/error/đang mở editor trả trạng thái dừng. Không đổi API/cache/dữ liệu hoặc tạo thêm request. Kiểm thử sync routing và validate đạt; chỉ frontend, không Apps Script.
+
 ## Bổ sung đính kèm và vùng kéo-thả theo nhóm — 13/10/2026
 
 Frontend liveJS117/entry100/case-uploads JS8 CSS5/attachment-ui JS1/supplement-attachments JS1: năm vùng nhóm chọn/kéo-thả/paste file; danh sách cuộn220px/group, icon xem/tải/Xóa, tên wrap đủ. Tái dùng cho tiếp nhận và Bổ sung đính kèm dưới Tài liệu thiết bị trong drawer; capability gate bootstrap/canSupplement. Tải staging rồi Lưu vào hồ sơ, giữ localsession trước request, restore+retry, busy chặn đổi/đóng/rời trang, commit lỗi giữ files. Backend local Code/Legacy1.10.22 + TemporaryUploads + SupplementalAttachments.gs: canonical folder scoped/ancestry, quyền updateWorkOrder/current center/editable work/closed global only; session ràng buộc case/owner/center/folder, file move idempotent, journal lease/receipt, không overwrite, validate lại dưới lock và từng file, Drive ngoài lock. Audit Bổ sung đính kèm dùng existing case_updated recipients, targeted audit id chặn duplicate, sync projection/index/revision. Unit/UI/validate đạt local; backend chưa deploy tự động, cần copy bốn file theo DEPLOY-1.10.22.md; giữ PortalSessions/Notifications và module hiện hành, không migration/schema/source test writes.

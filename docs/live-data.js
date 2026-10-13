@@ -138,7 +138,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=100#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=101#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -1112,7 +1112,7 @@
     if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ loadTicketPage(true); },0);
     if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
   });
-  q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(window.SungrowReports?.isOpen()){window.SungrowReports.refresh();return;}if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');frame?.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}else loadLive({force:true});});
+  q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(window.SungrowReports?.isOpen()){window.SungrowReports.refresh();return;}if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');if(frame){q('#sg-refresh').disabled=true;frame.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}}else loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
@@ -1135,7 +1135,7 @@
     if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
       const text=String(event.data.text||'').slice(0,220);
       status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
-      q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=false;return;
+      q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=text.startsWith('Đang');return;
     }
     if (event.data?.type === 'sungrow-portal-dashboard') showDashboardView();
     if (event.data?.type === 'sungrow-portal-ready') {
