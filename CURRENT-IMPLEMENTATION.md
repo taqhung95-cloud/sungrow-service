@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Ngày sử dụng linh kiện hiển thị và canh cột — 13/10/2026
+
+Frontend liveJS122/entry104/work-order-rules JS2/work-order-locks JS2/form-drafts JS3: mỗi linh kiện có ô Ngày sử dụng để xem/sửa ngày cũ; gửi đúng ngày từng dòng, bỏ data-used-at ẩn. Để trống dùng ngày hoàn tất kỹ thuật khi lưu theo cơ chế hiện hành. Lỗi ngày ghi rõ Part Number. Shared grid canh mã/tên/ngày/Xóa/Thêm giữa lỗi và linh kiện, ô số lượng riêng; responsive hai cột. Nháp capture/restore ngày mới, nháp cũ dùng fallback dataset. Không bỏ kiểm tra ngày tương lai hoặc tự sửa ngày lịch sử. Edge regression kiểm tra sửa ngày kế thừa, payload, nháp, độ rộng/vị trí cột và mobile; rules/validate đạt. Backend local Code/Legacy1.10.24 + WorkOrderRules có nhãn lỗi chi tiết; copy ba file theo DEPLOY-1.10.24.md, không migration. Frontend phát hành độc lập; backend1.10.23 vẫn nhận trường usedAt hiện hữu.
+
 ## Khóa chéo cập nhật công việc — 13/10/2026
 
 Frontend liveJS121/entry103/work-order-rules JS1/work-order-locks JS1 dùng hợp đồng chung với WorkOrderRules.gs: active workflow khóa outcome/completion/replacement, technical_done bắt buộc outcome+date, exchange bắt buộc type; pending warranty khóa parts/final, controlled transfer/closed không chọn mới, closed case khóa status. Ngày thực tế không future/VN, chronology received→diagnosis→technical, parts/holds/issues preflight. Giữ dữ liệu cũ mâu thuẫn, chặn gửi và cung cấp reset có xác nhận; nháp restore re-lock, không silent clear. Backend local Code/Legacy1.10.23 gọi rules trước write/ensure columns, state-ready chỉ từ technical terminal+outcome+date; regress active bỏ readyDate cũ, delivered giữ closed. Unit zero-write/matrix và UI actual form đạt, validate đạt. Frontend publish; backend cần copy Code/Legacy/thêm WorkOrderRules theo DEPLOY-1.10.23.md, giữ các module trước, không migration/auto repair data cũ.

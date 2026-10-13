@@ -9,7 +9,7 @@ window.SungrowWorkOrderLocks=(()=>{
   function values(){
    const p={};for(const name of ['workflowStatus','outcome','technicalCompletedAt','diagnosisCompletedAt','replacementType'])p[name]=fields[name].value;
    p.issues=[...form.querySelectorAll('.issues .repeat-row')].map(r=>({code:r.children[0].value,name:r.children[1].value,confirmedAt:r.children[2].value}));
-   p.parts=[...form.querySelectorAll('.parts .repeat-row')].map(r=>({partNumber:r.children[0].value,name:r.children[1].value,quantity:r.children[2].value,receivedAt:r.dataset.receivedAt||'',usedAt:r.dataset.usedAt||p.technicalCompletedAt}));
+   p.parts=[...form.querySelectorAll('.parts .repeat-row')].map(r=>({partUsageId:r.dataset.partUsageId||'',partNumber:r.children[0].value,name:r.children[1].value,quantity:r.children[2].value,receivedAt:r.dataset.receivedAt||'',usedAt:r.querySelector('.part-used-at').value||p.technicalCompletedAt}));
    p.holds=[...form.querySelectorAll('.holds .repeat-row')].map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));return p;
   }
   function sync(){
@@ -22,6 +22,7 @@ window.SungrowWorkOrderLocks=(()=>{
    if(fields.diagnosisCompletedAt.value)fields.technicalCompletedAt.min=fields.diagnosisCompletedAt.value;
    form.querySelectorAll('.issues input[type=date],.holds input[type=date]').forEach(x=>{x.max=context.today;if(context.receivedAt)x.min=context.receivedAt;});
    form.querySelectorAll('.parts input,.parts .inline-add').forEach(x=>x.disabled=pending);
+   form.querySelectorAll('.parts .repeat-row').forEach(r=>{const input=r.querySelector('.part-used-at');input.max=context.today;input.min=r.dataset.receivedAt||context.receivedAt||'';});
    form.querySelectorAll('.holds .repeat-row').forEach(r=>{r.children[2].min=r.children[1].value||context.receivedAt||'';});
    const errors=SungrowWorkOrderRules.validate(values(),context),text=errors.length?errors.join(' '):working?'Kết quả cuối và ngày hoàn tất chỉ mở khi chọn Hoàn tất kỹ thuật.':'';
    if(notice.textContent!==text)notice.textContent=text;notice.hidden=!text;notice.classList.toggle('error',errors.length>0);

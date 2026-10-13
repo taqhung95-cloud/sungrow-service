@@ -1,15 +1,17 @@
 import fs from 'node:fs';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),root=path.resolve(import.meta.dirname,'../../');
 const entry=fs.readFileSync(path.join(root,'docs/entry.html'),'utf8'),style=entry.match(/<style>([\s\S]*?)<\/style>/)[1],a=entry.indexOf('    function workStatuses('),b=entry.indexOf('    async function openCorrection(',a),actual=entry.slice(a,b);
+const enhancement=entry.slice(entry.indexOf('    function closeActionForm('),entry.indexOf('    function normalizeSenderPresentation('));
 const html=`<!doctype html><meta charset="utf-8"><style>${style}body{padding:20px}</style><div class="case-form-panel" id="panel-C1"></div><script src="/work-order-rules.js"></script><script src="/work-order-locks.js"></script><script>
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const state={token:'test-session'},formData=form=>Object.fromEntries(new FormData(form));window.calls=[];window.confirm=()=>true;const call=async(name,args)=>{calls.push({name,args});return {};},showMessage=()=>{},refreshCurrent=()=>{},busy=(btn,on)=>btn.disabled=on;
 ${actual}
-window.openFixture=(status='Chờ linh kiện',pending=false,contradictory=true)=>{const received=new Date(today()+'T00:00:00Z');received.setUTCDate(received.getUTCDate()-10);openWork(JSON.stringify({case:{caseId:'C1',warrantyStatus:pending?'Chờ xác nhận':'Trong bảo hành'},work:{workOrderId:'W1',workflowStatus:status,receivedAt:received.toISOString().slice(0,10),diagnosisCompletedAt:received.toISOString().slice(0,10),technicalCompletedAt:contradictory?today():'',outcome:contradictory?'Đã sửa chữa':'',replacementType:'',issues:[],parts:[],holds:[]}}));};
+${enhancement}
+window.openFixture=(status='Chờ linh kiện',pending=false,contradictory=true,parts=[])=>{const received=new Date(today()+'T00:00:00Z');received.setUTCDate(received.getUTCDate()-10);openWork(JSON.stringify({case:{caseId:'C1',warrantyStatus:pending?'Chờ xác nhận':'Trong bảo hành'},work:{workOrderId:'W1',workflowStatus:status,receivedAt:received.toISOString().slice(0,10),diagnosisCompletedAt:received.toISOString().slice(0,10),technicalCompletedAt:contradictory?today():'',outcome:contradictory?'Đã sửa chữa':'',replacementType:'',issues:[],parts,holds:[]}}));enhanceActionForm(document.querySelector('form'));};
 openFixture();
-</script>`;
-const server=http.createServer((req,res)=>{const name=req.url.split('?')[0];if(!['/','/work-order-rules.js','/work-order-locks.js'].includes(name)){res.writeHead(404).end();return;}res.setHeader('Content-Type',name==='/'?'text/html':'application/javascript');res.end(name==='/'?html:fs.readFileSync(path.join(root,'docs',name.slice(1))));});
+</script><script src="/form-drafts.js"></script>`;
+const server=http.createServer((req,res)=>{const name=req.url.split('?')[0];if(!['/','/work-order-rules.js','/work-order-locks.js','/form-drafts.js'].includes(name)){res.writeHead(404).end();return;}res.setHeader('Content-Type',name==='/'?'text/html':'application/javascript');res.end(name==='/'?html:fs.readFileSync(path.join(root,'docs',name.slice(1))));});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
 try{browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:'+server.address().port);
  assert.equal(await page.locator('[name=outcome]').isDisabled(),true);assert.equal(await page.locator('[name=technicalCompletedAt]').isDisabled(),true);
@@ -25,6 +27,18 @@ try{browser=await chromium.launch({channel:'msedge',headless:true});const page=a
  await page.evaluate(()=>window.confirm=()=>true);await page.locator('[name=workflowStatus]').selectOption('Chờ linh kiện');assert.equal(await page.locator('[name=outcome]').inputValue(),'');assert.equal(await page.locator('[name=technicalCompletedAt]').inputValue(),'');assert.equal(await page.locator('[name=replacementType]').inputValue(),'');
  await page.getByRole('button',{name:'Lưu cập nhật',exact:true}).click();await page.waitForFunction(()=>calls.length===2);assert.equal(await page.evaluate(()=>calls[1].args[1].workflowStatus),'Chờ linh kiện');
  await page.evaluate(()=>openFixture('Đã nhận hàng',true,false));assert.equal(await page.locator('[name=workflowStatus] option').count(),2);assert.equal(await page.locator('.parts input').first().isDisabled(),true);
+ await page.evaluate(future=>{state.actor={email:'test@example.test'};window.fixtureParts=[{partUsageId:'P1',partNumber:'BP009286',name:'IGBT Board',quantity:1,usedAt:future},{partUsageId:'P2',partNumber:'BP009431',name:'AC Relay',quantity:1,usedAt:today()}];openFixture('Chờ linh kiện',false,false,fixtureParts);},future);
+ await page.waitForFunction(()=>document.querySelector('form').dataset.draftAttached==='true');
+ assert.equal(await page.locator('.part-used-at').first().inputValue(),future,'Expose inherited date for correction');
+ assert.match(await page.locator('.work-rule-notice').innerText(),/BP009286.*tương lai/);
+ const alignment=await page.evaluate(()=>{const i=document.querySelector('.issues .repeat-row'),p=document.querySelector('.parts .repeat-row');return [[i.children[0],p.children[0]],[i.children[1],p.children[1]],[i.children[2],p.children[3]],[i.querySelector('.danger'),p.querySelector('.danger')],[i.querySelector('.inline-add'),p.querySelector('.inline-add')]].map(pair=>pair.map(x=>{const b=x.getBoundingClientRect();return {x:b.x,width:b.width,height:b.height};}));});
+ for(const [issue,part]of alignment)for(const key of ['x','width','height'])assert.ok(Math.abs(issue[key]-part[key])<1,'Shared column alignment: '+key);
+ const actualDay=await page.evaluate(()=>today());await page.locator('.part-used-at').first().fill(actualDay);
+ await page.evaluate(()=>openFixture('Chờ linh kiện',false,false,fixtureParts));await page.waitForFunction(()=>document.querySelector('.draft-notice')?.textContent.includes('Đã khôi phục'));
+ assert.equal(await page.locator('.part-used-at').first().inputValue(),actualDay,'Edited per-part date survives draft restore');
+ await page.getByRole('button',{name:'Lưu cập nhật',exact:true}).click();await page.waitForFunction(()=>calls.length===3);
+ assert.equal(await page.evaluate(()=>calls[2].args[1].parts[0].usedAt),actualDay);assert.equal(await page.evaluate(()=>calls[2].args[1].parts[0].partUsageId),'P1');
  const out=path.join(root,'analysis/work-order-locks');fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'pending.png')});
+ await page.setViewportSize({width:600,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No mobile horizontal overflow');
  assert.deepEqual(errors,[]);console.log('Work locks UI passed: preserve invalid fields, block save, confirmed reset, completion/exchange locks, future dates, cancel/reopen and pre-warranty parts.');
 }finally{await browser?.close();await new Promise(r=>server.close(r));}

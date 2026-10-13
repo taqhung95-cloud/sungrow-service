@@ -29,7 +29,14 @@ var SungrowWorkOrderRules=(()=>{
   const lists={};for(const kind of ['issues','parts','holds']){if(p[kind]!=null&&!Array.isArray(p[kind]))errors.push('Danh sách '+kind+' không hợp lệ.');lists[kind]=Array.isArray(p[kind])?p[kind]:[];}
   if(c.warrantyPending&&(!['Đã nhận hàng','Đang kiểm tra'].includes(status)||outcome||completed||replacement||lists.parts.some(x=>clean(x.partNumber)||clean(x.name))))errors.push('Cần xác nhận bảo hành trước khi sửa chữa, sử dụng linh kiện hoặc hoàn tất kỹ thuật.');
   lists.issues.forEach(x=>{if(clean(x.code)&&!clean(x.name))errors.push('Nhập tên lỗi cho mã lỗi đã điền.');if(clean(x.name))date(x.confirmedAt,'Ngày xác nhận lỗi',c.receivedAt);});
-  lists.parts.forEach(x=>{if(!clean(x.partNumber)&&!clean(x.name))return;if(!clean(x.name))errors.push('Nhập tên linh kiện.');if(!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0)errors.push('Số lượng linh kiện phải lớn hơn 0.');date(x.receivedAt,'Ngày nhận linh kiện');date(x.usedAt,'Ngày sử dụng linh kiện',clean(x.receivedAt)||c.receivedAt);});
+  lists.parts.forEach(x=>{
+   if(!clean(x.partNumber)&&!clean(x.name))return;
+   if(!clean(x.name))errors.push('Nhập tên linh kiện.');
+   if(!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0)errors.push('Số lượng linh kiện phải lớn hơn 0.');
+   const label=clean(x.partNumber)||clean(x.name);
+   date(x.receivedAt,'Ngày nhận linh kiện '+label);
+   date(x.usedAt,'Ngày sử dụng linh kiện '+label,clean(x.receivedAt)||c.receivedAt);
+  });
   lists.holds.forEach(x=>{if(!clean(x.reason)&&!clean(x.startAt)&&!clean(x.endAt))return;if(!clean(x.reason)||!clean(x.startAt))errors.push('Tạm dừng SLA phải có lý do và ngày bắt đầu.');date(x.startAt,'Ngày bắt đầu tạm dừng',c.receivedAt);date(x.endAt,'Ngày kết thúc tạm dừng',clean(x.startAt)||c.receivedAt);});
   return Array.from(new Set(errors));
  }
