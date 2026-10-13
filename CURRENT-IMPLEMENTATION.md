@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Làm rõ Chi tiết thiết bị, giữ cách lưu hiện tại — 13/10/2026
+
+Frontend liveJS125/entry107: drawer chia Thiết bị và tiếp nhận / Thông tin khách hàng / Thông tin giao nhận / Bảo hành và thông tin hồ sơ. Nhãn Ngày nhận từ khách, Center tiếp nhận ban đầu, Center đang giữ thiết bị, Người tạo hồ sơ. Giao nhận dùng nhãn trung tính Công ty/Người liên hệ/Địa chỉ giao nhận, có chú thích được cập nhật khi giao trả; không tự suy đoán gửi/nhận cho dữ liệu cũ. Không lấy item.sender thay người liên hệ; Nơi gửi hàng hiển thị riêng cùng thông tin khách. Giao nhận trống mặc định thu gọn và báo Chưa nhập, có dữ liệu mở sẵn. Không đổi API/cột/database/form tạo/lưu/luân chuyển/Drive; chỉ frontend. Kiểm tra render thiếu/có dữ liệu, desktop/mobile và validate đạt; không Apps Script.
+
 ## Sửa dashboard mobile với bộ lọc hiện hành — 13/10/2026
 
 Frontend liveJS124/entry106/mobile-ui CSS4 JS3: CSS mobile tải sau period/glass/compact để không bị desktop override. Toolbar chia dòng segments/picker/center/compare, controls16px và nút44px; summary lấy range hiện hành và comparison. Chi tiết center hai cột với nhãn SLA/TAT đúng, ghi chú wrap, KPI hai cột cả360px. Annual SVG có stroke/fill rõ và legend màu; donut112px với hole thật, model buttons/legend styles đầy đủ trên mobile. Giữ preview5/Xem thêm nhưng selector hidden đủ mạnh, list scroll320px/center380px, footer nền sáng. Kiểm thử dùng actual CSS/JS + dữ liệu giả (khác test mobile cũ đã strip scripts): tái hiện toolbar155px chứa picker260px và8cột trước sửa; sau sửa360/390/430, range/calendar, mở center, preview, glass và desktop đạt; mobile-layout và validate đạt. Chỉ frontend, không Apps Script hay dữ liệu.
