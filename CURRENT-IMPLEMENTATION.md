@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## So sánh năm đúng kỳ và đóng flyout khi mở noti — 13/10/2026
+
+Frontend liveJS120/dashboard-period JS5: mode Năm chọn/khóa comparison year, dịch cả hai mốc lùi12 tháng (YTD so với cùng ngày năm trước, không dịch1 tháng); rời Năm trả month, render labels/titles và không cho legacy control đổi nhãn option. Không sửa KPI/backend/data. openEntryView trên compact rail đóng subnav thay vì tự mở; notification vẫn mở đúng drawer, mobile giữ accordion. Regression UI kiểm tra khoảng và API comparison request, menu không hiện khi click noti; validate đạt. Chỉ frontend.
+
 ## Icon xoay cho cả kiểm tra tự động — 13/10/2026
 
 Frontend liveJS119/entry102: đếm in-flight getBootstrap/getPortalSyncState/listCases, publish busy qua aria-busy iframe và giữ icon disabled/animation cả khi polling revision không đổi text; finally giảm đếm, manual sync giữ busy đến cuối. Dashboard polling cũng xoay icon. Không tăng polling/request, không xoay khi idle; lỗi/cancel trả trạng thái dừng. Regression sync routing/transport và validate đạt; chỉ frontend.

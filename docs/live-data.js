@@ -143,7 +143,7 @@
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
     setNavGroup(q('.sg-dashboard-parent'),q('.sg-dashboard-subnav'),false);
-    setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),true);
+    setNavGroup(q('.sg-platform-parent'),q('.sg-subnav'),!root.classList.contains('compact-sidebar'));
     root.querySelectorAll('[data-portal-view]').forEach(button => {
       if (button.dataset.portalView === view) button.setAttribute('aria-current','page');
       else button.removeAttribute('aria-current');
@@ -943,7 +943,7 @@
     option.textContent = period;
     select.appendChild(option);
     const compare = q('#sg-compare-mode option');
-    if (compare) compare.textContent = /^\d{4}$/.test(period) ? 'Năm trước' : 'Tháng trước';
+    if (compare && !window.SungrowPeriod) compare.textContent = /^\d{4}$/.test(period) ? 'Năm trước' : 'Tháng trước';
     select.dispatchEvent(new Event('change'));
   }
 

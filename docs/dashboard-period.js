@@ -21,7 +21,14 @@
       const calendar=window.SungrowRangeCalendar(root,day(new Date()));
       const {dialog,from,to}=calendar;
       const display=value=>{const [y,m,d]=value.split('-');return d+'/'+m+'/'+y;};
+      let renderedMode;
       function render(){
+        const monthOption=compare.querySelector('option[value="month"]');
+        monthOption.disabled=mode==='year';
+        if(mode==='year')compare.value='year';
+        else if(renderedMode==='year')compare.value='month';
+        renderedMode=mode;
+        compare.title=mode==='year'?'So sánh cùng khoảng ngày của năm trước':'So sánh cùng khoảng ngày của tháng trước hoặc năm trước';
         const label=mode==='day'?display(start):mode==='week'?display(start)+' - '+display(end):mode==='month'?'Tháng '+Number(start.slice(5,7))+'/'+start.slice(0,4):mode==='year'?'Năm '+start.slice(0,4):display(start)+' 00:00 - '+display(end)+' 23:59';
         const picker=toolbar.querySelector('.sg-period-picker');picker.classList.toggle('is-custom',mode==='custom');
         toolbar.querySelector('.sg-range-button').textContent=label;
