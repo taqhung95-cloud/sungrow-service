@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Icon xoay cho cả kiểm tra tự động — 13/10/2026
+
+Frontend liveJS119/entry102: đếm in-flight getBootstrap/getPortalSyncState/listCases, publish busy qua aria-busy iframe và giữ icon disabled/animation cả khi polling revision không đổi text; finally giảm đếm, manual sync giữ busy đến cuối. Dashboard polling cũng xoay icon. Không tăng polling/request, không xoay khi idle; lỗi/cancel trả trạng thái dừng. Regression sync routing/transport và validate đạt; chỉ frontend.
+
 ## Icon đồng bộ xoay trong phần nhập liệu — 13/10/2026
 
 Frontend liveJS118/entry101: parent khóa icon ngay khi gửi sync và giữ disabled khi trạng thái iframe bắt đầu Đang (dùng animation Dashboard hiện có); child báo loading từ đầu bước refreshCatalog đến loadCases, chặn manual sync trùng, finally/error/đang mở editor trả trạng thái dừng. Không đổi API/cache/dữ liệu hoặc tạo thêm request. Kiểm thử sync routing và validate đạt; chỉ frontend, không Apps Script.

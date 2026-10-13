@@ -174,7 +174,8 @@
     const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const formData = form => Object.fromEntries(new FormData(form).entries());
     const today = () => new Date().toISOString().slice(0,10);
-    if(EMBEDDED){$('#portalSyncBar').style.display='none';const publishSync=()=>parent.postMessage({type:'sungrow-portal-sync-status',text:$('#portalSyncStatus').textContent,detail:$('#portalSyncStatus').title},location.origin);new MutationObserver(publishSync).observe($('#portalSyncStatus'),{childList:true,subtree:true,characterData:true});publishSync();window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='sungrow-portal-sync')globalThis.portalRealtime?.sync()});}
+    function updateSyncActivity(delta){state.syncRequests=Math.max(0,(state.syncRequests||0)+delta);const active=state.syncRequests>0||!!state.manualSyncBusy;$('#portalSyncStatus').setAttribute('aria-busy',String(active));$('#caseSync').disabled=active;}
+    if(EMBEDDED){$('#portalSyncBar').style.display='none';const publishSync=()=>parent.postMessage({type:'sungrow-portal-sync-status',text:$('#portalSyncStatus').textContent,detail:$('#portalSyncStatus').title,busy:state.syncRequests>0||!!state.manualSyncBusy},location.origin);new MutationObserver(publishSync).observe($('#portalSyncStatus'),{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['aria-busy']});publishSync();window.addEventListener('message',event=>{if(event.origin===location.origin&&event.source===parent&&event.data?.type==='sungrow-portal-sync')globalThis.portalRealtime?.sync()});}
 
     window.onload = () => {
       $('[name=receivedAt]').value = today();
@@ -613,6 +614,8 @@
     function openReturn(raw){const item=JSON.parse(raw),panel=$(`#panel-${CSS.escape(item.caseId)}`);panel.innerHTML=`<form class="work"><h3>Giao trả khách hàng</h3><div class="grid"><input type="hidden" name="caseId" value="${esc(item.caseId)}"><div><label>Ngày sẵn sàng trả</label><input type="date" name="readyAt" value="${esc(item.readyAt||today())}"></div><div><label>Ngày thực tế trả khách *</label><input type="date" name="returnedAt" value="${esc(item.returnedAt||today())}" required></div><div class="span3"><h3>Thông tin giao trả</h3></div><div><label>Tên công ty</label><input name="returnCompany" value="${esc(item.senderCompany||'')}" placeholder="Nếu có"></div><div><label>Tên khách hàng nhận *</label><input name="returnCustomer" value="${esc(item.senderCustomer||item.customerName||'')}" required></div><div><label>Số điện thoại người nhận *</label><input name="returnPhone" type="tel" value="${esc(item.senderPhone||item.customerPhone||'')}" required></div><div class="span2"><label>Địa chỉ giao trả *</label><input name="returnAddress" value="${esc(item.senderAddress||item.customerAddress||'')}" required></div><div><label>Email người nhận</label><input name="returnEmail" type="email" value="${esc(item.senderEmail||item.customerEmail||'')}" placeholder="Nếu có"></div><div><label>Đơn vị vận chuyển *</label><input name="returnCarrier" value="${esc(item.carrier||'')}" required placeholder="Ví dụ: Viettel Post"></div><div><label>Mã vận đơn *</label><input name="returnTrackingCode" value="${esc(item.trackingCode||'')}" required></div></div><div class="actions"><button class="primary" type="submit">Xác nhận đã trả khách</button></div></form>`;panel.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=e.submitter;busy(btn,true);try{await call('returnToCustomer',[state.token,formData(e.target)]);showMessage('Đã hoàn tất giao trả khách hàng.');refreshCurrent()}catch(err){showMessage(err.message,true)}finally{busy(btn,false)}}}
 
     async function call(name,args,attempt=0,signal){
+      const syncRead=['getBootstrap','getPortalSyncState','listCases'].includes(name);
+      if(syncRead)updateSyncActivity(1);
       const readOnly=['getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession','getCaseAttachmentReceipt','listNotifications','markNotificationsRead'].includes(name);
       const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile','setCaseUploadCategory'].includes(name);
       const mutation=!readOnly&&!uploadOnly;
@@ -636,7 +639,7 @@
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
         if(retryable&&attempt<1&&!signal?.aborted&&!['listCases','getPortalSyncState'].includes(name)){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1,signal)}
         throw error;
-      }finally{if(mutation)document.getElementById('mutationProgress')?.remove();}
+      }finally{if(syncRead)updateSyncActivity(-1);if(mutation)document.getElementById('mutationProgress')?.remove();}
     }
     function isAuthError(error){return /AUTH|TOKEN|FORBIDDEN/i.test(error?.code||'')||/(đăng nhập|token|phiên đăng nhập|cấp quyền truy cập)/i.test(error?.message||'')}
     function showMessage(text,error=false){const box=$('#message');box.innerHTML=`<div class="notice ${error?'error':''}">${esc(text)}</div>`;window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>box.innerHTML='',7000)}
@@ -754,7 +757,7 @@
       document.getElementById('portalRealtimeNotice')?.remove();
       await loadCases(false,true);
       }catch(err){$('#portalSyncStatus').textContent='Chưa đồng bộ · '+err.message;showMessage(err.message,true);}
-      finally{state.manualSyncBusy=false;$('#caseSync').disabled=false;if($('#portalSyncStatus').textContent.startsWith('Đang'))$('#portalSyncStatus').textContent='Chưa đồng bộ';}
+      finally{state.manualSyncBusy=false;updateSyncActivity(0);if($('#portalSyncStatus').textContent.startsWith('Đang'))$('#portalSyncStatus').textContent='Chưa đồng bộ';}
     }
     globalThis.portalRealtime={sync:syncPortalNow,check:checkPortalRevision};
     window.addEventListener('portal-data-changed',()=>{state.caseDataRevision='';checkPortalRevision()});

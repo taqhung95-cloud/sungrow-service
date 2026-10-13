@@ -138,7 +138,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=101#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=102#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -233,6 +233,7 @@
     const main = q('.sg-main');
     if (main && main.classList.contains('sg-portal-mode')) return;
     revisionCheckBusy = true;
+    q('#sg-refresh').disabled=true;
     const controller = new AbortController();
     try {
       const sync = await fetchDashboard({
@@ -254,6 +255,7 @@
       // The regular dashboard refresh remains the fallback after a transient check failure.
     } finally {
       revisionCheckBusy = false;
+      q('#sg-refresh').disabled=!token||Boolean(activeController);
     }
   }
 
@@ -1135,7 +1137,7 @@
     if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
       const text=String(event.data.text||'').slice(0,220);
       status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
-      q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=text.startsWith('Đang');return;
+      q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=event.data.busy===true||text.startsWith('Đang');return;
     }
     if (event.data?.type === 'sungrow-portal-dashboard') showDashboardView();
     if (event.data?.type === 'sungrow-portal-ready') {
