@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Giá trị chưa nhập trong Chi tiết thiết bị — 13/10/2026
+
+Frontend liveJS126/entry108: giá trị thiếu/null/chuỗi trống trong drawer hiển thị --, gồm thông tin giao nhận, email, người/ngày xác nhận bảo hành, ngày/kết quả kỹ thuật và tài liệu Drive. Giữ các trạng thái nghiệp vụ thực tế Mới tiếp nhận/Chờ xác nhận/Đã nhận hàng; summary giao nhận không thêm chữ Chưa nhập. Chỉ cách hiển thị, không ghi -- xuống database, không thay đổi API hay nhập liệu. Render kiểm tra hồ sơ mới và validate đạt; không Apps Script.
+
 ## Làm rõ Chi tiết thiết bị, giữ cách lưu hiện tại — 13/10/2026
 
 Frontend liveJS125/entry107: drawer chia Thiết bị và tiếp nhận / Thông tin khách hàng / Thông tin giao nhận / Bảo hành và thông tin hồ sơ. Nhãn Ngày nhận từ khách, Center tiếp nhận ban đầu, Center đang giữ thiết bị, Người tạo hồ sơ. Giao nhận dùng nhãn trung tính Công ty/Người liên hệ/Địa chỉ giao nhận, có chú thích được cập nhật khi giao trả; không tự suy đoán gửi/nhận cho dữ liệu cũ. Không lấy item.sender thay người liên hệ; Nơi gửi hàng hiển thị riêng cùng thông tin khách. Giao nhận trống mặc định thu gọn và báo Chưa nhập, có dữ liệu mở sẵn. Không đổi API/cột/database/form tạo/lưu/luân chuyển/Drive; chỉ frontend. Kiểm tra render thiếu/có dữ liệu, desktop/mobile và validate đạt; không Apps Script.
