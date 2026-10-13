@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Mở rộng tên lỗi xác nhận — 13/10/2026
+
+Frontend liveJS123/entry105: ô Tên lỗi chiếm cả cột trống phía số lượng linh kiện, giữ nguyên vị trí cột mã/ngày/Xóa/Thêm. Mobile reset span về auto. Chỉ CSS/cache, không đổi nghiệp vụ hoặc Apps Script. Cập nhật kiểm thử bố cục theo yêu cầu tên lỗi rộng hơn; validate và kiểm tra trình duyệt đạt.
+
 ## Ngày sử dụng linh kiện hiển thị và canh cột — 13/10/2026
 
 Frontend liveJS122/entry104/work-order-rules JS2/work-order-locks JS2/form-drafts JS3: mỗi linh kiện có ô Ngày sử dụng để xem/sửa ngày cũ; gửi đúng ngày từng dòng, bỏ data-used-at ẩn. Để trống dùng ngày hoàn tất kỹ thuật khi lưu theo cơ chế hiện hành. Lỗi ngày ghi rõ Part Number. Shared grid canh mã/tên/ngày/Xóa/Thêm giữa lỗi và linh kiện, ô số lượng riêng; responsive hai cột. Nháp capture/restore ngày mới, nháp cũ dùng fallback dataset. Không bỏ kiểm tra ngày tương lai hoặc tự sửa ngày lịch sử. Edge regression kiểm tra sửa ngày kế thừa, payload, nháp, độ rộng/vị trí cột và mobile; rules/validate đạt. Backend local Code/Legacy1.10.24 + WorkOrderRules có nhãn lỗi chi tiết; copy ba file theo DEPLOY-1.10.24.md, không migration. Frontend phát hành độc lập; backend1.10.23 vẫn nhận trường usedAt hiện hữu.

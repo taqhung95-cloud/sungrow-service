@@ -31,7 +31,7 @@ try{browser=await chromium.launch({channel:'msedge',headless:true});const page=a
  await page.waitForFunction(()=>document.querySelector('form').dataset.draftAttached==='true');
  assert.equal(await page.locator('.part-used-at').first().inputValue(),future,'Expose inherited date for correction');
  assert.match(await page.locator('.work-rule-notice').innerText(),/BP009286.*tương lai/);
- const alignment=await page.evaluate(()=>{const i=document.querySelector('.issues .repeat-row'),p=document.querySelector('.parts .repeat-row');return [[i.children[0],p.children[0]],[i.children[1],p.children[1]],[i.children[2],p.children[3]],[i.querySelector('.danger'),p.querySelector('.danger')],[i.querySelector('.inline-add'),p.querySelector('.inline-add')]].map(pair=>pair.map(x=>{const b=x.getBoundingClientRect();return {x:b.x,width:b.width,height:b.height};}));});
+ const alignment=await page.evaluate(()=>{const i=document.querySelector('.issues .repeat-row'),p=document.querySelector('.parts .repeat-row');return [[i.children[0],p.children[0]],[i.children[2],p.children[3]],[i.querySelector('.danger'),p.querySelector('.danger')],[i.querySelector('.inline-add'),p.querySelector('.inline-add')]].map(pair=>pair.map(x=>{const b=x.getBoundingClientRect();return {x:b.x,width:b.width,height:b.height};}));});
  for(const [issue,part]of alignment)for(const key of ['x','width','height'])assert.ok(Math.abs(issue[key]-part[key])<1,'Shared column alignment: '+key);
  const actualDay=await page.evaluate(()=>today());await page.locator('.part-used-at').first().fill(actualDay);
  await page.evaluate(()=>openFixture('Chờ linh kiện',false,false,fixtureParts));await page.waitForFunction(()=>document.querySelector('.draft-notice')?.textContent.includes('Đã khôi phục'));
