@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Khóa chéo cập nhật công việc — 13/10/2026
+
+Frontend liveJS121/entry103/work-order-rules JS1/work-order-locks JS1 dùng hợp đồng chung với WorkOrderRules.gs: active workflow khóa outcome/completion/replacement, technical_done bắt buộc outcome+date, exchange bắt buộc type; pending warranty khóa parts/final, controlled transfer/closed không chọn mới, closed case khóa status. Ngày thực tế không future/VN, chronology received→diagnosis→technical, parts/holds/issues preflight. Giữ dữ liệu cũ mâu thuẫn, chặn gửi và cung cấp reset có xác nhận; nháp restore re-lock, không silent clear. Backend local Code/Legacy1.10.23 gọi rules trước write/ensure columns, state-ready chỉ từ technical terminal+outcome+date; regress active bỏ readyDate cũ, delivered giữ closed. Unit zero-write/matrix và UI actual form đạt, validate đạt. Frontend publish; backend cần copy Code/Legacy/thêm WorkOrderRules theo DEPLOY-1.10.23.md, giữ các module trước, không migration/auto repair data cũ.
+
 ## So sánh năm đúng kỳ và đóng flyout khi mở noti — 13/10/2026
 
 Frontend liveJS120/dashboard-period JS5: mode Năm chọn/khóa comparison year, dịch cả hai mốc lùi12 tháng (YTD so với cùng ngày năm trước, không dịch1 tháng); rời Năm trả month, render labels/titles và không cho legacy control đổi nhãn option. Không sửa KPI/backend/data. openEntryView trên compact rail đóng subnav thay vì tự mở; notification vẫn mở đúng drawer, mobile giữ accordion. Regression UI kiểm tra khoảng và API comparison request, menu không hiện khi click noti; validate đạt. Chỉ frontend.

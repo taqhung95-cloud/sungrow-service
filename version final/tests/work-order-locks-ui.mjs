@@ -1,0 +1,30 @@
+import fs from 'node:fs';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright'),root=path.resolve(import.meta.dirname,'../../');
+const entry=fs.readFileSync(path.join(root,'docs/entry.html'),'utf8'),style=entry.match(/<style>([\s\S]*?)<\/style>/)[1],a=entry.indexOf('    function workStatuses('),b=entry.indexOf('    async function openCorrection(',a),actual=entry.slice(a,b);
+const html=`<!doctype html><meta charset="utf-8"><style>${style}body{padding:20px}</style><div class="case-form-panel" id="panel-C1"></div><script src="/work-order-rules.js"></script><script src="/work-order-locks.js"></script><script>
+const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const state={token:'test-session'},formData=form=>Object.fromEntries(new FormData(form));window.calls=[];window.confirm=()=>true;const call=async(name,args)=>{calls.push({name,args});return {};},showMessage=()=>{},refreshCurrent=()=>{},busy=(btn,on)=>btn.disabled=on;
+${actual}
+window.openFixture=(status='Chờ linh kiện',pending=false,contradictory=true)=>{const received=new Date(today()+'T00:00:00Z');received.setUTCDate(received.getUTCDate()-10);openWork(JSON.stringify({case:{caseId:'C1',warrantyStatus:pending?'Chờ xác nhận':'Trong bảo hành'},work:{workOrderId:'W1',workflowStatus:status,receivedAt:received.toISOString().slice(0,10),diagnosisCompletedAt:received.toISOString().slice(0,10),technicalCompletedAt:contradictory?today():'',outcome:contradictory?'Đã sửa chữa':'',replacementType:'',issues:[],parts:[],holds:[]}}));};
+openFixture();
+</script>`;
+const server=http.createServer((req,res)=>{const name=req.url.split('?')[0];if(!['/','/work-order-rules.js','/work-order-locks.js'].includes(name)){res.writeHead(404).end();return;}res.setHeader('Content-Type',name==='/'?'text/html':'application/javascript');res.end(name==='/'?html:fs.readFileSync(path.join(root,'docs',name.slice(1))));});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
+try{browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:'+server.address().port);
+ assert.equal(await page.locator('[name=outcome]').isDisabled(),true);assert.equal(await page.locator('[name=technicalCompletedAt]').isDisabled(),true);
+ assert.equal(await page.locator('[name=outcome]').inputValue(),'Đã sửa chữa','Do not silently erase inconsistent stored fields');
+ await page.getByRole('button',{name:'Lưu cập nhật',exact:true}).click();assert.equal(await page.evaluate(()=>calls.length),0);
+ await page.getByRole('button',{name:'Xóa dữ liệu hoàn tất trong biểu mẫu',exact:true}).click();assert.equal(await page.locator('[name=outcome]').inputValue(),'');
+ await page.locator('[name=workflowStatus]').selectOption('Hoàn tất kỹ thuật');assert.equal(await page.locator('[name=outcome]').isEnabled(),true);
+ await page.locator('[name=outcome]').selectOption('Đổi thiết bị');assert.equal(await page.locator('[name=replacementType]').isEnabled(),true);await page.locator('[name=replacementType]').selectOption('Battery');
+ const future=await page.evaluate(()=>{const d=new Date(today()+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);});
+ await page.locator('[name=technicalCompletedAt]').fill(future);await page.evaluate(()=>{const form=document.querySelector('form');form.dispatchEvent(new SubmitEvent('submit',{cancelable:true,bubbles:true,submitter:form.querySelector('[type=submit]')}));});assert.equal(await page.evaluate(()=>calls.length),0);
+ await page.locator('[name=technicalCompletedAt]').fill(await page.evaluate(()=>today()));await page.getByRole('button',{name:'Lưu cập nhật',exact:true}).click();await page.waitForFunction(()=>calls.length===1);assert.equal(await page.evaluate(()=>calls[0].args[1].replacementType),'Battery');
+ await page.evaluate(()=>window.confirm=()=>false);await page.locator('[name=workflowStatus]').selectOption('Chờ linh kiện');assert.equal(await page.locator('[name=workflowStatus]').inputValue(),'Hoàn tất kỹ thuật','Cancel preserves completed data');
+ await page.evaluate(()=>window.confirm=()=>true);await page.locator('[name=workflowStatus]').selectOption('Chờ linh kiện');assert.equal(await page.locator('[name=outcome]').inputValue(),'');assert.equal(await page.locator('[name=technicalCompletedAt]').inputValue(),'');assert.equal(await page.locator('[name=replacementType]').inputValue(),'');
+ await page.getByRole('button',{name:'Lưu cập nhật',exact:true}).click();await page.waitForFunction(()=>calls.length===2);assert.equal(await page.evaluate(()=>calls[1].args[1].workflowStatus),'Chờ linh kiện');
+ await page.evaluate(()=>openFixture('Đã nhận hàng',true,false));assert.equal(await page.locator('[name=workflowStatus] option').count(),2);assert.equal(await page.locator('.parts input').first().isDisabled(),true);
+ const out=path.join(root,'analysis/work-order-locks');fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'pending.png')});
+ assert.deepEqual(errors,[]);console.log('Work locks UI passed: preserve invalid fields, block save, confirmed reset, completion/exchange locks, future dates, cancel/reopen and pre-warranty parts.');
+}finally{await browser?.close();await new Promise(r=>server.close(r));}
