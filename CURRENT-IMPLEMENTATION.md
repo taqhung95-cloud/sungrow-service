@@ -1,5 +1,14 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Mã hồ sơ chỉ trong Chi tiết thiết bị — 14/10/2026
+
+Frontend liveJS129/entry111/exact-case-search JS2: bỏ mã hồ sơ khỏi bảng danh sách, tiêu đề kết quả cập nhật và lựa chọn lần tiếp nhận khi S/N trùng. Giữ trường Mã hồ sơ trong detail-grid; caseId tiếp tục là khóa nội bộ và có thể tìm chính xác. Không đổi backend/database; phát hành cùng sửa hiển thị SĐT.
+
+## Hiển thị số điện thoại mất số 0 — 14/10/2026
+
+Frontend liveJS129/entry111: displayPhone thêm0 cho giá trị thuần9chữ số bắt đầu3/5/7/8/9 trong detail khách/giao nhận, customer picker/list suggestions, prefill sửa hồ sơ và giao trả. Giữ số đã có0, +84/84, số quốc tế/định dạng khác và trống. Input tel/FormData giữ chuỗi đã nhập. Chỉ format frontend, không đổi API/Apps Script/cột/dữ liệu Sheet; không khẳng định sửa nguồn lưu trữ hoặc phục hồi mọi số điện thoại có độ dài khác. VM kiểm tra helper/render/prefill và validate đạt; chỉ deploy web.
+
+
 ## Đồng bộ phiên bản backend tìm hồ sơ — 14/10/2026
 
 APP_VERSION trong Code.gs và LegacyDashboardApi.gs là 1.10.25-exact-case-search. Cập nhật hai kiểm tra version và hướng dẫn DEPLOY-EXACT-CASE-SEARCH.md: thay cả hai file, Save/New version trên cùng URL. Không đổi frontend/database hoặc logic nghiệp vụ trong lần sửa nhãn này. Backend vẫn cần deploy thủ công.

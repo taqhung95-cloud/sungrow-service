@@ -86,5 +86,5 @@ assert.equal(filter.listCasesUncached_('', { query: 'SN1', exactKey: true }, {},
 assert.equal(filter.listCasesUncached_('', { query: 'hs2', exactKey: true }, {}, 'r1').total, 1);
 const html = read('../../docs/entry.html');
 assert.match(html, /\['Mã hồ sơ',item.caseId,true\]/);
-assert.match(html, /Mã hồ sơ: \$\{esc\(item.caseId/);
+assert.doesNotMatch(html, /Mã hồ sơ: \$\{esc\(item.caseId/);
 console.log('Exact lookup: one-call unique match, duplicate selection, full index compatibility, permissions, race/retry and case ID display passed.');

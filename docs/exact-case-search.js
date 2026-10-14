@@ -77,8 +77,7 @@ window.SungrowExactSearch = (() => {
         else await detail(rows[0].caseId, target, mode, request);
       } else {
         box.innerHTML = '<p>Có nhiều lần tiếp nhận cùng S/N. Chọn hồ sơ cần thao tác:</p>' + rows.map(item =>
-          '<article class="result"><strong>' + esc(item.model || '--') + '</strong><p>Mã hồ sơ: ' + esc(item.caseId) +
-          ' | S/N: ' + esc(item.serialNumber || '--') + '</p><p>Ngày nhận: ' + esc(item.receivedAt || '--') +
+          '<article class="result"><strong>' + esc(item.model || '--') + '</strong><p>S/N: ' + esc(item.serialNumber || '--') + '</p><p>Ngày nhận: ' + esc(item.receivedAt || '--') +
           ' | Center: ' + esc(shortCenter(item.currentCenter)) + ' | ' + esc(item.caseStatus || '--') +
           '</p><button type="button" class="secondary" data-case-id="' + esc(item.caseId) + '">Chọn hồ sơ</button></article>'
         ).join('');
