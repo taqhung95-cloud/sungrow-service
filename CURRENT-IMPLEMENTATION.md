@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng bộ phiên bản backend tìm hồ sơ — 14/10/2026
+
+APP_VERSION trong Code.gs và LegacyDashboardApi.gs là 1.10.25-exact-case-search. Cập nhật hai kiểm tra version và hướng dẫn DEPLOY-EXACT-CASE-SEARCH.md: thay cả hai file, Save/New version trên cùng URL. Không đổi frontend/database hoặc logic nghiệp vụ trong lần sửa nhãn này. Backend vẫn cần deploy thủ công.
+
+
 ## Tìm chính xác S/N/mã hồ sơ và hiển thị mã — 14/10/2026
 
 Frontend liveJS128/entry110/exact-case-search JS1: tìm update/transfer bằng S/N hoặc mã hồ sơ đầy đủ, exact/case-insensitive/trim; một kết quả render đầy đủ, nhiều lần tiếp nhận chọn ngày/center/trạng thái rồi hydrate một hồ sơ. Backend Code.gs searchCases optional exactKey dùng chỉ mục một lần để lọc, authenticate một lần, chỉ hydrate nếu total=1; caller cũ giữ array. Frontend fallback backend cũ kiểm tra mọi trang chỉ mục, tránh cap20 làm mất exact hit. Guard duplicate/account/stale response, lỗi retry. Mã hồ sơ thêm vào bảng danh sách, detail-grid và kết quả cập nhật; drawer chuyển sang update/transfer bằng caseId để tránh tìm lại S/N trùng. Không schema/migration/mutation. Backend phải copy Code.gs, Save/New version cùng URL theo DEPLOY-EXACT-CASE-SEARCH.md; chưa tự deploy Apps Script. Regression exact/duplicates/permissions/canceled/unique one-call/paging/race/retry và validate; chưa đo latency production.

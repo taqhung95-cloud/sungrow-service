@@ -2,8 +2,10 @@
 
 Frontend liveJS128/entry110/exact-case-search JS1.
 
-Thay nội dung Code.gs bằng file Code.gs cùng thư mục này trong Apps Script.
-Giữ LegacyDashboardApi.gs và các module hiện hành. Save, tạo New version
+Backend: 1.10.25-exact-case-search (APP_VERSION đồng bộ ở hai file).
+
+Thay nội dung Code.gs và LegacyDashboardApi.gs bằng hai file cùng thư mục này trong Apps Script.
+Giữ các module hiện hành. Save, tạo New version
 trên deployment Web App hiện tại, giữ nguyên URL.
 
 Không migration, không đổi cấu trúc hoặc dữ liệu Sheet.
