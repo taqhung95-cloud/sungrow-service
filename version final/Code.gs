@@ -201,7 +201,9 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
     if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
     if (!canSeeIndexedCase_(actor, item)) return false;
     const searchable = clean_(item['Tìm kiếm']).toLowerCase();
-    if (query && searchable.indexOf(query) === -1) return false;
+    if (query && (filters.exactKey === true
+      ? clean_(item['Mã hồ sơ']).toLowerCase() !== query && clean_(item['Số sê-ri (S/N)']).toLowerCase() !== query
+      : searchable.indexOf(query) === -1)) return false;
     if (status && item['Trạng thái hồ sơ'] !== status) return false;
     if (warrantyStatus && item['Tình trạng bảo hành'] !== warrantyStatus) return false;
     if (center && item['Trung tâm đang giữ hàng'] !== center) return false;
@@ -215,10 +217,19 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale) };
 }
 
-function searchCases(idToken, rawQuery) {
+function searchCases(idToken, rawQuery, options) {
   const query = clean_(rawQuery);
   if (query.length < 2) throw publicError_('Nhập ít nhất 2 ký tự để tìm kiếm.');
   const actor = authenticate_(idToken);
+  if (options && options.exactKey === true) {
+    const result = listCasesUncached_(idToken, {
+      query: query, exactKey: true, page: options.page, pageSize: options.pageSize
+    }, actor, getPortalDatabaseRevision_());
+    // One match: keep a single HTTP round trip. Multiple matches: summaries only.
+    result.detailed = result.total === 1;
+    if (result.detailed) result.items = [getCaseDetailForActor_(actor, result.items[0].caseId)];
+    return result;
+  }
   const matches = listCases(idToken, { query: query, page: 1, pageSize: 20 }).items;
   return matches.map(function (item) { return getCaseDetailForActor_(actor, item.caseId); });
 }

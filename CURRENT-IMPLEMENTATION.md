@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tìm chính xác S/N/mã hồ sơ và hiển thị mã — 14/10/2026
+
+Frontend liveJS128/entry110/exact-case-search JS1: tìm update/transfer bằng S/N hoặc mã hồ sơ đầy đủ, exact/case-insensitive/trim; một kết quả render đầy đủ, nhiều lần tiếp nhận chọn ngày/center/trạng thái rồi hydrate một hồ sơ. Backend Code.gs searchCases optional exactKey dùng chỉ mục một lần để lọc, authenticate một lần, chỉ hydrate nếu total=1; caller cũ giữ array. Frontend fallback backend cũ kiểm tra mọi trang chỉ mục, tránh cap20 làm mất exact hit. Guard duplicate/account/stale response, lỗi retry. Mã hồ sơ thêm vào bảng danh sách, detail-grid và kết quả cập nhật; drawer chuyển sang update/transfer bằng caseId để tránh tìm lại S/N trùng. Không schema/migration/mutation. Backend phải copy Code.gs, Save/New version cùng URL theo DEPLOY-EXACT-CASE-SEARCH.md; chưa tự deploy Apps Script. Regression exact/duplicates/permissions/canceled/unique one-call/paging/race/retry và validate; chưa đo latency production.
+
+
 ## Chi tiết thiết bị giữ layout cũ, bỏ thông tin trùng — 13/10/2026
 
 Frontend liveJS127/entry109: khôi phục detail-grid phẳng hai cột như layout cũ, bỏ nhóm/accordion mới. Ngày nhận từ khách/Người tạo hồ sơ dùng nhãn rõ; giao nhận dùng Công ty/Người liên hệ/Địa chỉ giao nhận, không lấy tên khách hàng điền thay người liên hệ. Nơi gửi hàng chỉ hiển thị khi không trống và khác tên khách/người liên hệ sau chuẩn hóa NFC, khoảng trắng và hoa thường; giữ giá trị khác của dữ liệu cũ. Giá trị thiếu vẫn --. Chỉ render frontend, không đổi database/API/form tạo/logic lưu. Kiểm tra render trùng/khác/thiếu và layout desktop/mobile; validate đạt. Không Apps Script.
