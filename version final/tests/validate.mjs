@@ -16,6 +16,15 @@ for (const file of ['Code.gs', 'ManagerDashboard.gs', 'LegacyDashboardApi.gs', '
   new vm.Script(read(file), {filename:file});
 }
 
+// Apps Script shares one global scope across all Script files.
+const appsScriptFiles = fs.readdirSync(root).filter(name => name.endsWith('.gs')).sort();
+const combinedAppsScript = appsScriptFiles.map(name => read(name)).join('\n;\n');
+new vm.Script(combinedAppsScript, {filename:'AppsScript.combined.gs'});
+assert.match(read('LegacyDashboardApi.gs'), /^const LEGACY_DASHBOARD_API = \(function \(\) \{/);
+assert.match(read('LegacyDashboardApi.gs'), /const LEGACY_API_VERSION = /);
+assert.doesNotMatch(read('LegacyDashboardApi.gs'), /\bAPP_VERSION\b/);
+assert.throws(() => new vm.Script(combinedAppsScript + '\nconst APP_VERSION = "duplicate";'), /already been declared/);
+
 const html = read('Index.html');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 assert.ok(scripts.length, 'Index.html phải có script ứng dụng.');

@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.11.2-fan-legacy';
+const LEGACY_API_VERSION = '1.11.2-fan-legacy';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -14,7 +14,7 @@ const DEFAULT_CENTERS = [
 ];
 
 function doGet() {
-  return json_({ ok: true, service: 'Sungrow Service Center API', version: APP_VERSION, authRequired: true });
+  return json_({ ok: true, service: 'Sungrow Service Center API', version: LEGACY_API_VERSION, authRequired: true });
 }
 
 function doPost(e) {
@@ -53,7 +53,7 @@ function readCanonicalSnapshot_(spreadsheetId, centers, revision) {
   // Canonical cases already contain all approved historical migrations.
   // Never rescan yearly tabs or use a stale table under a newer revision.
   const cache = CacheService.getScriptCache();
-  const key = ['canonical-records', APP_VERSION, spreadsheetId, revision].join(':');
+  const key = ['canonical-records', LEGACY_API_VERSION, spreadsheetId, revision].join(':');
   const packed = safeCacheGet_(cache, key);
   if (packed && packed.headers && packed.rows) {
     const records = packed.rows.map(function (values) {
@@ -102,7 +102,7 @@ function getDashboard_(request, actor) {
   const annualMode = request.includeAnnual === false ? 'compact' : 'full';
   const ticketMode = request.includeTickets === false ? 'no-tickets' : 'tickets';
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
-  const cacheKey = ['dash', APP_VERSION, dataRevision, annualMode, ticketMode, actor.role, scope.slice().sort().join(','), period.key, iso_(new Date())].join(':');
+  const cacheKey = ['dash', LEGACY_API_VERSION, dataRevision, annualMode, ticketMode, actor.role, scope.slice().sort().join(','), period.key, iso_(new Date())].join(':');
   const cache = CacheService.getScriptCache();
   const cached = request.refresh === true ? null : safeCacheGet_(cache, cacheKey);
   if (cached) {
@@ -277,7 +277,7 @@ function pageTickets_(request, actor) {
   const dataRevision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
   const cache = CacheService.getScriptCache();
   const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID).trim();
-  const indexKey = ['ticket-index', APP_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), includeUnassigned ? 'with-unassigned' : 'assigned-only', iso_(new Date())].join(':');
+  const indexKey = ['ticket-index', LEGACY_API_VERSION, dataRevision, actor.role, scope.slice().sort().join(','), includeUnassigned ? 'with-unassigned' : 'assigned-only', iso_(new Date())].join(':');
   let index = safeCacheGet_(cache, indexKey);
   if (!index) {
     const operational = readCanonicalSnapshot_(spreadsheetId, centers, dataRevision);
@@ -1226,7 +1226,7 @@ function diagnoseReadPaths_(actor, period) {
   measure('dashboard-cache', function () { return getDashboard_({ period: period, center: 'all' }, actor); }, function (data) { return { visibleCases: data.cumulative.records }; });
   measure('devices-build', function () { return pageTickets_({ page: 1, pageSize: 20 }, actor); }, function (data) { return { total: data.total, returnedRows: data.tickets.length }; });
   measure('devices-next-page', function () { return pageTickets_({ page: 2, pageSize: 20 }, actor); }, function (data) { return { total: data.total, returnedRows: data.tickets.length }; });
-  return { version: APP_VERSION, period: period, stages: stages };
+  return { version: LEGACY_API_VERSION, period: period, stages: stages };
 }
 function readReportData_(request, actor) {
   if (!actor || actor.isGlobalManager !== true) throw apiError_('FORBIDDEN','Chỉ quản lý toàn bộ trung tâm được xuất báo cáo.');

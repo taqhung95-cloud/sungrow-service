@@ -29,3 +29,7 @@ Thay toàn bộ Code.gs, LegacyDashboardApi.gs, ManagerDashboard.gs, FanLotRules
 ## Trạng thái triển khai
 
 Gói này không tự chạy chuyển đổi chỉ bằng cách push GitHub. Apps Script do người dùng cập nhật và thực thi. Chỉ coi hoàn thành production khi hàm áp dụng trả ok:true và readback/audit đạt; bản xem trước local không thay thế bước này.
+
+## Nếu Apps Script báo APP_VERSION already declared
+
+Lỗi nạp project xảy ra trước khi hàm được chọn thực thi. Thay toàn bộ nội dung LegacyDashboardApi.gs bằng file chuẩn, không tạo thêm bản sao hoặc nối code. File bắt đầu bằng `const LEGACY_DASHBOARD_API = (function () {` rồi `const LEGACY_API_VERSION = '1.11.2-fan-legacy';` và có đóng wrapper `})();`. APP_VERSION chỉ khai báo ở Code.gs. Save rồi chạy lại batFanTheoLo; khi không còn lỗi mới tiếp tục New version và các bước chuyển đổi ở trên. Nếu còn lỗi, dùng tìm kiếm toàn project để tìm thêm khai báo APP_VERSION hoặc bản sao Code.gs; không xóa module nghiệp vụ để né lỗi.

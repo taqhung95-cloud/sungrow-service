@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Kiểm tra khai báo chung Apps Script — 17/10/2026
+
+LegacyDashboardApi dùng hằng nội bộ LEGACY_API_VERSION trong wrapper LEGACY_DASHBOARD_API; chỉ Code.gs khai báo APP_VERSION. Giữ phiên bản 1.11.2 và nguyên quy tắc dữ liệu. Validator biên dịch ghép toàn bộ module Script trong cùng phạm vi để phát hiện trùng khai báo trước khi giao. Khi gặp lỗi APP_VERSION already declared, thay toàn bộ LegacyDashboardApi.gs gồm dòng mở/đóng wrapper, không nối code vào cuối file cũ; Save và chạy lại trước khi tiếp tục deploy/chuyển Fan. Không có mutation dữ liệu trong bản sửa này.
+
 ## Chuyển nhóm Fan cũ thành lô thật — 17/10/2026, 1.11.2-fan-legacy
 
 FanLegacyMigration.gs là module Editor, nhận rõ mã nhóm; preview khóa fingerprint/revision trong 30 phút, chỉ chuyển Fan Quy trình mới chưa xử lý/chưa giao và không có linh kiện/lỗi xác nhận/luân chuyển/tạm dừng. Một case nguồn làm lô, nguồn khác giữ hàng và lưu mềm với liên kết cha, không xóa vật lý. Giữ work ID/ghi chú/hiện tượng ban đầu và tài liệu ở folder gốc; model inverter và bảo hành từng nguồn nằm trong legacyImport. S/N lặp cộng lượng, không suy PN. Nguồn có hoạt động khác bị chặn để xử lý riêng.
