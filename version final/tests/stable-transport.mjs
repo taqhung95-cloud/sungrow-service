@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
 const read=name=>fs.readFileSync(new URL('../'+name,import.meta.url),'utf8');
 const client=fs.readFileSync(new URL('../../docs/apps-script-transport.js',import.meta.url),'utf8');
+const productionConfig={window:{}};
+vm.runInNewContext(fs.readFileSync(new URL('../../docs/config.js',import.meta.url),'utf8'),productionConfig);
+assert.equal(productionConfig.window.SUNGROW_CONFIG.appsScriptTransport,'bridge','Production must never re-enable ContentService fallback.');
 const origin='https://sungrow-service.sungrowvietnam.com.vn', google='https://n-fixture-script.googleusercontent.com';
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 

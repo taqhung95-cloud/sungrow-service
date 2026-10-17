@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Bridge production đã xác minh, tắt REST fallback — 17/10/2026
+
+Người dùng xác nhận transport ready/version1.11.4, readyMs11062/lastRpcMs3408. Probe từ trình duyệt sạch trên tên miền production bằng phiên giả: 3 roundtrip tới dispatcher trả đúng lỗi phiên không hợp lệ (không dùng tài khoản hoặc ghi dữ liệu); tổng9563ms gồm handshake7780ms, sau đó1835ms/1779ms. Không có ContentService POST từ ứng dụng, không có CORS; active0/queued0/lastErrornull. Đây là bằng chứng transport/auth boundary hoạt động, không phải benchmark dashboard có đăng nhập.
+
+config.js đặt appsScriptTransport: bridge; index/entry nạp config?v=2. Handshake lỗi sẽ báo lỗi có giới hạn thời gian và có thể kết nối lại sau cooldown5s; không quay lại fetch ContentService. Node regression bắt buộc production config dùng bridge và kiểm tra strict mode không fallback. Giữ backend1.11.4, không deploy Apps Script lần nữa, không sửa dữ liệu. Phần yêu cầu deploy/xác minh của mục trước đã hoàn tất.
+
 ## Kết nối ổn định qua HTMLService — 17/10/2026, 1.11.4-stable-transport
 
 Sự cố thực tế: ContentService redirect echo/exec gây CORS và request kéo dài dù Editor dashboard-build 878ms/cache181ms. Thêm PortalBridge.html, route GET portal_bridge trong Code.gs và portalBridgeCall trả chuỗi JSON từ dispatcher API hiện hành. Không đổi xác thực/whitelist/schema/nghiệp vụ. postMessage khóa origin chính xác, channel crypto48hex, Google sandbox origin và ancestry/source; credentials chỉ nằm trong payload, không ở URL/log. Dùng google.script.run để tránh cross-origin ContentService fetch. Dashboard/entry chia sẻ một kết nối, giới hạn4 call, hủy caller không giải phóng slot server đang chạy cho đến khi nhận phản hồi. Không retry/replay mutation sau dispatch; chỉ fallback REST nếu handshake chưa thành công, chưa gửi API, cho deployment cũ. Strict mode appsScriptTransport=bridge chặn fallback hoàn toàn sau rollout. Timeout vẫn cần thiết vì Google có thể gián đoạn; không cam kết uptime bên thứ ba.
