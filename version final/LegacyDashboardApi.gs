@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.2-fan-legacy';
+const LEGACY_API_VERSION = '1.11.3-fan-kpi';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -218,8 +218,8 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
-      quantity: fanState ? SungrowFanLotRules.kpiQuantity(fanState) : knownQuantity_(item['Số lượng']),
-      legacyCaseCount: fanState&&fanState.legacyImport?fanState.legacyImport.sourceCaseCount:1,
+      quantity: clean_(item['Loại thiết bị']) === 'Fan' ? 1 : knownQuantity_(item['Số lượng']),
+      caseCount: 1,
       fanLot: fanState ? {totals:SungrowFanLotRules.totals(fanState),lines:fanState.lines,events:(fanEventsByCase[caseId]||[]).map(function(e){return {kind:e['Loại thao tác'],quantity:Number(e['Số lượng']),date:iso_(date_(e['Ngày thực tế'])),lineId:e['Mã dòng Fan'],outcome:e['Kết quả']};})} : null,
       relatedCaseIds: fanState&&fanState.legacyImport?fanState.legacyImport.sources.map(function(r){return r.caseId;}):[],
       relatedSerials: fanState ? fanState.lines.map(function(l){return l.serialNumber;}).filter(Boolean) : [],
@@ -729,7 +729,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       centers: scope.length,
       fan: fanPhysicalSummary_(records,period),
       received: sumDevices_(periodRows),
-      receivedCases: periodRows.reduce(function(n,r){return n+(r.legacyCaseCount||1);},0),
+      receivedCases: periodRows.length,
       technicalCompleted: sumDevices_(technicalCompleted),
       technicalCompletedCases: technicalCompleted.length,
       processing: sumDevices_(openAll.filter(function (r) { return !isWaitingAt_(r, period.asOf); })),
@@ -1284,7 +1284,7 @@ function readReportData_(request, actor) {
   });
   assertCanonicalRevision_(revision);
   const spec={type:type,start:iso_(period.start),end:iso_(period.end),asOf:period.asOf.toISOString(),dateBasis:basis,centers:request.centers.slice().sort(),columns:columns.slice(),query:query,status:status,warrantyStatus:warranty,deviceType:deviceType};
-  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: thiết bị thường giữ số lượng đã biết; mỗi lô Fan tạo mới tính 1, lô chuyển đổi giữ trọng số nguồn đã đối soát. Số Fan vật lý ở cột riêng; nhóm hồ sơ cũ không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
+  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: Fan nhập thường tính 1 thiết bị; mỗi lô Fan tính 1 hồ sơ, kể cả lô chuyển đổi. Các loại thiết bị khác giữ số lượng đã biết. Số Fan thực tế ở chi tiết lô; hồ sơ nguồn đã nhập lô không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
 }
 if (typeof installReportReader_==='function') installReportReader_(readReportData_);
 return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_ };

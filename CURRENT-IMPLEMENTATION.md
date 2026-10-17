@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đơn vị KPI Fan thống nhất — 17/10/2026, 1.11.3-fan-kpi
+
+Fan thường tính 1 thiết bị/hồ sơ nguồn còn hiệu lực; mọi lô Fan, kể cả lô chuyển đổi, tính 1 hồ sơ. Thiết bị khác giữ số lượng hiện hành. Canonical/manager readers cùng quy tắc cho KPI, center/model, lũy kế, SLA và báo cáo. receivedCases đếm hồ sơ vận hành, không cộng các nguồn đã lưu mềm. Bỏ dòng Fan theo lô trên bốn thẻ KPI, giữ Thiết bị/Hồ sơ; số Fan thực tế chỉ dùng cho chi tiết/vận hành. legacyImport.kpiQuantity/sourceCaseCount cũ giữ nguyên làm chứng từ nguồn, không làm trọng số KPI. Không sửa dữ liệu nguồn, không chạy lại migration; spare part cùng ledger và số thực dùng. Migration tương lai báo rõ KPI trước số nguồn/sau số lô, không giả định bằng nhau. Code/Legacy1.11.3, liveJS135/entry117/rules4; tăng version cache, không thêm scan/read. Apps Script cập nhật thủ công 5 file theo DEPLOY-1.11.3-FAN-KPI.md. Phần quy tắc KPI 1.11.2 bên dưới là lịch sử và đã được thay thế bởi mục này.
+
 ## Kiểm tra khai báo chung Apps Script — 17/10/2026
 
 LegacyDashboardApi dùng hằng nội bộ LEGACY_API_VERSION trong wrapper LEGACY_DASHBOARD_API; chỉ Code.gs khai báo APP_VERSION. Giữ phiên bản 1.11.2 và nguyên quy tắc dữ liệu. Validator biên dịch ghép toàn bộ module Script trong cùng phạm vi để phát hiện trùng khai báo trước khi giao. Khi gặp lỗi APP_VERSION already declared, thay toàn bộ LegacyDashboardApi.gs gồm dòng mở/đóng wrapper, không nối code vào cuối file cũ; Save và chạy lại trước khi tiếp tục deploy/chuyển Fan. Không có mutation dữ liệu trong bản sửa này.

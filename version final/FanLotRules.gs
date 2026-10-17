@@ -39,5 +39,5 @@ var SungrowFanLotRules = (function () {
   function group(rows) {
     var by={},lines=[];rows.forEach(function(r){integer(r.quantity);var sn=text(r.serialNumber).toUpperCase(),key=sn||('unknown:'+r.caseId);if(!by[key]){by[key]={serialNumber:sn,quantity:0,caseIds:[]};lines.push(by[key]);}by[key].quantity+=Number(r.quantity);by[key].caseIds.push(r.caseId);});return lines;
   }
-  return {kpiQuantity:function(state){return state.legacyImport?state.legacyImport.kpiQuantity:1;},create:create,parse:parse,pack:pack,normalize:normalize,totals:totals,apply:apply,group:group,day:day,maxLines:MAX_LINES};
+  return {kpiQuantity:function(){return 1;},create:create,parse:parse,pack:pack,normalize:normalize,totals:totals,apply:apply,group:group,day:day,maxLines:MAX_LINES};
 })();

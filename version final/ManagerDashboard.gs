@@ -34,7 +34,7 @@ function buildManagerDashboardForActor_(actor, rawFilters) {
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
-      quantity: clean_(item['Kiểu hồ sơ'])==='Fan theo lô' ? (typeof flState_==='function'?SungrowFanLotRules.kpiQuantity(flState_(item)):1) : Number.isInteger(Number(item['Số lượng'])) && Number(item['Số lượng']) > 0 ? Number(item['Số lượng']) : null,
+      quantity: clean_(item['Loại thiết bị'])==='Fan' ? 1 : Number.isInteger(Number(item['Số lượng'])) && Number(item['Số lượng']) > 0 ? Number(item['Số lượng']) : null,
       intakeCenter: clean_(item['Trung tâm tiếp nhận khách']),
       currentCenter: clean_(item['Trung tâm đang giữ hàng']),
       dashboardCenter: dashboardCenter,

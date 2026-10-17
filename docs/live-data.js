@@ -138,7 +138,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=116#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=117#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -398,8 +398,8 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? '--' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; thiết bị thường giữ số lượng, mỗi lô Fan mới tính 1':'Theo kỳ đang chọn';
-      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+(s.fan?.lots?'<br><span>Fan theo lô: '+(item.key==='received'?s.fan.received:item.key==='processed'?s.fan.technicalCompleted:item.key==='waiting'?s.fan.waiting:s.fan.returned)+' chiếc</span>':'')+'</div></div>';
+      const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; Fan thường tính 1 thiết bị, mỗi lô Fan tính 1 hồ sơ':'Theo kỳ đang chọn';
+      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
@@ -680,7 +680,7 @@
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',') || '#e8ecef 0 100%';
     const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="false"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('') || '<div class="sg-caption sg-model-empty">Không có dữ liệu model cho loại thiết bị đã chọn.</div>';
-    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
+    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>Thiết bị/Hồ sơ</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
     q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' thiết bị tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
     if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' thiết bị trong kỳ đang chọn.</div>';
     else q('#sg-model-insight').innerHTML = '<div class="sg-caption">Chưa có model trong nhóm đã chọn.</div>';

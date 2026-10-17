@@ -29,7 +29,7 @@ function fmgPlan_(group, cases, works, issues, parts, holds, transfers) {
   state.legacyImport={version:1,groupId:group['Mã nhóm'],kpiQuantity:source.reduce(function(n,r){return n+Number(r['Số lượng']);},0),sourceCaseCount:source.length,sources:source.map(function(r){var w=sourceWorks.find(function(x){return x['Mã hồ sơ']===r['Mã hồ sơ'];});return {caseId:r['Mã hồ sơ'],workOrderId:w['Mã công việc'],serialNumber:clean_(r['Số sê-ri (S/N)']).toUpperCase(),inverterModel:clean_(r.Model),quantity:Number(r['Số lượng']),warrantyStatus:clean_(r['Tình trạng bảo hành']),warrantyBy:clean_(r['Người xác nhận bảo hành']),warrantyAt:iso_(r['Ngày xác nhận bảo hành']),warrantyNote:clean_(r['Ghi chú xác nhận bảo hành']),evidenceUrl:clean_(r['Liên kết hồ sơ Drive'])};})};
   state.files=state.legacyImport.sources.filter(function(r){return r.evidenceUrl;}).map(function(r){return {name:'Tài liệu hồ sơ nguồn '+r.caseId,url:r.evidenceUrl,serialNumber:r.serialNumber};});
   SungrowFanLotRules.parse(state);
-  return {converted:false,groupId:group['Mã nhóm'],groupRow:group.__rowNumber,caseId:anchor['Mã hồ sơ'],source:source,works:sourceWorks,state:state,sourceCaseIds:source.map(function(r){return r['Mã hồ sơ'];}),kpiBefore:state.legacyImport.kpiQuantity,kpiAfter:SungrowFanLotRules.kpiQuantity(state),fans:SungrowFanLotRules.totals(state).received,serials:state.lines.length};
+  return {converted:false,groupId:group['Mã nhóm'],groupRow:group.__rowNumber,caseId:anchor['Mã hồ sơ'],source:source,works:sourceWorks,state:state,sourceCaseIds:source.map(function(r){return r['Mã hồ sơ'];}),kpiBefore:source.length,kpiAfter:SungrowFanLotRules.kpiQuantity(state),fans:SungrowFanLotRules.totals(state).received,serials:state.lines.length};
 }
 function fmgCapture_(groupIds) {
   if(!Array.isArray(groupIds)||!groupIds.length||groupIds.length>10||new Set(groupIds).size!==groupIds.length)throw Error('Chọn rõ từ 1 đến 10 mã nhóm.');
@@ -70,13 +70,13 @@ function fmgSync_(receipt) {
   receipt.lotIds.forEach(function(id){flFinishSync_(id);});
   var audit=doiSoatFanTheoLo();if(!audit.ok)throw Error('Đã đồng bộ nhưng audit chưa đạt. Giữ nguyên nguồn để đối soát.');
   props.deleteProperty('FAN_CONVERSION_PENDING');props.deleteProperty('FAN_CONVERSION_PREVIEW');
-  var output={ok:true,convertedLots:receipt.lotIds.length,sourceCases:receipt.caseIds.length,lotCaseIds:receipt.lotIds,backupId:receipt.backupId,receiptId:receipt.receiptId,kpiBefore:receipt.kpi,kpiAfter:receipt.kpi,partsBefore:0,partsAfter:0,audit:audit};console.log(JSON.stringify(output));return output;
+  var output={ok:true,convertedLots:receipt.lotIds.length,sourceCases:receipt.caseIds.length,lotCaseIds:receipt.lotIds,backupId:receipt.backupId,receiptId:receipt.receiptId,kpiBefore:receipt.kpi,kpiAfter:receipt.lotIds.length,partsBefore:0,partsAfter:0,audit:audit};console.log(JSON.stringify(output));return output;
 }
 function fmgApply_(groupIds) {return withSerializedWrite_('chuyển nhóm Fan thành lô',function(){
   var actor=portalReadDiagnosticActor_(),props=PropertiesService.getScriptProperties();flAssertEnabled_();
   var pending=parseJson_(props.getProperty('FAN_CONVERSION_PENDING'));
   if(pending){if(JSON.stringify(groupIds.slice().sort())!==JSON.stringify(pending.groupIds))throw Error('Có đợt chuyển đổi khác đang chờ đối soát.');var check=fmgCapture_(groupIds);if(!check.plans.every(function(p){return p.converted;}))throw Error('Đợt trước chưa xác định trạng thái ghi. Kiểm tra log trước khi tiếp tục.');return fmgSync_(pending);}
-  var live=parseJson_(props.getProperty('FAN_LEGACY_WEB_READY'));if(!live||live.version!==APP_VERSION||Date.now()-live.at>1800000)throw Error('Deploy New version và đăng nhập lại portal bằng tài khoản quản lý trước khi chuyển, để dashboard dùng đúng quy tắc giữ KPI.');
+  var live=parseJson_(props.getProperty('FAN_LEGACY_WEB_READY'));if(!live||live.version!==APP_VERSION||Date.now()-live.at>1800000)throw Error('Deploy New version và đăng nhập lại portal bằng tài khoản quản lý trước khi chuyển, để dashboard dùng đúng quy tắc Thiết bị/Hồ sơ.');
   var capture=fmgCapture_(groupIds),preview=parseJson_(props.getProperty('FAN_CONVERSION_PREVIEW'));
   if(capture.plans.every(function(p){return p.converted;}))return {ok:true,alreadyConverted:true,lotCaseIds:capture.plans.map(function(p){return p.caseId;})};
   if(capture.plans.some(function(p){return p.converted;}))throw Error('Không trộn nhóm đã chuyển và chưa chuyển.');
