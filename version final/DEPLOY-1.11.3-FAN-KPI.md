@@ -8,7 +8,7 @@ Số Fan thực tế, tiến độ từng S/N, bảo hành, hồ sơ nguồn, t�
 
 1. Thay toàn bộ nội dung đúng 5 file: Code.gs, LegacyDashboardApi.gs, ManagerDashboard.gs, FanLotRules.gs, FanLegacyMigration.gs. Giữ các module còn lại. Không tạo bản sao file hoặc nối code vào cuối file cũ.
 2. Save. Deploy → Manage deployments → Edit Web App hiện tại → New version → Deploy. Giữ URL và cấu hình Execute as: Me, Who has access: Anyone.
-3. Mở dashboard, Ctrl+F5, đăng nhập lại nếu cần. Hai lô 9 và 3 Fan đóng góp tổng 2 hồ sơ. Với cùng bộ lọc và dữ liệu của ảnh Tiếp nhận 33, sau sửa trọng số hai lô sẽ giảm 10 còn 23; không dùng con số này nếu dữ liệu/bộ lọc đã thay đổi.
+3. Mở dashboard, Ctrl+F5, đăng nhập lại nếu cần. Hai lô 9 và 3 Fan đóng góp tổng 2 hồ sơ. Thiết bị ở đây là inverter: Fan nhập thường của một inverter tính1 thiết bị dù có nhiều Fan; mỗi lô tính1 hồ sơ. Phải đối soát cả hồ sơ Fan thường, không chỉ trừ phần trọng số hai lô; không dùng dự báo33 xuống23 trước đây.
 4. Chạy doiSoatFanTheoLo để kiểm tra dữ liệu vận hành. Không chạy lại chuanBiFanTheoLo, chuyen12CaseFanThanhLo hoặc khôi phục backup cho bản sửa KPI này.
 
 GitHub chỉ tự cập nhật giao diện; KPI mới có hiệu lực sau khi deploy đủ backend. Backend/Frontend cùng release 1.11.3-fan-kpi, liveJS135, entry117, rules4. Đổi version giúp bỏ cache KPI cũ; không thêm lượt đọc bảng hoặc quét lịch sử. Linh kiện vẫn lấy số thực dùng từ Linh kiện sử dụng, không nhân hoặc quy đổi theo Fan/hồ sơ.

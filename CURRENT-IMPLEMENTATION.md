@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng hồ đồng bộ và danh sách đang xem — 17/10/2026, liveJS137
+
+Ảnh người dùng cho thấy Đã đồng bộ21:20 trong khi đồng hồ21:31. Header trước đây lấy sourceUpdatedAt trong response cache; không phải thời gian browser vừa kiểm tra. loadLive còn báo xanh trước khi tải xong tickets.page. Sửa markDashboardSynced dùng thời gian hoàn tất nhận dữ liệu/kiểm tra revision thành công; không chạy đồng hồ giả theo từng giây. Chờ danh sách đang xem hoàn tất và giữ trang hiện tại; lỗi danh sách không xác nhận đồng bộ. Revision so với live.source.revision, chỉ acknowledge sau tải thành công để lỗi tải không làm bỏ lỡ revision. Poll không đổi phiên bản chỉ kiểm tra nhẹ và cập nhật mốc kiểm tra; không che lỗi danh sách đang hiện. Giữ polling60–75s và làm mới5phút khi tab hiển thị, không phải push realtime. Không đổi backend/cache/quy tắc dữ liệu. Apps Script vẫn1.11.4 và bridge bắt buộc, không cần deploy lại. Node regression tái hiện cache21:20 nhận21:31, chờ list/fail/preserve page/retry revision; CI chạy cùng validator.
+
+Định nghĩa Fan đã được người dùng làm rõ: thiết bị là inverter. Một hồ sơ Fan nhập thường thuộc một inverter nên tính1 thiết bị, dù số Fan là2/3/5; mỗi lô nhiều inverter tính1 hồ sơ. Không dùng số Fan nhập thường làm số thiết bị KPI.
+
 ## Bridge production đã xác minh, tắt REST fallback — 17/10/2026
 
 Người dùng xác nhận transport ready/version1.11.4, readyMs11062/lastRpcMs3408. Probe từ trình duyệt sạch trên tên miền production bằng phiên giả: 3 roundtrip tới dispatcher trả đúng lỗi phiên không hợp lệ (không dùng tài khoản hoặc ghi dữ liệu); tổng9563ms gồm handshake7780ms, sau đó1835ms/1779ms. Không có ContentService POST từ ứng dụng, không có CORS; active0/queued0/lastErrornull. Đây là bằng chứng transport/auth boundary hoạt động, không phải benchmark dashboard có đăng nhập.

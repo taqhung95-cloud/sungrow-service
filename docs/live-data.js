@@ -177,6 +177,11 @@
     if (!live) dataState.textContent = type === 'error' ? (detail || title) : 'Đang tải dữ liệu…';
   }
 
+  function markDashboardSynced() {
+    lastSuccessfulSync = Date.now();
+    status('Đã đồng bộ', new Date(lastSuccessfulSync).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}), 'ok');
+  }
+
   function selectedPeriod() {
     if (window.SungrowPeriod) return window.SungrowPeriod.selected();
     const year = q('#sg-period-year')?.value;
@@ -252,13 +257,14 @@
       }, controller.signal, 1);
       if (!sync || !sync.revision) return;
       const nextRevision = String(sync.revision);
-      if (!portalRevision) {
-        portalRevision = nextRevision;
-        return;
-      }
-      if (nextRevision !== portalRevision) {
-        portalRevision = nextRevision;
-        await loadLive({comparison:false});
+      // Only a fully completed sync acknowledges a revision. `live` can already
+      // contain the new summary while its visible list has failed to load.
+      const loadedRevision = portalRevision;
+      if (!live || !loadedRevision || nextRevision !== loadedRevision) {
+        const updated = await loadLive({comparison:false});
+        if (updated === true) portalRevision = String(live?.source?.revision || nextRevision);
+      } else if (!ticketSearchState.loading && (q('#sg-tickets').classList.contains('sg-hidden') || !ticketSearchState.error)) {
+        markDashboardSynced();
       }
     } catch (_) {
       // The regular dashboard refresh remains the fallback after a transient check failure.
@@ -293,10 +299,10 @@
       const refreshComparison = options.comparison !== false || !previousLive;
       if (refreshComparison) previousLive = null;
       renderAll();
-      lastSuccessfulSync = Date.now();
-      const currentUpdated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      status('Đã đồng bộ', currentUpdated, 'ok');
-      if (!q('#sg-tickets').classList.contains('sg-hidden')) loadTicketPage(true);
+      if (!q('#sg-tickets').classList.contains('sg-hidden')) {
+        const updated = await loadTicketPage(false, {signal:controller.signal,throwOnError:true});
+        if (updated === false || controller.signal.aborted || sequence !== loadSequence) return false;
+      }
       const previousPeriod = window.SungrowPeriod ? window.SungrowPeriod.previous() : /^\d{4}$/.test(periodKey)
         ? String(Number(periodKey) - 1)
         : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
@@ -308,8 +314,9 @@
       }
       if (sequence !== loadSequence) return;
       renderAll();
-      const updated = new Date(live.source.sourceUpdatedAt).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      status('Đã đồng bộ', updated, 'ok');
+      portalRevision = String(live.source?.revision || portalRevision || '');
+      markDashboardSynced();
+      return true;
     } catch (error) {
       if (controller.signal.aborted || sequence !== loadSequence) return;
       if (live) {
@@ -321,7 +328,7 @@
       }
     } finally {
       if (activeController === controller) activeController = null;
-      if (refreshButton) refreshButton.disabled = false;
+      if (refreshButton) refreshButton.disabled = !token || Boolean(activeController) || revisionCheckBusy;
     }
   }
 
@@ -570,7 +577,7 @@
     q('#sg-ticket-pages').innerHTML = html;
   }
 
-  async function loadTicketPage(resetPage) {
+  async function loadTicketPage(resetPage, options = {}) {
     if (!live || !token) return;
     const term = (q('#sg-search').value || '').trim().toLowerCase();
     if (term.length === 1) {
@@ -587,15 +594,23 @@
     renderTickets();
     const controller = new AbortController();
     ticketSearchController = controller;
+    const cancel = () => controller.abort();
+    if (options.signal?.aborted) cancel(); else options.signal?.addEventListener('abort',cancel,{once:true});
     try {
       const data = await fetchDashboard({action:'tickets.page',idToken:token,query:term,center:q('#sg-center').value,status:q('#sg-status').value,sortOrder:ticketSortOrder,page:page,pageSize:pageSize},controller.signal,2);
-      if (sequence !== ticketSearchSequence) return;
+      if (sequence !== ticketSearchSequence) return false;
       ticketSearchState = {term:term,rows:Array.isArray(data.tickets)?data.tickets:[],total:Number(data.total)||0,loading:false,error:'',page:Number(data.page)||1,pageSize:Number(data.pageSize)||pageSize,totalPages:Number(data.totalPages)||1,statuses:Array.isArray(data.statuses)?data.statuses:[],fromYear:Number(data.fromYear)||null,toYear:Number(data.toYear)||null,fallback:false};
+      if (!options.throwOnError && !activeController && !q('#sg-tickets').classList.contains('sg-hidden')) markDashboardSynced();
+      return true;
     } catch (error) {
-      if (controller.signal.aborted || sequence !== ticketSearchSequence) return;
+      if (controller.signal.aborted || sequence !== ticketSearchSequence) return false;
       // The dashboard preview is capped at 250; it is not a full-list fallback.
       ticketSearchState=Object.assign({},ticketSearchState,{rows:[],total:0,totalPages:1,loading:false,error:error.message||'Không thể tải danh sách. Vui lòng thử lại.',fallback:false});
+      if (!options.throwOnError && !activeController && !q('#sg-tickets').classList.contains('sg-hidden')) status('Chưa đồng bộ',ticketSearchState.error,'error');
+      if (options.throwOnError) throw error;
+      return false;
     } finally {
+      options.signal?.removeEventListener('abort',cancel);
       if (ticketSearchController === controller) ticketSearchController = null;
       if (sequence === ticketSearchSequence) renderTickets();
     }
