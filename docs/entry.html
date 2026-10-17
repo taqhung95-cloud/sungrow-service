@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sungrow Service Center - Nhập liệu</title>
   <script src="config.js"></script>
+  <script src="apps-script-transport.js?v=1"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -659,7 +660,7 @@
         let timeout,abort;
         const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},name==='uploadCaseFile'?120000:['createCase','commitCaseAttachments'].includes(name)?90000:name==='listCases'?30000:45000)});
         let result;
-        try{result=await Promise.race([(async()=>{const response=await fetch(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
+        try{result=await Promise.race([(async()=>{const response=await (globalThis.SungrowTransport?.fetch || fetch)(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
         finally{clearTimeout(timeout);signal?.removeEventListener('abort',abort)}
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
         if(!readOnly&&!uploadOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new Event('portal-data-changed'));}

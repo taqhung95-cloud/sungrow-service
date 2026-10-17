@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><script>
+(() => {
+  'use strict';
+  const config = <?!= bridgeConfigJson ?>;
+  let owner=null;
+  const active=new Set();
+  function ancestor(source) {
+    try {let p=parent;for(let i=0;i<8;i++){if(source===p)return true;const next=p.parent;if(next===p)break;p=next;}}catch(_){}
+    return false;
+  }
+  function reply(target,id,json) {target.postMessage({type:'sungrow-bridge-result',channel:config.channel,id,json},config.origin);}
+  window.addEventListener('message',e=>{
+    const m=e.data;
+    if(e.origin!==config.origin||!ancestor(e.source)||!m||m.type!=='sungrow-bridge-request'||m.channel!==config.channel||typeof m.id!=='string'||m.id.length>100)return;
+    if(owner&&owner!==e.source)return;owner=e.source;
+    if(active.has(m.id))return;
+    if(active.size>=4){reply(e.source,m.id,JSON.stringify({ok:false,error:{code:'SERVER_BUSY',message:'Hệ thống đang xử lý yêu cầu trước. Vui lòng chờ rồi thử lại.'}}));return;}
+    active.add(m.id);
+    const target=e.source;
+    google.script.run.withSuccessHandler(json=>{active.delete(m.id);reply(target,m.id,json);})
+      .withFailureHandler(()=>{active.delete(m.id);reply(target,m.id,JSON.stringify({ok:false,error:{code:'BRIDGE_SERVER_ERROR',message:'Không nhận được phản hồi Web App. Kiểm tra kết quả trước khi gửi lại thao tác lưu.'}}));})
+      .portalBridgeCall(m.payload);
+  });
+  const ready={type:'sungrow-bridge-ready',protocol:1,channel:config.channel,version:config.version};
+  try {let p=parent;for(let i=0;i<8;i++){p.postMessage(ready,config.origin);const next=p.parent;if(next===p)break;p=next;}}catch(_){}
+})();
+</script></body></html>

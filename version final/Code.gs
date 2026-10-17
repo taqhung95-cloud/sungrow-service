@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.3-fan-kpi';
+const APP_VERSION = '1.11.4-stable-transport';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -55,7 +55,8 @@ const ROLE_CAPABILITIES = Object.freeze({
   center_staff: Object.freeze({ viewDashboard: false, viewCases: true, createCase: true, updateWorkOrder: true, createTransfer: false, acceptTransfer: true, returnToCustomer: true, approveWarranty: false })
 });
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.portal_bridge === '1') return renderPortalBridge_(e.parameter);
   const template = HtmlService.createTemplateFromFile('Index');
   template.authBrokerUrl = AUTH_BROKER_URL;
   template.appVersion = APP_VERSION;
@@ -63,6 +64,26 @@ function doGet() {
     .setTitle('Sungrow Service Center - Quản lý & nhập liệu')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+// HTMLService RPC keeps the existing API dispatcher/authentication, without a
+// browser fetch through ContentService's one-time redirect URL.
+function renderPortalBridge_(parameters) {
+  const origin = String(parameters.bridge_origin || '');
+  const channel = String(parameters.bridge_channel || '');
+  const allowed = ['https://sungrow-service.sungrowvietnam.com.vn', 'https://taqhung95-cloud.github.io'];
+  if (allowed.indexOf(origin) < 0 || !/^[a-f0-9]{48}$/.test(channel)) throw Error('Invalid bridge origin or channel.');
+  const template = HtmlService.createTemplateFromFile('PortalBridge');
+  template.bridgeConfigJson = JSON.stringify({origin:origin,channel:channel,version:APP_VERSION}).replace(/</g,'\\u003c');
+  return template.evaluate().setTitle('Service Center data connection').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function portalBridgeCall(request) {
+  if (!request || typeof request !== 'object' || Array.isArray(request) || ['portal.call','dashboard.read','tickets.page','tickets.search'].indexOf(request.action) < 0) {
+    return JSON.stringify({ok:false,error:{code:'BAD_REQUEST',message:'Yêu cầu không hợp lệ.'}});
+  }
+  const contents = JSON.stringify(request);
+  return LEGACY_DASHBOARD_API.handlePost({postData:{contents:contents}}).getContent();
 }
 
 function getPortalDatabaseRevision_() {

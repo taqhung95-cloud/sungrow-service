@@ -45,6 +45,13 @@
   host.className = 'sg-live-box';
   host.innerHTML = '<i class="sg-live-dot"></i><span class="sg-live-text"><strong id="sg-live-title">Chưa kết nối</strong><span id="sg-live-detail">Đang kiểm tra cấu hình</span></span><button class="sg-refresh-button" id="sg-refresh" type="button" title="Đồng bộ dữ liệu" aria-label="Đồng bộ dữ liệu" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M18 18a8 8 0 0 1-13-3"/></svg></button><span class="sg-login-slot" id="sg-login-slot"></span>';
   q('.sg-top').appendChild(host);
+  const dataState = document.createElement('div');
+  dataState.className = 'sg-data-state';
+  dataState.setAttribute('role','status');
+  dataState.setAttribute('aria-live','polite');
+  dataState.textContent = 'Đang tải dữ liệu…';
+  q('.sg-content').before(dataState);
+  style.textContent += '#sg-preview:not([data-live-data=true]) .sg-content{display:none!important}.sg-data-state{margin:24px;padding:24px;border-radius:12px;background:#fff;color:#5e6670}#sg-preview[data-live-data=true] .sg-data-state,.sg-main.sg-portal-mode>.sg-data-state{display:none}';
 
   installPortalSidebar();
 
@@ -138,7 +145,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=117#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=118#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -166,6 +173,8 @@
     q('#sg-live-title').textContent = title;
     q('#sg-live-detail').textContent = detail;
     q('.sg-live-dot').className = 'sg-live-dot ' + type;
+    q('.sg-live-text').title = detail || title;
+    if (!live) dataState.textContent = type === 'error' ? (detail || title) : 'Đang tải dữ liệu…';
   }
 
   function selectedPeriod() {
@@ -207,7 +216,7 @@
       try {
         const result = await Promise.race([(async () => {
           const body = new URLSearchParams({payload:JSON.stringify(payload)});
-          const response = await fetch(cfg.appsScriptUrl, {method:'POST',body,redirect:'follow',signal:requestController.signal,cache:'no-store'});
+          const response = await (globalThis.SungrowTransport?.fetch || fetch)(cfg.appsScriptUrl, {method:'POST',body,redirect:'follow',signal:requestController.signal,cache:'no-store'});
           if (!response.ok) throw new Error('HTTP ' + response.status);
           const result = await response.json();
           if (!result.ok) { const error = new Error(result.error?.message || 'Không thể xử lý yêu cầu.'); error.code = result.error?.code || ''; throw error; }
@@ -272,7 +281,7 @@
     if (refreshButton) refreshButton.disabled = true;
     const periodKey = selectedPeriod();
     const center = q('#sg-center').value;
-    status('Chưa đồng bộ', lastSuccessfulSync ? new Date(lastSuccessfulSync).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : new Date().toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}));
+    status('Đang đồng bộ…', lastSuccessfulSync ? new Date(lastSuccessfulSync).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Đang tải dữ liệu');
     try {
       const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center, refresh:forceRefresh}, controller.signal);
       if (periodKey.includes('..') && currentData.period?.key !== periodKey) throw new Error('Backend chưa hỗ trợ khoảng ngày. Cần triển khai Apps Script 1.10.15.');
@@ -304,10 +313,10 @@
     } catch (error) {
       if (controller.signal.aborted || sequence !== loadSequence) return;
       if (live) {
-        status('Chưa đồng bộ', new Date(lastSuccessfulSync || Date.now()).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}), '');
+        status('Chưa đồng bộ', 'Đang hiển thị dữ liệu lần đồng bộ trước. ' + String(error.message || 'Không kết nối được hệ thống.'), 'error');
       } else {
         const detail = String(error && error.message || 'Không nhận được phản hồi từ Apps Script').replace(/^INTERNAL_ERROR:\s*/,'');
-        status('Chưa đồng bộ', new Date().toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}), 'error');
+        status('Chưa đồng bộ', detail, 'error');
         if (options.recovery !== false) setTimeout(function(){ if(token && !live && !activeController && navigator.onLine) loadLive({force:true,recovery:false}); },5000);
       }
     } finally {
@@ -317,6 +326,7 @@
   }
 
   function renderAll() {
+    if (!live) return;
     renderOverview();
     renderMonthlyComparison();
     renderTickets();

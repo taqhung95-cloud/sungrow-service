@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.3-fan-kpi';
+const LEGACY_API_VERSION = '1.11.4-stable-transport';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
