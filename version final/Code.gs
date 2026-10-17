@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.1-fan-spare-parts';
+const APP_VERSION = '1.11.2-fan-legacy';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -95,6 +95,7 @@ function getPortalSyncState(idToken) {
 
 function getBootstrap(idToken, options) {
   const actor = authenticate_(idToken);
+  if(actor.isGlobalManager&&typeof fmgMarkWebRuntime_==='function')fmgMarkWebRuntime_();
   return {
     actor: publicActor_(actor),
     centers: actor.isGlobalManager ? CENTERS.slice() : actor.centers.slice(),
@@ -1266,7 +1267,7 @@ function portalCaseIndexObject_(caseRecord, works, transfers) {
     'Ngày hoàn tất kỹ thuật gần nhất': latest['Ngày hoàn tất kỹ thuật'] || '',
     'Có luân chuyển': transfers.length > 0,
     'Số lượng': Math.max(1, Number(caseRecord['Số lượng']) || 1),
-    'Tìm kiếm': searchable+' '+(fanFields['S/N inverter liên quan']||''),
+    'Tìm kiếm': searchable+' '+(fanFields['S/N inverter liên quan']||'')+' '+(fanFields['Tìm kiếm nguồn Fan']||''),
     'Ngày cập nhật chỉ mục': new Date()
   },fanFields);
 }
@@ -1585,6 +1586,7 @@ function columnLetter_(column) {
 function getCaseDetailForActor_(actor, caseId) {
   const revision = getPortalDatabaseRevision_();
   const indexed = readPortalCaseIndex_(revision).find(function (item) { return clean_(item['Mã hồ sơ']) === clean_(caseId); });
+  if(indexed&&clean_(indexed['Kiểu hồ sơ'])==='Fan nguồn đã nhập lô'){const archived=objectFromSheetRow_(SHEETS.cases,Number(indexed['Dòng nguồn'])),link=archived&&parseJson_(archived['Chi tiết lô Fan']);if(link&&link.parentCaseId&&link.parentCaseId!==caseId)return getCaseDetailForActor_(actor,link.parentCaseId);}
   if (!indexed || clean_(indexed['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không tìm thấy hồ sơ hoặc hồ sơ đã bị hủy.');
   let record = objectFromSheetRow_(SHEETS.cases, Number(indexed['Dòng nguồn']));
   if (!record || clean_(record['Mã hồ sơ']) !== clean_(caseId)) {

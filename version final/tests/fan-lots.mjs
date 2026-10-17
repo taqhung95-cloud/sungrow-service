@@ -80,3 +80,5 @@ for(let i=0;i<1000;i++)data.events.push({'Mã thao tác':'history-'+i,'Mã hồ 
 let hydrated=0;ctx.columnLetter_=n=>String.fromCharCode(64+n);ctx.spreadsheet_=()=>({getSheetByName:name=>({getLastRow:()=>data[name].length+1,getRange:()=>({getDisplayValues:()=>data[name].map(r=>[r['Mã hồ sơ']])}),getRangeList:addresses=>({getRanges:()=>addresses.map(address=>({getValues:()=>{hydrated++;const n=Number(address.match(/^A(\d+)/)[1]);return [headers[name].map(h=>data[name][n-2][h])];}}))})})});
 const historyPage=ctx.getFanLotHistory('manager',{caseId:'LOT'});assert.equal(historyPage.events.length,30);assert.equal(hydrated,30);assert.equal(historyPage.nextOffset,30);
 console.log('Fan lots passed: duplicate S/N quantities, snapshot bounds, dates, warranty, permissions, CAS, atomic write failure, idempotent retry, partial return, mixed outcomes, real parts and recovery.');
+
+export const migrationHarness={ctx,data,headers,R,props,getCommits:()=>commits,setFailWrite:v=>{failWrite=v;},setFailProjection:v=>{failProjection=v;}};

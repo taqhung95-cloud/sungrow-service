@@ -18,7 +18,7 @@ var SungrowFanLotRules = (function () {
   function parse(raw) {
     var state=typeof raw==='string'?JSON.parse(raw):JSON.parse(JSON.stringify(raw));
     if(!state||state.schema!==1||!Number.isSafeInteger(state.revision)||state.revision<1||!Array.isArray(state.lines)||!state.lines.length||state.lines.length>MAX_LINES)throw Error('Cấu trúc lô Fan không hợp lệ.');
-    var ids={},serials={};state.lines.forEach(function(r){if(!/^F\d+$/.test(r.lineId)||ids[r.lineId])throw Error('Mã dòng Fan không hợp lệ.');ids[r.lineId]=true;integer(r.quantity);if(!Number.isSafeInteger(r.completed)||!Number.isSafeInteger(r.returned)||r.returned<0||r.returned>r.completed||r.completed>r.quantity)throw Error('Tiến độ Fan không cân bằng.');var sn=text(r.serialNumber).toUpperCase();if(sn&&serials[sn])throw Error('S/N trong lô chưa được cộng số lượng.');serials[sn]=true;});pack(state);return state;
+    var ids={},serials={};state.lines.forEach(function(r){if(!/^F\d+$/.test(r.lineId)||ids[r.lineId])throw Error('Mã dòng Fan không hợp lệ.');ids[r.lineId]=true;integer(r.quantity);if(!Number.isSafeInteger(r.completed)||!Number.isSafeInteger(r.returned)||r.returned<0||r.returned>r.completed||r.completed>r.quantity)throw Error('Tiến độ Fan không cân bằng.');var sn=text(r.serialNumber).toUpperCase();if(sn&&serials[sn])throw Error('S/N trong lô chưa được cộng số lượng.');serials[sn]=true;});if(state.legacyImport){var m=state.legacyImport;if(m.version!==1||!Array.isArray(m.sources)||m.sources.length<2||m.sources.length>MAX_LINES||m.sourceCaseCount!==m.sources.length||new Set(m.sources.map(function(r){return r.caseId;})).size!==m.sources.length||m.sources.some(function(r){return !text(r.caseId);})||m.kpiQuantity!==m.sources.reduce(function(n,r){return n+integer(r.quantity);},0)||m.kpiQuantity!==totals(state).received)throw Error('Nguồn chuyển đổi/KPI Fan không cân bằng.');}pack(state);return state;
   }
   function totals(state) { return state.lines.reduce(function(o,r){o.received+=r.quantity;o.completed+=r.completed;o.returned+=r.returned;o.remaining+=r.quantity-r.returned;o.waiting+=r.completed-r.returned;if(r.serialNumber)o.serials++;return o;},{received:0,completed:0,returned:0,remaining:0,waiting:0,serials:0}); }
   function apply(raw, action, context) {
@@ -39,5 +39,5 @@ var SungrowFanLotRules = (function () {
   function group(rows) {
     var by={},lines=[];rows.forEach(function(r){integer(r.quantity);var sn=text(r.serialNumber).toUpperCase(),key=sn||('unknown:'+r.caseId);if(!by[key]){by[key]={serialNumber:sn,quantity:0,caseIds:[]};lines.push(by[key]);}by[key].quantity+=Number(r.quantity);by[key].caseIds.push(r.caseId);});return lines;
   }
-  return {create:create,parse:parse,pack:pack,normalize:normalize,totals:totals,apply:apply,group:group,day:day,maxLines:MAX_LINES};
+  return {kpiQuantity:function(state){return state.legacyImport?state.legacyImport.kpiQuantity:1;},create:create,parse:parse,pack:pack,normalize:normalize,totals:totals,apply:apply,group:group,day:day,maxLines:MAX_LINES};
 })();

@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const APP_VERSION = '1.11.1-fan-spare-parts';
+const APP_VERSION = '1.11.2-fan-legacy';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -218,8 +218,10 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
-      quantity: fanState ? 1 : knownQuantity_(item['Số lượng']),
+      quantity: fanState ? SungrowFanLotRules.kpiQuantity(fanState) : knownQuantity_(item['Số lượng']),
+      legacyCaseCount: fanState&&fanState.legacyImport?fanState.legacyImport.sourceCaseCount:1,
       fanLot: fanState ? {totals:SungrowFanLotRules.totals(fanState),lines:fanState.lines,events:(fanEventsByCase[caseId]||[]).map(function(e){return {kind:e['Loại thao tác'],quantity:Number(e['Số lượng']),date:iso_(date_(e['Ngày thực tế'])),lineId:e['Mã dòng Fan'],outcome:e['Kết quả']};})} : null,
+      relatedCaseIds: fanState&&fanState.legacyImport?fanState.legacyImport.sources.map(function(r){return r.caseId;}):[],
       relatedSerials: fanState ? fanState.lines.map(function(l){return l.serialNumber;}).filter(Boolean) : [],
       gsp: clean_(item.GSP),
       ma: clean_(item.MA),
@@ -298,7 +300,7 @@ function pageTickets_(request, actor) {
   const compactQuery = normalizeDeviceKey_(query);
   let tickets = (index.tickets || []).filter(function (ticket) {
     if (!query) return true;
-    const searchable = [ticket.serialNumber, ticket.model, (ticket.relatedSerials||[]).join(' ')].join(' ');
+    const searchable = [ticket.serialNumber, ticket.model, (ticket.relatedSerials||[]).join(' '),(ticket.relatedCaseIds||[]).join(' ')].join(' ');
     return searchable.toLowerCase().includes(lowerQuery) || (compactQuery && normalizeDeviceKey_(searchable).includes(compactQuery));
   });
   const statuses = index.statuses || [];
@@ -727,7 +729,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
       centers: scope.length,
       fan: fanPhysicalSummary_(records,period),
       received: sumDevices_(periodRows),
-      receivedCases: periodRows.length,
+      receivedCases: periodRows.reduce(function(n,r){return n+(r.legacyCaseCount||1);},0),
       technicalCompleted: sumDevices_(technicalCompleted),
       technicalCompletedCases: technicalCompleted.length,
       processing: sumDevices_(openAll.filter(function (r) { return !isWaitingAt_(r, period.asOf); })),
@@ -832,6 +834,7 @@ function publicTicket_(r) {
     deviceType: r.deviceType,
     fanLot: r.fanLot ? {totals:r.fanLot.totals} : null,
     relatedSerials: r.relatedSerials || [],
+    relatedCaseIds: r.relatedCaseIds || [],
     receivedDate: iso_(r.receivedDate),
     returnDate: iso_(r.returnDate),
     center: r.center,
@@ -1265,7 +1268,7 @@ function readReportData_(request, actor) {
   }else{
     selected=records.filter(function(r){
       const within=basis==='open'?isOpenAt_(r,period.asOf):basis==='technical'?validTechnicalDate_(r)&&inPeriod_(r.technicalCompletedDate,period):basis==='returned'?validReturn_(r)&&inPeriod_(r.returnDate,period):inPeriod_(r.receivedDate,period);
-      return within&&(!status||r.status===status)&&(!warranty||r.warrantyStatus===warranty)&&(!deviceType||r.deviceType===deviceType)&&(!query||[r.id,r.model,r.serialNumber,(r.relatedSerials||[]).join(' ')].join(' ').toLowerCase().indexOf(query)>=0);
+      return within&&(!status||r.status===status)&&(!warranty||r.warrantyStatus===warranty)&&(!deviceType||r.deviceType===deviceType)&&(!query||[r.id,r.model,r.serialNumber,(r.relatedSerials||[]).join(' '),(r.relatedCaseIds||[]).join(' ')].join(' ').toLowerCase().indexOf(query)>=0);
     });
     selected.sort(function(a,b){const delta=time_(b.receivedDate)-time_(a.receivedDate);return delta||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
   }
@@ -1281,7 +1284,7 @@ function readReportData_(request, actor) {
   });
   assertCanonicalRevision_(revision);
   const spec={type:type,start:iso_(period.start),end:iso_(period.end),asOf:period.asOf.toISOString(),dateBasis:basis,centers:request.centers.slice().sort(),columns:columns.slice(),query:query,status:status,warrantyStatus:warranty,deviceType:deviceType};
-  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: thiết bị thường giữ số lượng đã biết; mỗi lô Fan mới tính 1. Số Fan vật lý ở cột riêng; nhóm hồ sơ cũ không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
+  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: thiết bị thường giữ số lượng đã biết; mỗi lô Fan tạo mới tính 1, lô chuyển đổi giữ trọng số nguồn đã đối soát. Số Fan vật lý ở cột riêng; nhóm hồ sơ cũ không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
 }
 if (typeof installReportReader_==='function') installReportReader_(readReportData_);
 return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_ };
@@ -1290,3 +1293,6 @@ return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_ };
 function doPost(e) {
   return LEGACY_DASHBOARD_API.handlePost(e);
 }
+
+// Release capability checked before legacy-source conversion.
+LEGACY_DASHBOARD_API.fanLegacyKpiReady = true;

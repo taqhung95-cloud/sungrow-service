@@ -1,5 +1,13 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chuyển nhóm Fan cũ thành lô thật — 17/10/2026, 1.11.2-fan-legacy
+
+FanLegacyMigration.gs là module Editor, nhận rõ mã nhóm; preview khóa fingerprint/revision trong 30 phút, chỉ chuyển Fan Quy trình mới chưa xử lý/chưa giao và không có linh kiện/lỗi xác nhận/luân chuyển/tạm dừng. Một case nguồn làm lô, nguồn khác giữ hàng và lưu mềm với liên kết cha, không xóa vật lý. Giữ work ID/ghi chú/hiện tượng ban đầu và tài liệu ở folder gốc; model inverter và bảo hành từng nguồn nằm trong legacyImport. S/N lặp cộng lượng, không suy PN. Nguồn có hoạt động khác bị chặn để xử lý riêng.
+
+legacyImport giữ kpiQuantity và sourceCaseCount theo nguồn; parse kiểm tra cân bằng. LegacyDashboardApi/ManagerDashboard dùng trọng số này cho lô chuyển đổi, trong khi lô tạo mới vẫn tính 1. Dashboard receivedCases giữ số nguồn; tổng physical Fan riêng. Không ghi thêm spare part khi chuyển. Nhóm có Hồ sơ lô Fan mở native lot; tra mã nguồn cũ về cha, index search có mã/model nguồn. liveJS134/entry116, Fan rules/core/native3 (CSS2).
+
+Ghi nguồn/works/nhóm/nhật ký migration trong một Sheets batch sau backup toàn database và biên nhận snapshot riêng trên Drive. Pending/retry không ghi lặp, readback kiểm tra nguồn/works/KPI, sync projection/index tất cả case, bump revision, audit. Hàm áp dụng đòi đăng nhập quản lý trên backend mới trong 30 phút để tránh chạy chuyển đổi trước khi deploy quy tắc KPI mới. Wrapper theo nhóm thật và snapshot live nằm outputs local, không đưa dữ liệu nguồn vào Git. Tại lúc phát triển mới đọc/preview production, chưa thực thi chuyển đổi production; Apps Script do người dùng cập nhật và chạy thủ công.
+
 ## Fan và spare part dùng chung hệ thống — 17/10/2026, 1.11.1-fan-spare-parts
 
 Kết quả kỹ thuật Fan có thể ghi nhiều PN/số lượng thực dùng/ngày sử dụng, hoặc liên kết mã sử dụng đã có của chính công việc. Đổi Fan bắt buộc có spare part mới hoặc đã ghi nhận; sửa bảo hành cũng ghi được linh kiện ngay cùng lần lưu. Ghi thẳng Linh kiện sử dụng với Mã công việc hiện hành trong cùng atomic batch với tiến độ/nhật ký; retry/CAS/pending giữ nguyên. Không thêm bảng tiêu hao, không tính tổng từ nhật ký Fan, không nhân lượng linh kiện theo Fan/SN/hồ sơ. Dashboard tiếp tục dùng groupPartsForPeriod_ trên canonical parts; Fan thường, Fan cũ, Inverter và lô mới cộng chung theo PN/ngày dùng/center. Đối soát nhật ký với nguồn linh kiện kiểm tra ID, work, PN, lượng và ngày; liên kết bản ghi cũ không append lần nữa.
