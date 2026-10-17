@@ -1,5 +1,12 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Fan và spare part dùng chung hệ thống — 17/10/2026, 1.11.1-fan-spare-parts
+
+Kết quả kỹ thuật Fan có thể ghi nhiều PN/số lượng thực dùng/ngày sử dụng, hoặc liên kết mã sử dụng đã có của chính công việc. Đổi Fan bắt buộc có spare part mới hoặc đã ghi nhận; sửa bảo hành cũng ghi được linh kiện ngay cùng lần lưu. Ghi thẳng Linh kiện sử dụng với Mã công việc hiện hành trong cùng atomic batch với tiến độ/nhật ký; retry/CAS/pending giữ nguyên. Không thêm bảng tiêu hao, không tính tổng từ nhật ký Fan, không nhân lượng linh kiện theo Fan/SN/hồ sơ. Dashboard tiếp tục dùng groupPartsForPeriod_ trên canonical parts; Fan thường, Fan cũ, Inverter và lô mới cộng chung theo PN/ngày dùng/center. Đối soát nhật ký với nguồn linh kiện kiểm tra ID, work, PN, lượng và ngày; liên kết bản ghi cũ không append lần nữa.
+
+Bỏ ô Loại đổi độc lập. Cột Spare part sử dụng mở phần nhập bằng cùng partRow như form kỹ thuật hiện hành; chọn linh kiện đã có để tránh nhập lại. 20 dòng cho mỗi lần lưu. Frontend capability fanLotPartsWithTechnical chặn lưu kỹ thuật khi backend cũ chưa hỗ trợ, tránh bỏ sót payload parts. liveJS133/entry115, Fan CSS/rules/core/native2. Apps Script cập nhật thủ công theo DEPLOY-1.11.1-FAN-SPARE-PARTS.md; schema vẫn fan-lots-1, không cần migration số liệu cũ.
+
+
 ## Fan theo lô — 17/10/2026, 1.11.0-fan-lots
 
 Bảng cập nhật S/N đặt Kết quả và Loại đổi ở hai cột cùng hàng; Loại đổi chỉ hiện khi đổi thiết bị. Dấu phân cách thông tin trên toàn portal dùng |; giữ nguyên dấu thập phân và dữ liệu nguồn. MobileJS4, notificationsJS8, reportsJS3. Frontend liveJS132/entry114, Fan UI/rules/native CSS/JS1, uploadJS9, attachmentUI2, formDrafts4. Giữ tên đơn vị KPI Thiết bị/Hồ sơ và bố cục portal/drawer/update hiện tại. Fan tạo mới có nhập thường hoặc lô; S/N lặp cộng số Fan. Snapshot schema/revision trong hai cột bổ sung ở cuối nguồn, nhật ký thao tác và nhóm liên kết ở hai tab mới. Giới hạn120 dòng/42k ký tự. Không ghi tab lịch sử. Hồ sơ thường giữ số lượng; lô mới tính1, lượng Fan vật lý và các lần hoàn tất/giao theo ngày được thống kê riêng, cùng quy tắc Excel. Linh kiện thực dùng theo ngày/phạm vi, không nhân Fan.

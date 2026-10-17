@@ -1,3 +1,4 @@
+import {verifySharedParts} from './fan-lot-analytics.mjs';
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
 const root=new URL('../',import.meta.url),read=n=>fs.readFileSync(new URL(n,root),'utf8');
 assert.equal(read('FanLotRules.gs'),read('../docs/fan-lot-rules.js'),'Client and server rules must match exactly.');
@@ -38,6 +39,25 @@ failProjection=true;const pending={caseId:'LOT',expectedFingerprint:digest(R.pac
 assert.throws(()=>ctx.updateFanLot('manager',pending),/Đã lưu Fan/);assert.equal(snapshot().lines[1].completed,1);assert.ok(props.get('FAN_PENDING_LOT'));failProjection=false;ctx.updateFanLot('manager',pending);assert.equal(snapshot().lines[1].completed,1);assert.equal(props.get('FAN_PENDING_LOT'),undefined);
 send({kind:'technical',lineId:'F1',quantity:1,date:'2026-10-17',outcome:'Đã sửa chữa'});assert.equal(R.totals(snapshot()).completed,4);assert.equal(data.works[0]['Kết quả xử lý'],'','Mixed outcomes must not be invented as repaired.');
 send({...returns,lineId:'F1',quantity:2,date:'2026-10-17'});assert.notEqual(data.cases[0]['Trạng thái hồ sơ'],'Đã hoàn tất');send({...returns,lineId:'F2',quantity:1,date:'2026-10-17'});assert.equal(data.cases[0]['Trạng thái hồ sơ'],'Đã hoàn tất');
+// Actual technical writes must enter the same spare-parts ledger, atomically and once.
+const spareState=R.create([{serialNumber:'SPARE-SN',quantity:3}]);
+data.cases.push({...data.cases[0],'Mã hồ sơ':'SPARE','Chi tiết lô Fan':R.pack(spareState),'Số lượng':3,'Ngày trả khách':'','Trạng thái hồ sơ':'Đang xử lý'});
+data.works.push({...data.works[0],'Mã công việc':'W-SPARE','Mã hồ sơ':'SPARE','Ngày hoàn tất kỹ thuật':'','Trạng thái xử lý':'Đang kiểm tra'});
+const spareSnapshot=()=>R.parse(data.cases.find(r=>r['Mã hồ sơ']==='SPARE')['Chi tiết lô Fan']);
+const spareRequest=(action)=>({caseId:'SPARE',expectedFingerprint:digest(R.pack(spareSnapshot())),requestId:'spare-request-'+String(++counter).padStart(16,'0'),action:{kind:'technical',lineId:'F1',quantity:1,date:'2026-10-17',outcome:'Đổi thiết bị',...action}});
+const newParts=[{partNumber:'SHARED-PN',name:'Fan replacement',quantity:4,usedAt:'2026-10-16'},{partNumber:'OTHER-PN',name:'Connector',quantity:2,usedAt:'2026-10-17'}];
+assert.throws(()=>ctx.updateFanLot('manager',spareRequest({})),/spare part/);
+for(const part of [{...newParts[0],quantity:-1},{...newParts[0],usedAt:'2026-10-18'},{...newParts[0],usedAt:'2026-10-14'},{...newParts[0],partNumber:''}])assert.throws(()=>ctx.updateFanLot('manager',spareRequest({parts:[part]})));
+assert.equal(spareSnapshot().lines[0].completed,0);
+const exchange=spareRequest({parts:newParts}),beforeParts=JSON.stringify(data.parts),beforeSpare=R.pack(spareSnapshot());failWrite=true;
+assert.throws(()=>ctx.updateFanLot('manager',exchange),/HTTP 400/);assert.equal(JSON.stringify(data.parts),beforeParts);assert.equal(R.pack(spareSnapshot()),beforeSpare);failWrite=false;
+failProjection=true;assert.throws(()=>ctx.updateFanLot('manager',exchange),/Đã lưu Fan/);assert.equal(data.parts.filter(p=>p['Mã công việc']==='W-SPARE').length,2);assert.equal(spareSnapshot().lines[0].completed,1);failProjection=false;ctx.updateFanLot('manager',exchange);ctx.updateFanLot('manager',exchange);assert.equal(data.parts.filter(p=>p['Mã công việc']==='W-SPARE').length,2,'Retry/recovery must not consume parts again.');
+const repair=spareRequest({outcome:'Đã sửa chữa',parts:[{...newParts[0],quantity:3,usedAt:'2026-10-17'}]});ctx.updateFanLot('manager',repair);
+assert.throws(()=>ctx.updateFanLot('manager',spareRequest({partUsageIds:[data.parts[0]['Mã sử dụng linh kiện']]})),/công việc này/);
+const linked=data.parts.find(p=>p['Mã công việc']==='W-SPARE')['Mã sử dụng linh kiện'];assert.throws(()=>ctx.updateFanLot('manager',spareRequest({partUsageIds:[linked,linked]})),/trùng/);
+ctx.updateFanLot('manager',spareRequest({partUsageIds:[linked]}));const spareParts=data.parts.filter(p=>p['Mã công việc']==='W-SPARE');assert.equal(spareParts.length,3);assert.equal(spareParts.reduce((n,p)=>n+p['Số lượng'],0),9,'Reuse existing consumption without inserting another ledger row.');
+const spareEvents=data.events.filter(e=>e['Mã hồ sơ']==='SPARE');assert.doesNotThrow(()=>ctx.flVerifyPartLedger_(spareEvents,data.parts));const tampered=structuredClone(data.parts);tampered.find(p=>p['Mã sử dụng linh kiện']===linked)['Số lượng']++;assert.throws(()=>ctx.flVerifyPartLedger_(spareEvents,tampered),/lệch nguồn/);
+verifySharedParts({'Hồ sơ thiết bị':[data.cases.find(r=>r['Mã hồ sơ']==='SPARE'),{'Mã hồ sơ':'NORMAL','Loại thiết bị':'Inverter','Số lượng':2,'Ngày nhận từ khách':'2026-10-15','Trung tâm tiếp nhận khách':center,'Trung tâm đang giữ hàng':center,'Trạng thái hồ sơ':'Đang xử lý'},{'Mã hồ sơ':'OLD-FAN','Loại thiết bị':'Fan','Số lượng':1,'Ngày nhận từ khách':'2026-10-15','Trung tâm tiếp nhận khách':center,'Trung tâm đang giữ hàng':center,'Trạng thái hồ sơ':'Đang xử lý'}],'Công việc trung tâm':[data.works.find(w=>w['Mã công việc']==='W-SPARE'),{'Mã công việc':'W-NORMAL','Mã hồ sơ':'NORMAL','Trung tâm xử lý':center},{'Mã công việc':'W-OLD-FAN','Mã hồ sơ':'OLD-FAN','Trung tâm xử lý':center}],'Linh kiện sử dụng':spareParts.concat([{'Mã công việc':'W-NORMAL','Mã linh kiện (Part Number)':'SHARED-PN','Số lượng':5,'Ngày sử dụng':'2026-10-16'},{'Mã công việc':'W-OLD-FAN','Mã linh kiện (Part Number)':'SHARED-PN','Số lượng':2,'Ngày sử dụng':'2026-10-16'}]),'Nhật ký lô Fan':spareEvents},center);
 const originals=[{caseId:'A',serialNumber:'DUP',quantity:1},{caseId:'B',serialNumber:'DUP',quantity:1},{caseId:'C',serialNumber:'OTHER',quantity:1}];assert.equal(R.group(originals)[0].quantity,2);assert.equal(originals.length,3);
 const source=read('Code.gs');assert.match(source,/flAppendRequest_\(SHEETS.cases,caseData\)/);assert.match(source,/flPrepareCreate_\(payload\)/);assert.match(source,/flExactIndexMatch_\(item,query\)/);
 const fl=read('FanLots.gs');assert.doesNotMatch(fl,/readTable_\(['"]202[456]/);assert.doesNotMatch(fl,/deleteRow|deleteSheet|\.clear\(/);new vm.Script(read('../docs/fan-lots.js'));

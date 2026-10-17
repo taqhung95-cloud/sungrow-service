@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.0-fan-lots';
+const APP_VERSION = '1.11.1-fan-spare-parts';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -110,6 +110,7 @@ function getBootstrap(idToken, options) {
     supplementalAttachments: typeof commitCaseAttachments === 'function',
     fanLots: typeof flEnabled_ === 'function' && flEnabled_(),
     fanLotReader: typeof flPublic_ === 'function',
+    fanLotPartsWithTechnical: typeof flPartUsageRequests_ === 'function',
     uploadCategories: typeof uploadCategoriesEnabled_ === 'function' && uploadCategoriesEnabled_()
   };
 }

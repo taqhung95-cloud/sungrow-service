@@ -28,7 +28,7 @@ var SungrowFanLotRules = (function () {
     if(action.kind==='technical'){
       if(!context.warrantyApproved)throw Error('Cần xác nhận bảo hành trước khi hoàn tất Fan.');
       if(['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].indexOf(action.outcome)<0)throw Error('Chọn kết quả xử lý hợp lệ.');
-      if(action.outcome==='Đổi thiết bị'&&!text(action.replacementType))throw Error('Thiếu loại thiết bị đổi.');
+      if(action.outcome==='Đổi thiết bị'&&!(action.parts&&action.parts.length)&&!(action.partUsageIds&&action.partUsageIds.length))throw Error('Đổi Fan cần ghi nhận spare part hoặc chọn linh kiện đã ghi nhận.');
       if(line.completed+qty>line.quantity)throw Error('Số hoàn tất vượt số Fan chưa xử lý.');line.completed+=qty;
     }else if(action.kind==='return'){
       if(!context.warrantyApproved)throw Error('Cần xác nhận bảo hành trước khi giao trả.');

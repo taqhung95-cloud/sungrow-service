@@ -58,6 +58,13 @@ function flBatch_(requests){
   var response=UrlFetchApp.fetch('https://sheets.googleapis.com/v4/spreadsheets/'+spreadsheet_().getId()+':batchUpdate',{method:'post',contentType:'application/json',headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},payload:JSON.stringify({requests:requests}),muteHttpExceptions:true});
   if(response.getResponseCode()<200||response.getResponseCode()>=300){var code=response.getResponseCode(),error=publicError_('Không ghi được giao dịch Fan. Giữ mã thao tác và tải lại để kiểm tra. HTTP '+code);error.fanNoWrite=code>=400&&code<500&&code!==408;throw error;}
 }
+function flVerifyPartLedger_(events, suppliedParts) {
+  var expected=[];events.forEach(function(e){var d=parseJson_(e['Nội dung'])||{};(d.parts||[]).forEach(function(p){expected.push({part:p,event:e});});});
+  if(!expected.length)return;
+  var ids=Array.from(new Set(expected.map(function(x){return x.part.partUsageId;}))),rows=suppliedParts||findTableRowsByField_(SHEETS.parts,'Mã sử dụng linh kiện',ids),by={};
+  rows.forEach(function(r){var id=clean_(r['Mã sử dụng linh kiện']);if(!by[id])by[id]=[];by[id].push(r);});
+  expected.forEach(function(x){var p=x.part,matches=by[p.partUsageId]||[],r=matches[0];if(matches.length!==1||clean_(r['Mã công việc'])!==clean_(x.event.workOrderId||((parseJson_(x.event['Nội dung'])||{}).workOrderId))||clean_(r['Mã linh kiện (Part Number)'])!==p.partNumber||Number(r['Số lượng'])!==Number(p.quantity)||iso_(r['Ngày sử dụng'])!==p.usedAt)throw publicError_('Spare part lệch nguồn hoặc bị ghi trùng: '+p.partUsageId);});
+}
 function flFinishSync_(caseId){
   var props=PropertiesService.getScriptProperties();
   var source=findTableRowsByField_(SHEETS.cases,'Mã hồ sơ',[caseId])[0],state=source&&flState_(source);
@@ -65,6 +72,7 @@ function flFinishSync_(caseId){
   var evidence=findTableRowsByField_(FL_EVENT_SHEET_,'Mã hồ sơ',[caseId]),totals={};
   evidence.forEach(function(e){var key=e['Mã dòng Fan'];if(!totals[key])totals[key]={done:0,returned:0};if(e['Loại thao tác']==='technical')totals[key].done+=Number(e['Số lượng']);if(e['Loại thao tác']==='return')totals[key].returned+=Number(e['Số lượng']);});
   state.lines.forEach(function(l){var t=totals[l.lineId]||{done:0,returned:0};if(t.done!==l.completed||t.returned!==l.returned)throw publicError_('Tiến độ lô lệch nhật ký. Cần quản lý đối soát.');});
+  var pendingId=props.getProperty('FAN_PENDING_'+caseId);if(pendingId)flVerifyPartLedger_(evidence.filter(function(e){return e['Mã thao tác']===pendingId;}));
   var projection=syncDashboardProjectionCase_(caseId),index=syncPortalCaseIndexCase_(caseId);
   bumpPortalDatabaseRevision_();
   if(!projection||!projection.ok||!index||!index.ok)throw publicError_('Đã lưu Fan nhưng chưa đồng bộ đủ dashboard/chỉ mục. Tải lại và bấm đối soát, không tạo thao tác mới.');
@@ -79,6 +87,25 @@ function getFanLotHistory(idToken,payload){
   var selected=numbers.slice(offset,offset+pageSize),rows=[];
   if(selected.length)rows=sheet.getRangeList(selected.map(function(n){return 'A'+n+':'+columnLetter_(headers.length)+n;})).getRanges().map(function(range){var values=range.getValues()[0],row={};headers.forEach(function(h,i){row[h]=values[i];});return row;});
   return {events:rows.map(function(r){return {requestId:r['Mã thao tác'],lineId:r['Mã dòng Fan'],kind:r['Loại thao tác'],quantity:r['Số lượng'],date:iso_(r['Ngày thực tế']),outcome:r['Kết quả'],detail:parseJson_(r['Nội dung']),actor:r['Người thực hiện'],at:iso_(r['Thời gian'])};}),total:numbers.length,nextOffset:offset+pageSize<numbers.length?offset+pageSize:null};
+}
+// All Fan consumption uses the existing work-order parts ledger and shared readers.
+function flPartUsageRequests_(work, action, requestId, scope, upperDate) {
+  var parts=action.parts===undefined?[]:action.parts,ids=action.partUsageIds===undefined?[]:action.partUsageIds;
+  if(!Array.isArray(parts)||!Array.isArray(ids)||parts.length+ids.length>20)throw publicError_('Tối đa 20 dòng linh kiện cho mỗi lần xử lý.');
+  var requests=[],entries=[],seen={};
+  function entry(part,existing,index){
+    var pn=required_(part.partNumber,'Part Number'),name=required_(part.name,'Tên linh kiện'),qty=Number(part.quantity),note=clean_(part.note),date;
+    try{date=SungrowFanLotRules.day(part.usedAt||upperDate);}catch(e){throw publicError_(e.message);}
+    if(pn.length>100||name.length>500||note.length>2000)throw publicError_('Thông tin linh kiện quá dài.');
+    if(!Number.isSafeInteger(qty)||qty<1||qty>100000)throw publicError_('Số lượng linh kiện không hợp lệ.');
+    if(date<iso_(work['Ngày trung tâm nhận hàng'])||date>upperDate||(iso_(work['Ngày hoàn tất kỹ thuật'])&&date>iso_(work['Ngày hoàn tất kỹ thuật'])))throw publicError_('Ngày dùng linh kiện phải thuộc công việc và không sau ngày xử lý.');
+    var id=existing?part.partUsageId:'FAN-'+requestId+'-P'+(index+1);
+    entries.push({partUsageId:id,partNumber:pn,name:name,quantity:qty,usedAt:date,existing:existing});
+    if(!existing)requests.push(flAppendRequest_(SHEETS.parts,{'Mã sử dụng linh kiện':id,'Mã công việc':work['Mã công việc'],'Mã linh kiện (Part Number)':pn,'Tên linh kiện':name,'Số lượng':qty,'Ngày sử dụng':parseDateRequired_(date,'Ngày dùng'),'Ghi chú':'Fan '+(scope||'chung lô')+'; '+note}));
+  }
+  parts.forEach(function(p,i){if(!p||typeof p!=='object'||p.partUsageId)throw publicError_('Dùng danh sách linh kiện đã ghi nhận để liên kết bản ghi cũ.');entry(p,false,i);});
+  if(ids.length){var rows=findTableRowsByField_(SHEETS.parts,'Mã sử dụng linh kiện',ids);ids.forEach(function(raw){var id=clean_(raw);if(!id||seen[id])throw publicError_('Linh kiện liên kết bị trùng hoặc thiếu mã.');seen[id]=true;var matches=rows.filter(function(r){return r['Mã sử dụng linh kiện']===id;});if(matches.length!==1||matches[0]['Mã công việc']!==work['Mã công việc'])throw publicError_('Linh kiện đã ghi nhận không thuộc công việc này.');var r=matches[0];if(!iso_(r['Ngày sử dụng']))throw publicError_('Cần đối soát ngày dùng của linh kiện đã ghi nhận.');entry({partUsageId:id,partNumber:r['Mã linh kiện (Part Number)'],name:r['Tên linh kiện'],quantity:r['Số lượng'],usedAt:iso_(r['Ngày sử dụng'])},true,0);});}
+  return {requests:requests,entries:entries};
 }
 function updateFanLot(idToken,payload){
   return withSerializedWrite_('cập nhật lô Fan',function(){
@@ -96,7 +123,7 @@ function updateFanLot(idToken,payload){
     var action=payload.action||{},kind=clean_(action.kind),today=Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd'),date;
     try{date=SungrowFanLotRules.day(action.date);}catch(e){throw publicError_(e.message);}
     if(date>today||date<iso_(row['Ngày nhận từ khách']))throw publicError_('Ngày thao tác phải từ ngày nhận đến hôm nay.');
-    var details={note:clean_(action.note),actionDigest:digest_(JSON.stringify(action))};if(details.note.length>2000)throw publicError_('Ghi chú tối đa 2.000 ký tự.');
+    var details={workOrderId:work['Mã công việc'],note:clean_(action.note),actionDigest:digest_(JSON.stringify(action))};if(details.note.length>2000)throw publicError_('Ghi chú tối đa 2.000 ký tự.');
     var requests=[],now=new Date(),changes={'Người cập nhật gần nhất':actor.email,'Ngày cập nhật gần nhất':now},next=state;
     if(kind==='technical'||kind==='return'){
       var received=iso_(row['Ngày nhận từ khách']),workReceived=iso_(work['Ngày trung tâm nhận hàng']);
@@ -124,16 +151,17 @@ function updateFanLot(idToken,payload){
         var allTechnicalDates=history.filter(function(e){return e['Loại thao tác']==='technical';}).map(function(e){return iso_(e['Ngày thực tế']);}).concat([date]).sort();
         requests=requests.concat(flUpdateRequest_(SHEETS.workOrders,work.__rowNumber,{'Trạng thái xử lý':'Hoàn tất kỹ thuật','Ngày hoàn tất kỹ thuật':parseDateRequired_(allTechnicalDates.pop(),'Ngày hoàn tất'),'Kết quả xử lý':sameOutcome?outcomes[0]:'','Ghi chú nội bộ':[clean_(work['Ghi chú nội bộ']),'Kết quả từng phần: xem lịch sử lô Fan.'].filter(Boolean).join('\n'),'Người cập nhật':actor.email,'Ngày cập nhật':now}));
       }
-      details.replacementType=clean_(action.replacementType);
+      if(kind==='technical'){
+        var usage=flPartUsageRequests_(work,action,id,action.lineId,date);
+        if(action.outcome==='Đổi thiết bị'&&!usage.entries.length)throw publicError_('Đổi Fan cần ghi nhận spare part hoặc chọn linh kiện đã ghi nhận.');
+        requests=requests.concat(usage.requests);details.parts=usage.entries;
+      }
     }else if(kind==='part'){
       if(date<iso_(work['Ngày trung tâm nhận hàng'])||date>today||(iso_(work['Ngày hoàn tất kỹ thuật'])&&date>iso_(work['Ngày hoàn tất kỹ thuật'])))throw publicError_('Ngày dùng linh kiện không hợp lệ.');
       var lineId=clean_(action.lineId);if(lineId&&!state.lines.some(function(l){return l.lineId===lineId;}))throw publicError_('Phạm vi S/N không hợp lệ.');
       var partScope=state.lines.filter(function(l){return !lineId||l.lineId===lineId;});if(!partScope.every(function(l){return WARRANTY_STATUSES.indexOf(l.warrantyStatus||clean_(row['Tình trạng bảo hành']))>=0;}))throw publicError_('Cần duyệt bảo hành của phạm vi sử dụng linh kiện.');
-      var quantity=Number(action.quantity);if(!Number.isSafeInteger(quantity)||quantity<1||quantity>100000)throw publicError_('Số lượng linh kiện không hợp lệ.');
-      var pn=required_(action.partNumber,'Part Number'),name=required_(action.name,'Tên linh kiện');if(pn.length>100||name.length>500)throw publicError_('Thông tin linh kiện quá dài.');
-      details.partNumber=pn;details.name=name;details.scope=lineId||'lot';
-      details.partUsageId='FAN-'+id;
-      requests.push(flAppendRequest_(SHEETS.parts,{'Mã sử dụng linh kiện':details.partUsageId,'Mã công việc':work['Mã công việc'],'Mã linh kiện (Part Number)':pn,'Tên linh kiện':name,'Số lượng':quantity,'Ngày sử dụng':parseDateRequired_(date,'Ngày dùng'),'Ghi chú':'Fan '+(lineId||'chung lô')+'; '+details.note}));
+      var usage=flPartUsageRequests_(work,{parts:[{partNumber:action.partNumber,name:action.name,quantity:action.quantity,usedAt:date,note:details.note}]},id,lineId,date);
+      requests=requests.concat(usage.requests);details.parts=usage.entries;details.partNumber=usage.entries[0].partNumber;details.name=usage.entries[0].name;details.scope=lineId||'lot';details.partUsageId=usage.entries[0].partUsageId;
       next=SungrowFanLotRules.parse(state);next.revision++;
     }else if(kind==='info'){
       if(date>today||date<iso_(work['Ngày trung tâm nhận hàng'])||(iso_(work['Ngày hoàn tất kỹ thuật'])&&date>iso_(work['Ngày hoàn tất kỹ thuật'])))throw publicError_('Ngày chẩn đoán không hợp lệ.');
@@ -217,6 +245,7 @@ function doiSoatFanTheoLo(){
   var cases=readTable_(SHEETS.cases),index=readTable_(SHEETS.caseIndex),events=readTable_(FL_EVENT_SHEET_),by={},errors=[],fanCount=0,lotCount=0,physical=0,seenEvents={};index.forEach(function(r){if(by[r['Mã hồ sơ']])errors.push(r['Mã hồ sơ']+': trùng chỉ mục');by[r['Mã hồ sơ']]=r;});
   var eventTotals={};events.forEach(function(e){var id=e['Mã thao tác'];if(seenEvents[id])errors.push('Trùng mã thao tác Fan');seenEvents[id]=true;var key=e['Mã hồ sơ']+'|'+e['Mã dòng Fan'];if(!eventTotals[key])eventTotals[key]={completed:0,returned:0};if(e['Loại thao tác']==='technical')eventTotals[key].completed+=Number(e['Số lượng']);if(e['Loại thao tác']==='return')eventTotals[key].returned+=Number(e['Số lượng']);});
   cases.forEach(function(r){if(clean_(r['Loại thiết bị'])!=='Fan'||r['Trạng thái hồ sơ']==='Đã hủy')return;fanCount++;if(!flIsLot_(r))return;lotCount++;try{var state=flState_(r),totals=SungrowFanLotRules.totals(state);physical+=totals.received;if(totals.received!==Number(r['Số lượng']))errors.push(r['Mã hồ sơ']+': lệch tổng Fan');var ix=by[r['Mã hồ sơ']];if(!ix||ix['S/N inverter liên quan']!==flIndexFields_(r)['S/N inverter liên quan']||ix['Tiến độ Fan']!==JSON.stringify(totals)||Number(ix['Số lượng'])!==totals.received)errors.push(r['Mã hồ sơ']+': lệch chỉ mục S/N/tiến độ');state.lines.forEach(function(l){var t=eventTotals[r['Mã hồ sơ']+'|'+l.lineId]||{completed:0,returned:0};if(t.completed!==l.completed||t.returned!==l.returned)errors.push(r['Mã hồ sơ']+'/'+l.lineId+': tiến độ lệch nhật ký');});if(totals.returned===totals.received&&(!r['Ngày trả khách']||r['Trạng thái hồ sơ']!=='Đã hoàn tất'))errors.push(r['Mã hồ sơ']+': thiếu đóng lô/ngày trả cuối');}catch(e){errors.push(r['Mã hồ sơ']+': '+e.message);}});
+  try{flVerifyPartLedger_(events,readTable_(SHEETS.parts));}catch(e){errors.push(e.message);}
   var pending=Object.keys(PropertiesService.getScriptProperties().getProperties()).filter(function(k){return k.indexOf('FAN_PENDING_')===0;});
   if(startRevision!==getPortalDatabaseRevision_())errors.push('Dữ liệu thay đổi trong lúc đối soát. Chạy lại.');
   var report={release:FL_RELEASE_,revision:getPortalDatabaseRevision_(),sourceCases:cases.length,fanCases:fanCount,lotCases:lotCount,lotFanQuantity:physical,pending:pending,errors:errors,ok:!errors.length&&!pending.length};

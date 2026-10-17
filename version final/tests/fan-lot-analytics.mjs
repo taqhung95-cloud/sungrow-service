@@ -14,3 +14,13 @@ const historical=api.getDashboard_({period:'2026-10-15..2026-10-16',center},acto
 console.log('Fan analytics passed: mixed KPI/physical units, preserved old cases, dated partial returns/stock, real parts, related-S/N paging and 15 warm readers without additional table reads.');
 
 export const fanDashboardFixture=JSON.parse(JSON.stringify(dashboard));
+
+export function verifySharedParts(tables,center){
+ const cache=new Map(),sandbox={console,Date,DATABASE_SPREADSHEET_ID:'fixture',Session:{getScriptTimeZone:()=> 'Asia/Saigon'},Utilities:{formatDate:d=>d.toISOString().slice(0,10),newBlob:s=>({getBytes:()=>Buffer.from(s)})},PropertiesService:{getScriptProperties:()=>({getProperty:k=>k==='SOURCE_SPREADSHEET_ID'?'fixture':null})},CacheService:{getScriptCache:()=>({get:k=>cache.get(k),put:(k,v)=>cache.set(k,v),getAll:ks=>Object.fromEntries(ks.map(k=>[k,cache.get(k)])),putAll:e=>Object.entries(e).forEach(([k,v])=>cache.set(k,v))})},getPortalDatabaseRevision_:()=> 'shared-spare-v1',readTableShared_:name=>tables[name]||[]};
+ vm.createContext(sandbox);vm.runInContext(read('FanLotRules.gs'),sandbox);sandbox.flState_=r=>sandbox.SungrowFanLotRules.parse(r['Chi tiết lô Fan']);
+ vm.runInContext(read('LegacyDashboardApi.gs').replace('return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_ };','return {getDashboard_,pageTickets_};'),sandbox);const api=vm.runInContext('LEGACY_DASHBOARD_API',sandbox),actor={role:'service_manager',email:'fixture',centers:[]};
+ const result=api.getDashboard_({period:'2026-10-15..2026-10-17',center},actor);assert.equal(result.parts.reduce((s,p)=>s+p.quantity,0),16);assert.equal(result.parts.find(p=>p.pn==='SHARED-PN').quantity,14);assert.equal(result.parts.find(p=>p.pn==='OTHER-PN').quantity,2);assert.equal(result.annual.partsQuantity,16);assert.equal(result.summary.received,4,'Spare parts do not change the device/case KPI.');
+ const previous=api.getDashboard_({period:'2026-10-15..2026-10-16',center},actor);assert.equal(previous.parts.reduce((s,p)=>s+p.quantity,0),11,'Use each spare part actual date.');
+ const page=api.pageTickets_({query:'SPARE-SN',page:1,pageSize:20},actor);assert.equal(page.tickets[0].parts.reduce((s,p)=>s+p.qty,0),9);
+ console.log('Shared spare-parts integration passed: actual Fan exchange/repair writes + existing Fan/Inverter total 16, annual/day/center/detail readers use the same ledger.');
+}
