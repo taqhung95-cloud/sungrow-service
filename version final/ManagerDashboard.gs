@@ -5,12 +5,19 @@
 function getManagerDashboard(idToken, rawFilters) {
   const actor = authenticate_(idToken);
   assertManagerDashboardAccess_(actor);
+  return buildManagerDashboardForActor_(actor, rawFilters);
+}
+
+function buildManagerDashboardForActor_(actor, rawFilters) {
+  assertManagerDashboardAccess_(actor);
   const filters = normalizeManagerDashboardFilters_(rawFilters);
-  const cases = readTable_(SHEETS.cases);
-  const workOrders = readTable_(SHEETS.workOrders);
+  const revision = typeof getPortalDatabaseRevision_ === 'function' ? getPortalDatabaseRevision_() : '';
+  const cases = revision && typeof readTableShared_ === 'function' ? readTableShared_(SHEETS.cases, revision, false) : readTable_(SHEETS.cases);
+  const workOrders = revision && typeof readTableShared_ === 'function' ? readTableShared_(SHEETS.workOrders, revision, false) : readTable_(SHEETS.workOrders);
   const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
   const today = startOfDay_(new Date());
-  const periodEndForAge = filters.end < today ? filters.end : today;
+  const now = new Date();
+  const periodEndForAge = filters.end < now ? filters.end : now;
 
   const normalized = cases.filter(function (item) {
     return clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy';
@@ -27,7 +34,7 @@ function getManagerDashboard(idToken, rawFilters) {
       deviceType: clean_(item['Loại thiết bị']),
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
-      quantity: Math.max(1, Number(item['Số lượng']) || 1),
+      quantity: clean_(item['Kiểu hồ sơ'])==='Fan theo lô' ? 1 : Number.isInteger(Number(item['Số lượng'])) && Number(item['Số lượng']) > 0 ? Number(item['Số lượng']) : null,
       intakeCenter: clean_(item['Trung tâm tiếp nhận khách']),
       currentCenter: clean_(item['Trung tâm đang giữ hàng']),
       dashboardCenter: dashboardCenter,
@@ -46,10 +53,10 @@ function getManagerDashboard(idToken, rawFilters) {
   });
 
   const received = normalized.filter(function (item) { return inDashboardPeriod_(item.receivedAt, filters); });
-  const technicalCompleted = normalized.filter(function (item) { return inDashboardPeriod_(item.technicalCompletedAt, filters); });
-  const returned = normalized.filter(function (item) { return inDashboardPeriod_(item.returnedAt, filters); });
+  const technicalCompleted = normalized.filter(function (item) { return item.receivedAt && item.technicalCompletedAt >= item.receivedAt && (!item.returnedAt || item.technicalCompletedAt <= item.returnedAt) && inDashboardPeriod_(item.technicalCompletedAt, filters); });
+  const returned = normalized.filter(function (item) { return item.receivedAt && item.returnedAt >= item.receivedAt && inDashboardPeriod_(item.returnedAt, filters); });
   const openAtEnd = normalized.filter(function (item) {
-    return item.receivedAt && item.receivedAt <= filters.end && (!item.returnedAt || item.returnedAt > filters.end);
+    return item.receivedAt && item.receivedAt <= periodEndForAge && (!item.returnedAt || item.returnedAt > periodEndForAge) && !(item.caseStatus === 'Đã hoàn tất' && !item.returnedAt);
   });
   const overdue = openAtEnd.filter(function (item) {
     return dashboardAgeDays_(item.receivedAt, periodEndForAge) > 7;
@@ -68,6 +75,7 @@ function getManagerDashboard(idToken, rawFilters) {
     return date ? date.getFullYear() : null;
   }).filter(Boolean))).sort(function (a, b) { return b - a; });
 
+  if (revision && getPortalDatabaseRevision_() !== revision) throw publicError_('Dữ liệu vừa thay đổi. Vui lòng đồng bộ lại dashboard.');
   return {
     version: APP_VERSION,
     generatedAt: new Date().toISOString(),
@@ -84,6 +92,7 @@ function getManagerDashboard(idToken, rawFilters) {
       availableYears: availableYears.length ? availableYears : [today.getFullYear()]
     },
     kpis: {
+      unknownQuantityCases: normalized.filter(function (item) { return item.quantity === null; }).length,
       received: sumDashboardQuantity_(received),
       technicalCompleted: sumDashboardQuantity_(technicalCompleted),
       returned: sumDashboardQuantity_(returned),
@@ -130,6 +139,7 @@ function normalizeManagerDashboardFilters_(raw) {
   const center = clean_(raw.center);
   if (center && CENTERS.indexOf(center) === -1) throw publicError_('Center lọc không hợp lệ.');
   const start = month ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
+  if (start > now) throw publicError_('Kỳ báo cáo chưa bắt đầu; chưa có KPI thực tế cho kỳ này.');
   const end = month ? new Date(year, month, 0, 23, 59, 59, 999) : new Date(year, 11, 31, 23, 59, 59, 999);
   return { year: year, month: month, center: center, start: start, end: end, label: month ? ('Tháng ' + month + '/' + year) : ('Năm ' + year) };
 }
@@ -138,8 +148,8 @@ function buildManagerMonthlyTrend_(records, year) {
   return Array.from({ length: 12 }, function (_, index) {
     const month = index + 1;
     const received = records.filter(function (item) { return item.receivedAt && item.receivedAt.getFullYear() === year && item.receivedAt.getMonth() + 1 === month; });
-    const completed = records.filter(function (item) { return item.technicalCompletedAt && item.technicalCompletedAt.getFullYear() === year && item.technicalCompletedAt.getMonth() + 1 === month; });
-    const returned = records.filter(function (item) { return item.returnedAt && item.returnedAt.getFullYear() === year && item.returnedAt.getMonth() + 1 === month; });
+    const completed = records.filter(function (item) { return item.receivedAt && item.technicalCompletedAt && item.technicalCompletedAt >= item.receivedAt && (!item.returnedAt || item.technicalCompletedAt <= item.returnedAt) && item.technicalCompletedAt <= new Date() && item.technicalCompletedAt.getFullYear() === year && item.technicalCompletedAt.getMonth() + 1 === month; });
+    const returned = records.filter(function (item) { return item.receivedAt && item.returnedAt && item.returnedAt >= item.receivedAt && item.returnedAt <= new Date() && item.returnedAt.getFullYear() === year && item.returnedAt.getMonth() + 1 === month; });
     return { month: month, received: sumDashboardQuantity_(received), technicalCompleted: sumDashboardQuantity_(completed), returned: sumDashboardQuantity_(returned) };
   });
 }
@@ -154,11 +164,11 @@ function groupDashboardQuantity_(records, field) {
 }
 
 function sumDashboardQuantity_(records) {
-  return records.reduce(function (total, item) { return total + Math.max(1, Number(item.quantity) || 1); }, 0);
+  return records.reduce(function (total, item) { return total + (Number(item.quantity) > 0 ? Number(item.quantity) : 0); }, 0);
 }
 
 function inDashboardPeriod_(date, filters) {
-  return !!date && date >= filters.start && date <= filters.end;
+  return !!date && date >= filters.start && date <= filters.end && date <= new Date();
 }
 
 function dashboardAgeDays_(start, end) {
@@ -171,5 +181,6 @@ function startOfDay_(date) {
 }
 
 function dashboardIso_(date) {
+  if (typeof iso_ === 'function') return iso_(date);
   return date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
 }

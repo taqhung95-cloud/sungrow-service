@@ -18,7 +18,7 @@
   icon(panel.querySelector('[data-notification-refresh]'),'Tải lại','<path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M18 18a8 8 0 0 1-13-3"/>');
   panel.querySelector('header').insertBefore(actions,panel.querySelector('[data-notification-close]'));panel.querySelector('.sg-notification-views').remove();panel.querySelector('.sg-notification-tools').remove();
   const filters=panel.querySelector('.sg-notification-filters');filters.id='sg-notification-filters';filters.hidden=true;filterButton.addEventListener('click',()=>{filters.hidden=!filters.hidden;filterButton.setAttribute('aria-expanded',String(!filters.hidden));if(!filters.hidden)filters.querySelector('select').focus();});
-  const foot=panel.querySelector(':scope > small');foot.textContent='Theo quyền tài khoản · 1.000 dòng nhật ký gần nhất';
+  const foot=panel.querySelector(':scope > small');foot.textContent='Theo quyền tài khoản | 1.000 dòng nhật ký gần nhất';
   panel.querySelectorAll('[data-notification-view]').forEach(node=>node.addEventListener('click',()=>{view=node.dataset.notificationView;updateFilters();if(data)render();}));
   panel.querySelector('[data-notification-category]').addEventListener('change',event=>{category=event.target.value;updateFilters();if(data)render();});
   panel.querySelector('[data-notification-read-state]').addEventListener('change',event=>{readState=event.target.value;updateFilters();if(data)render();});

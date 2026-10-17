@@ -1,0 +1,69 @@
+/* Extend existing entry views and drawer. The parent portal keeps its sidebar,
+ * header, fonts, background and navigation. No extra modal/dialog surface. */
+window.SungrowFanLotNative=(()=>{
+  const today=()=>new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+  const api=window.SungrowFanLots,oldConfigure=api.configure;
+  const labels={info:'Thông tin kỹ thuật chung',technical:'Cập nhật theo S/N inverter',issue:'Lỗi xác nhận',part:'Linh kiện sử dụng',hold:'Tạm dừng SLA',warranty:'Xác nhận bảo hành theo S/N',attachment:'Tài liệu theo phạm vi',return:'Giao trả khách hàng | Lô Fan'};
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let sequence=0;
+  function configure(){oldConfigure();const form=document.getElementById('receiveForm');if(!form||form.dataset.fanNative)return;form.dataset.fanNative='1';
+    const panel=form.querySelector('.fl-intake'),mode=form.querySelector('.fl-mode'),quantity=form.elements.quantity.closest('div'),device=form.elements.deviceType.closest('div');
+    if(!panel||!mode)return;if(state.fanLotReader){const filter=document.getElementById('caseWarranty');if(filter&&![...filter.options].some(o=>o.value==='Theo từng S/N'))filter.add(new Option('Theo từng S/N','Theo từng S/N'));}
+    mode.className='fl-mode';device.append(mode);quantity.after(panel);panel.classList.add('span3');
+    const list=panel.querySelector('.fl-rows'),head=document.createElement('div');head.className='fl-native-heading';head.innerHTML='<strong>Danh sách S/N inverter liên quan</strong><div class="actions"></div>';panel.prepend(head);
+    const add=panel.querySelector('[data-add]'),paste=document.createElement('button');paste.type='button';paste.className='secondary';paste.textContent='Dán từ Excel';head.querySelector('.actions').append(add,paste);
+    panel.querySelector(':scope>h3')?.remove();
+    const header=document.createElement('div');header.className='fl-line fl-native-columns';header.innerHTML='<span>S/N inverter liên quan</span><span>Số Fan</span><span>Ghi chú riêng</span><span>Thao tác</span>';list.before(header);
+    const pasteInput=panel.querySelector('[data-paste]'),importButton=panel.querySelector('[data-import]'),pasteLabel=pasteInput.previousElementSibling;
+    const pasteBox=document.createElement('div');pasteBox.hidden=true;pasteBox.className='fl-paste-box';pasteInput.before(pasteBox);pasteBox.append(pasteLabel,pasteInput,importButton);paste.onclick=()=>{pasteBox.hidden=!pasteBox.hidden;if(!pasteBox.hidden)pasteInput.focus();};
+    const serial=form.elements.serialNumber,serialControl=serial.closest('.serial-lookup-control'),field=serialControl.parentElement,serialLabel=field.querySelector('label'),modelLabel=form.elements.model.closest('div').querySelector('label');
+    const count=document.createElement('input');count.readOnly=true;count.hidden=true;count.setAttribute('aria-label','Số inverter liên quan');serialControl.after(count);
+    const oldSerialLabel=serialLabel.innerHTML,oldModelLabel=modelLabel.innerHTML;
+    function sync(){const lot=form.elements.deviceType.value==='Fan'&&form.elements.fanMode.value==='lot'&&state.fanLots;field.hidden=false;serialControl.hidden=lot;count.hidden=!lot;serialLabel.innerHTML=lot?'Danh sách inverter liên quan <span id="serialRequired" hidden></span>':oldSerialLabel;modelLabel.innerHTML=lot?'Loại / Mã Fan *':oldModelLabel;
+      let lines=[];try{lines=SungrowFanLotRules.normalize(JSON.parse(form.elements.fanLinesDraft.value||'[]'));}catch(_){}count.value=lines.filter(x=>x.serialNumber).length+' S/N inverter';
+      const fileScope=document.getElementById('fl-file-scope');if(fileScope){const value=fileScope.value;fileScope.parentElement.hidden=!lot;fileScope.innerHTML='<option value="">Chung cho hồ sơ lô</option>'+lines.filter(l=>l.serialNumber).map(l=>'<option>'+esc(l.serialNumber)+'</option>').join('');if([...fileScope.options].some(o=>o.value===value))fileScope.value=value;}
+      if(lot)form.querySelector('button[type=submit]').textContent='Tạo 1 hồ sơ lô Fan';else form.querySelector('button[type=submit]').textContent='Tạo hồ sơ';
+    }
+    const file=form.elements.evidenceFile;if(file){const box=document.createElement('div');box.className='fl-file-scope';box.hidden=true;box.innerHTML='<label for="fl-file-scope">Phạm vi đính kèm</label><select id="fl-file-scope"><option value="">Chung cho hồ sơ lô</option></select>';file.before(box);}
+    form.addEventListener('input',sync);form.addEventListener('change',sync);form.addEventListener('reset',()=>setTimeout(sync,0));new MutationObserver(sync).observe(list,{childList:true});sync();
+  }
+  function forms(host,item){
+    const original=host.querySelector('[data-fan-action]');if(!original)return [];
+    const mode=host.dataset.operation||'technical';
+    const kinds=mode==='return'?['return']:mode==='attachment'?['attachment']:mode==='history'?[]:['info','technical','issue','part','hold','warranty','attachment'];
+    const result=[];for(const kind of kinds){if(![...original.elements.kind.options].some(o=>o.value===kind))continue;const form=original.cloneNode(true);form.className='fl-native-action';form.dataset.enhanced='true';form.dataset.fanCaseId=item.caseId;form.dataset.kind=kind;const fingerprint=document.createElement('input');fingerprint.type='hidden';fingerprint.name='fanDraftFingerprint';fingerprint.value=item.fanLot.fingerprint;form.append(fingerprint);form.elements.kind.value=kind;form.elements.kind.parentElement.classList.add('fl-hidden');
+      const title=document.createElement('h3');title.textContent=labels[kind];form.prepend(title);form.querySelector('button[type=submit]').textContent=kind==='return'?'Xác nhận giao trả lần này':kind==='technical'?'Lưu kết quả dòng S/N':kind==='part'?'Ghi nhận linh kiện sử dụng':'Lưu '+labels[kind].toLowerCase();
+      if(kind==='part'){const help=document.createElement('p');help.className='parts-date-help';help.textContent='Ghi số linh kiện thực tế đã dùng; chọn chung cho lô hoặc S/N cụ thể. Mỗi thao tác được cộng một lần.';title.after(help);form.elements.name.parentElement.querySelector('label').textContent='Tên linh kiện';}
+      if(kind==='issue')form.elements.name.parentElement.querySelector('label').textContent='Tên lỗi xác nhận';
+      if(kind==='return'){const info=document.createElement('p');info.className='muted';info.textContent='Chỉ ghi số Fan giao ở lần này. Hồ sơ chỉ đóng khi toàn bộ Fan đã được trả.';title.after(info);}
+      if(kind==='info')form.elements.date.parentElement.querySelector('label').textContent='Ngày hoàn tất chẩn đoán';
+      if(['info','hold'].includes(kind)){form.elements.lineId.parentElement.hidden=true;form.elements.lineId.disabled=true;}
+      if(['technical','issue','warranty'].includes(kind))form.elements.lineId.options[0].textContent='Chọn S/N inverter';
+      if(kind==='technical'){
+        form.querySelector('.fl-grid').classList.add('fl-hidden');form.querySelector('.fl-actions').classList.add('fl-hidden');
+        const block=document.createElement('div');block.className='fl-native-table';block.innerHTML='<table class="case-table"><thead><tr><th>S/N inverter</th><th>Nhận / HTKT</th><th>Số Fan lần này</th><th>Kết quả cập nhật</th><th>Loại đổi</th><th>Ngày hoàn tất</th><th></th></tr></thead><tbody>'+item.fanLot.state.lines.map(l=>'<tr data-fl-line="'+l.lineId+'"><td>'+esc(l.serialNumber||'Chưa rõ S/N')+'</td><td>'+l.quantity+' / '+l.completed+'</td><td><input data-fl-quantity name="flrow-'+l.lineId+'-quantity" type="number" min="1" max="'+(l.quantity-l.completed)+'" value="1" '+(l.completed===l.quantity?'disabled':'')+'></td><td><select data-fl-outcome name="flrow-'+l.lineId+'-outcome"><option value="">Không thay đổi</option>'+['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'].map(x=>'<option>'+x+'</option>').join('')+'</select></td><td><span data-fl-no-replacement>—</span><input hidden disabled data-fl-replacement name="flrow-'+l.lineId+'-replacement" aria-label="Loại đổi" placeholder="Nhập loại đổi" maxlength="100"></td><td><input data-fl-date name="flrow-'+l.lineId+'-date" type="date" value="'+today()+'"></td><td><button type="submit" class="primary" data-fl-save="'+l.lineId+'" '+(l.completed===l.quantity?'disabled':'')+'>Lưu dòng</button></td></tr>').join('')+'</tbody></table>';title.after(block);
+        const syncReplacement=()=>block.querySelectorAll('[data-fl-line]').forEach(row=>{const exchange=row.querySelector('[data-fl-outcome]').value==='Đổi thiết bị',input=row.querySelector('[data-fl-replacement]');input.hidden=!exchange;input.disabled=!exchange;row.querySelector('[data-fl-no-replacement]').hidden=exchange;});
+        form.addEventListener('change',syncReplacement);setTimeout(syncReplacement,0);
+      }
+      if(kind==='return'){
+        form.elements.lineId.parentElement.classList.add('fl-hidden');form.elements.quantity.parentElement.classList.add('fl-hidden');
+        const block=document.createElement('div');block.className='fl-native-table';block.innerHTML='<table class="case-table"><thead><tr><th>S/N inverter</th><th>Nhận</th><th>Đã trả</th><th>Chờ giao</th><th>Giao lần này</th></tr></thead><tbody>'+item.fanLot.state.lines.map(l=>'<tr><td>'+esc(l.serialNumber||'Chưa rõ S/N')+'</td><td>'+l.quantity+'</td><td>'+l.returned+'</td><td>'+(l.completed-l.returned)+'</td><td><input data-fl-return="'+l.lineId+'" name="flreturn-'+l.lineId+'" type="number" min="0" max="'+(l.completed-l.returned)+'" value="0"></td></tr>').join('')+'</tbody></table><p class="muted">Chọn một S/N cho mỗi lần ghi nhận giao trả. Các lần giao đều được giữ trong lịch sử.</p>';title.after(block);
+        block.addEventListener('input',e=>{if(!e.target.matches('[data-fl-return]'))return;block.querySelectorAll('[data-fl-return]').forEach(x=>{if(x!==e.target)x.value=0;});form.elements.lineId.value=e.target.dataset.flReturn;form.elements.quantity.value=e.target.value;form.querySelector('button[type=submit]').textContent='Xác nhận giao thêm '+(Number(e.target.value)||0)+' Fan';});
+      }
+      original.before(form);result.push(form);
+    }original.remove();host.querySelector('[data-history]')?.classList.add('secondary');return result;
+  }
+  async function open(caseId,operation='technical'){
+    if(window.SungrowSupplementAttachments&&!window.SungrowSupplementAttachments.canLeave())return;
+    closeCaseDrawer();showView('update');if(window.self!==window.top)parent.postMessage({type:'sungrow-portal-local-view',view:'update'},location.origin);document.getElementById('updateQuery').value=caseId;
+    const results=document.getElementById('updateResults'),token=state.token,id=++sequence;results.innerHTML='<div class="empty">Đang tải lô Fan…</div>';
+    try{const item=await call('getCaseDetail',[token,caseId]);if(id!==sequence||token!==state.token)return;if(!item.fanLot)throw Error('Hồ sơ không phải lô Fan.');results.innerHTML=renderCase(item,'update',1);const panel=document.getElementById('panel-'+caseId),host=document.createElement('section');host.className='work-edit fl-native-work';host.dataset.operation=operation;host.innerHTML='<h3>Cập nhật hồ sơ | Lô Fan</h3><div data-body></div><p class="fl-message" role="status" aria-live="polite"></p>';panel.append(host);const valid=()=>host.isConnected&&id===sequence&&token===state.token;api.render(host,item,valid,token);if(operation==='history')host.querySelector('[data-history]').click();host.scrollIntoView({block:'start'});}catch(e){if(id===sequence&&token===state.token)results.innerHTML='<div class="notice error">'+esc(e.message)+'</div>';}
+  }
+  function detail(item){
+    if(!item.fanLot)return api.summary(item);
+    const lot=item.fanLot,t=lot.totals,id=esc(item.caseId),files=lot.state.files||[];
+    return '<div class="fl-native-detail"><h4 class="drawer-section-title">S/N inverter liên quan</h4><div class="fl-native-table"><table class="case-table"><thead><tr><th>S/N inverter</th><th>Nhận</th><th>HTKT</th><th>Đã trả</th><th>Còn</th></tr></thead><tbody>'+lot.state.lines.map((l,i)=>'<tr '+(i>=3?'data-fl-extra hidden':'')+'><td>'+esc(l.serialNumber||'Chưa rõ S/N')+'</td><td>'+l.quantity+'</td><td>'+l.completed+'</td><td>'+l.returned+'</td><td>'+(l.quantity-l.returned)+'</td></tr>').join('')+'</tbody></table></div><p class="muted">Toàn lô: '+t.received+' Fan | HTKT: '+t.completed+' | Đã trả: '+t.returned+' | Còn: '+t.remaining+'</p>'+(lot.state.lines.length>3?'<button type="button" class="secondary" onclick="this.closest(\'.fl-native-detail\').querySelectorAll(\'[data-fl-extra]\').forEach(x=>x.hidden=false);this.remove()">Xem đủ '+lot.state.lines.length+' S/N</button>':'')+'<h4 class="drawer-section-title">Tài liệu theo phạm vi</h4>'+files.map(f=>'<div class="work"><strong><a href="'+esc(f.url)+'" target="_blank" rel="noopener">'+esc(f.name)+'</a></strong><p class="muted">'+esc(f.serialNumber?'S/N '+f.serialNumber:'Chung cho hồ sơ')+'</p></div>').join('')+'<button type="button" class="secondary" onclick="SungrowFanLots.open(\''+id+'\',\'history\')">Lịch sử / Tài liệu bổ sung theo S/N</button></div>';
+  }
+  api.configure=configure;api.open=open;api.fileScope=()=>document.getElementById('fl-file-scope')?.value||'';
+  return {forms,detail};
+})();

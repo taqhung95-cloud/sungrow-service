@@ -138,7 +138,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=111#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=114#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -325,7 +325,7 @@
     renderQuality();
     renderCenters();
     q('.sg-demo').textContent = 'Dữ liệu Google Sheets';
-    q('.sg-footer span:last-child').textContent = `API v${live.schemaVersion} · ${live.period.label}`;
+    q('.sg-footer span:last-child').textContent = `API v${live.schemaVersion} | ${live.period.label}`;
   }
 
   function renderOverview() {
@@ -333,10 +333,10 @@
     const ps = previousLive?.summary;
     const comparisonNoun = (window.SungrowPeriod ? window.SungrowPeriod.compare() : live.period?.isYear) ? 'Năm trước' : 'Tháng trước';
     const base = [
-      {key:'received',label:'Tiếp nhận trong kỳ',value:s.received,previous:ps?.received,lower:false,unit:'thiết bị'},
-      {key:'processed',label:'Hoàn tất kỹ thuật',value:s.technicalCompleted??null,previous:ps?.technicalCompleted??null,lower:false,unit:'thiết bị'},
-      {key:'waiting',label:'Chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'thiết bị'},
-      {key:'returned',label:'Đã giao trong kỳ',value:s.returned,previous:ps?.returned,lower:false,unit:'thiết bị'}
+      {key:'received',label:'Tiếp nhận trong kỳ',value:s.received,previous:ps?.received,lower:false,unit:'Thiết bị/Hồ sơ'},
+      {key:'processed',label:'Hoàn tất kỹ thuật',value:s.technicalCompleted??null,previous:ps?.technicalCompleted??null,lower:false,unit:'Thiết bị/Hồ sơ'},
+      {key:'waiting',label:'Chờ giao',value:s.waitingDelivery,previous:ps?.waitingDelivery,lower:true,unit:'Thiết bị/Hồ sơ'},
+      {key:'returned',label:'Đã giao trong kỳ',value:s.returned,previous:ps?.returned,lower:false,unit:'Thiết bị/Hồ sơ'}
     ];
     const slaRate = s.slaRate === null || s.slaRate === undefined ? null : Math.round(s.slaRate*100);
     base.push({key:'sla',label:'Đạt SLA 7 ngày',value:slaRate,previous:null,lower:false,unit:'%',sla:true});
@@ -379,7 +379,7 @@
         return '<g class="sg-annual-series" style="--series:'+series.color+'"><polyline points="'+pointText+'"></polyline>'+'</g>';
       }).join('');
       const legend=allSeries.map(function(series){
-        const coverage=series.name==='Tích lũy'&&unallocatedReceived?' · '+unallocatedReceived.toLocaleString('vi-VN')+' hồ sơ chưa tính do thiếu, sai hoặc lệch năm ngày nhận':'';
+        const coverage=series.name==='Tích lũy'&&unallocatedReceived?' | '+unallocatedReceived.toLocaleString('vi-VN')+' hồ sơ chưa tính do thiếu, sai hoặc lệch năm ngày nhận':'';
         return '<span title="'+esc(series.name)+': '+Number(series.total).toLocaleString('vi-VN')+' thiết bị'+esc(coverage)+'"><i style="background:'+series.color+'"></i><em>'+esc(series.name)+'</em><b>'+Number(series.total).toLocaleString('vi-VN')+'</b></span>';
       }).join('');
       return '<div class="sg-received-annual"><svg viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tiếp nhận lũy kế theo tháng và từng năm"><line class="sg-annual-baseline" x1="'+left+'" y1="'+(top+plotH)+'" x2="'+(width-right)+'" y2="'+(top+plotH)+'"></line>'+lines+'</svg><div class="sg-received-legend">'+legend+'</div></div>';
@@ -387,7 +387,7 @@
     q('#sg-kpis').innerHTML = base.map(function(item,index) {
       if (item.sla) {
         const value = item.value === null ? '—' : item.value;
-        const note = item.value === null ? 'Chưa đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đạt · TB (ngày)';
+        const note = item.value === null ? 'Chưa đủ ngày nhận/trả' : s.slaMet + '/' + s.slaEligible + ' đạt | TB (ngày)';
         const tone = item.value === null ? 'neutral' : item.value === 100 && !s.slaBreachedOpen ? 'good' : 'bad';
         const ringValue = item.value === null ? 0 : Math.max(0,Math.min(100,item.value));
         return '<div class="sg-kpi sg-kpi-sla sg-kpi-sla-' + tone + '"><div class="sg-kpi-head"><div class="sg-kpi-label">' + item.label + '</div><span class="sg-mini-ring '+tone+'" style="--p:'+ringValue+'"><i>7d</i></span></div><div class="sg-sla-main"><div class="sg-kpi-value">' + value + ' <small>' + item.unit + '</small></div><div class="sg-kpi-note" title="' + esc(note) + '">' + note + '</div></div>' + slaPair(s,true) + '</div>';
@@ -398,8 +398,8 @@
       const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
       const change = delta === null ? 'Chưa có tháng trước' : delta === 0 ? '--' : (delta>0?'↑ ':'↓ ')+Math.abs(delta);
       const note = p === null ? change.replace('tháng trước','kỳ trước') : comparisonNoun+': '+p+' <span class="sg-kpi-change '+tone+'">'+change+'</span>';
-      const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; KPI cộng số lượng thiết bị đã biết':'Theo kỳ đang chọn';
-      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+'</div></div>';
+      const scopeNote=item.key==='waiting'?'Bao gồm tồn từ các kỳ trước; chốt '+formatDate(live.period.asOf):item.key==='received'?(s.receivedCases??'—')+' hồ sơ trong kỳ; thiết bị thường giữ số lượng, mỗi lô Fan mới tính 1':'Theo kỳ đang chọn';
+      return '<div class="sg-kpi sg-kpi-' + item.key + '" title="'+esc(scopeNote)+'"><div class="sg-kpi-head"><div class="sg-kpi-label">'+item.label+'</div>'+(index===0?receivedAnnualViz():trendViz(p,item.value,tone))+'</div><div class="sg-kpi-value">'+(item.value??'—')+' <small>'+item.unit+'</small></div><div class="sg-kpi-note">'+note+(s.fan?.lots?'<br><span>Fan theo lô: '+(item.key==='received'?s.fan.received:item.key==='processed'?s.fan.technicalCompleted:item.key==='waiting'?s.fan.waiting:s.fan.returned)+' chiếc</span>':'')+'</div></div>';
     }).join('');
     q('#sg-period-date').textContent = `${formatDate(live.period.start)}–${formatDate(live.period.asOf)}`;
     const max = Math.max(1, ...live.errors.map(x => x.count));
@@ -482,7 +482,7 @@
     };
     const previousByCenter = previousLive ? Object.fromEntries(previousLive.centers.map(function(x){ return [x.center,x]; })) : {};
     if (!previousLive) {
-      q('#sg-compare-period').textContent = 'Đánh giá kỳ hiện tại · chưa tải được ' + (annualComparison ? 'năm trước' : 'tháng trước');
+      q('#sg-compare-period').textContent = 'Đánh giá kỳ hiện tại | chưa tải được ' + (annualComparison ? 'năm trước' : 'tháng trước');
       q('#sg-system-trend').className = 'sg-trend-badge neutral';
       q('#sg-system-trend').textContent = 'Chưa có nền';
       grid.innerHTML = '<div class="sg-caption">Vẫn đánh giá tải và rủi ro hiện tại; cần dữ liệu ' + (annualComparison ? 'năm trước' : 'tháng trước') + ' để kết luận xu hướng.</div>';
@@ -501,7 +501,7 @@
         const better = delta === 0 ? null : (m[3] ? delta < 0 : delta > 0);
         const tone = better === null ? 'neutral' : better ? 'good' : 'bad';
         const change = delta === 0 ? 'Không đổi' : (delta > 0 ? '↑ ' : '↓ ') + Math.abs(delta);
-        return '<div class="sg-month-compare-item"><span>' + m[0] + '</span><strong>' + m[1] + '</strong><small>Trước: ' + m[2] + ' · <span class="sg-kpi-change ' + tone + '">' + change + '</span></small></div>';
+        return '<div class="sg-month-compare-item"><span>' + m[0] + '</span><strong>' + m[1] + '</strong><small>Trước: ' + m[2] + ' | <span class="sg-kpi-change ' + tone + '">' + change + '</span></small></div>';
       }).join('');
       const backlogDelta = currentOpen - priorOpen;
       const overdueDelta = live.summary.overdue - previousLive.summary.overdue;
@@ -518,10 +518,10 @@
       const stockNote='Tồn đầu kỳ: '+(x.opening??'—');
       return '<div class="sg-compare-list-row" title="' + esc(x.reason || '') + '"><span><strong title="' + esc(x.center) + '">' + esc(shortCenter(x.center)) + '</strong><small title="'+esc(stockNote)+'">'+esc(stockNote)+'</small></span><span title="Tỷ trọng trong tổng tiếp nhận của kỳ"><strong>' + x.received + '</strong><small>' + pct(x.volumeShare) + ' tiếp nhận</small></span><span><strong>' + x.completed + '</strong><small>Ra/vào ' + flow + '</small></span><span title="Tồn đầu kỳ: '+(x.opening??'—')+'. Tồn tại ngày chốt gồm các kỳ trước; chỉ cân bằng khi đủ dữ liệu ngày."><strong>' + x.open + '</strong><small>Đầu kỳ: '+(x.opening??'—')+'</small>' + deltaHtml(x.open,p.open,true,'') + '</span><span title="Tỷ lệ quá hạn trên tổng tồn tại ngày chốt"><strong>' + x.overdue + '</strong><small>' + pct(x.overdueRate) + ' tồn</small></span><span title="SLA: ngày trung bình trên thiết bị đã giao">' + slaPair(x,false) + '</span><span title="TAT: trung vị thời gian xử lý trên hồ sơ"><strong>' + tat + '</strong>' + deltaHtml(x.medianDays,p.medianDays,true,' ngày') + '</span><span><span class="sg-trend-badge ' + tone + '">' + label + '</span></span></div>';
     }).join('');
-    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span title="Tiếp nhận trong kỳ đang chọn">Tiếp nhận</span><span title="Đã giao trong kỳ đang chọn">Đã giao</span><span title="Tồn tại ngày chốt, gồm hồ sơ từ kỳ trước">Tồn cuối</span><span title="Quá hạn trên tổng tồn tại ngày chốt">Quá hạn</span><span title="Ngày trung bình trên thiết bị đã giao">SLA · ngày TB</span><span title="Trung vị thời gian xử lý trên hồ sơ">TAT</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
+    table.innerHTML = '<div class="sg-mini-table-head sg-compare-list-head"><span>Center</span><span title="Tiếp nhận trong kỳ đang chọn">Tiếp nhận</span><span title="Đã giao trong kỳ đang chọn">Đã giao</span><span title="Tồn tại ngày chốt, gồm hồ sơ từ kỳ trước">Tồn cuối</span><span title="Quá hạn trên tổng tồn tại ngày chốt">Quá hạn</span><span title="Ngày trung bình trên thiết bị đã giao">SLA | ngày TB</span><span title="Trung vị thời gian xử lý trên hồ sơ">TAT</span><span>Nhận định</span></div><div class="sg-card-list-body sg-compare-list-body">' + comparisonRows + '</div>';
     const unknown=live.dataQuality?.kpi?.unknownQuantityCases||0;
     const missingReceived=live.cumulative?.unallocatedReceived||0,missingReturned=live.dataQuality?.kpi?.missingReturnDateCases||0;
-    q('#sg-compare-note').textContent = 'Tồn tại ngày chốt · SLA thực tế gồm tạm dừng';
+    q('#sg-compare-note').textContent = 'Tồn tại ngày chốt | SLA thực tế gồm tạm dừng';
   }
 
   function renderTickets() {
@@ -538,7 +538,7 @@
       const range = ticketSearchState.fromYear && ticketSearchState.toYear
         ? (ticketSearchState.fromYear === ticketSearchState.toYear ? String(ticketSearchState.fromYear) : ticketSearchState.fromYear + '–' + ticketSearchState.toYear)
         : 'toàn bộ năm';
-      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị · dữ liệu ${range}${ticketSearchState.fallback?' · chế độ dự phòng theo kỳ đang chọn':''}`;
+      q('#sg-result-count').textContent = `Hiển thị ${first}–${last} / ${ticketSearchState.total} thiết bị | dữ liệu ${range}${ticketSearchState.fallback?' | chế độ dự phòng theo kỳ đang chọn':''}`;
     }
     renderTicketPager();
   }
@@ -628,7 +628,7 @@
     const warrantyConfirmed = ['Trong bảo hành','Ngoài bảo hành','Sửa làm hàng good'].includes(ticket.warrantyStatus);
     const parts = Array.isArray(ticket.parts) ? ticket.parts.filter(part => part.pn && Number(part.qty) > 0) : [];
     const partsHtml = (warrantyConfirmed || parts.length) ? '<div class="sg-detail-parts"><h3>Linh kiện sử dụng</h3>' + (parts.length ? '<div class="sg-parts-inline">' + parts.map(part => '<div class="sg-part-chip"><strong>' + esc(part.pn) + '</strong><span>Số lượng: ' + esc(part.qty) + '</span></div>').join('') + '</div>' : '<p class="sg-caption">Chưa ghi nhận linh kiện sử dụng.</p>') + '</div>' : '';
-    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' · Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>' + partsHtml;
+    detail.innerHTML = '<div class="sg-panel-head"><div><h2>' + esc(model) + '</h2><span class="sg-caption">S/N ' + esc(serial) + ' | Chi tiết lượt sửa chữa</span></div><button class="sg-button" type="button" data-live-close="true">Đóng</button></div><div class="sg-detail-grid">' + fields.map(function(field) { return '<div class="sg-field"><span>' + esc(field[0]) + '</span>' + esc(field[1]) + '</div>'; }).join('') + '</div>' + partsHtml;
     detail.scrollIntoView({block:'nearest',behavior:'auto'});
   }
   function fallbackModelTypes() {
@@ -637,7 +637,7 @@
     const groups = {};
     (live.tickets || []).filter(function(t) { return t.receivedDate && t.receivedDate >= start && t.receivedDate <= end; }).forEach(function(t) {
       const type = t.deviceType || 'Chưa xác định';
-      const model = t.model || (t.deviceType ? t.deviceType + ' · chưa có model' : 'Chưa xác định');
+      const model = t.model || (t.deviceType ? t.deviceType + ' | chưa có model' : 'Chưa xác định');
       if (!groups[type]) groups[type] = {name:type,count:0,models:{}};
       groups[type].count++;
       groups[type].models[model] = (groups[type].models[model] || 0) + 1;
@@ -681,7 +681,7 @@
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',') || '#e8ecef 0 100%';
     const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="false"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('') || '<div class="sg-caption sg-model-empty">Không có dữ liệu model cho loại thiết bị đã chọn.</div>';
     q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>thiết bị</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
-    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' thiết bị tiếp nhận · ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' · ' + live.period.label + '.';
+    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' thiết bị tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
     if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' thiết bị trong kỳ đang chọn.</div>';
     else q('#sg-model-insight').innerHTML = '<div class="sg-caption">Chưa có model trong nhóm đã chọn.</div>';
   }
@@ -704,13 +704,13 @@
     const isYear = !!(live.period && live.period.isYear);
     const overviewTitle = q('#sg-overview-parts-title');
     if (overviewTitle) overviewTitle.textContent = 'Sử dụng trong kỳ';
-    q('#sg-part-sub').textContent = 'Linh kiện đã xác nhận thay cho thiết bị sửa chữa · kỳ ghi nhận theo ngày sửa chữa';
-    q('#sg-part-metrics').innerHTML = '<div><span class="sg-caption">Số lượng dùng · ' + esc(periodLabel) + '</span><strong>' + total + ' <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">PN chiếm tỷ trọng cao nhất trong kỳ</span><strong>' + (top ? esc(top.pn) : '—') + ' <span class="sg-caption">' + topShare + '%</span></strong></div><div><span class="sg-caption">Lũy kế từ 01/01/' + yearLabel + '</span><strong>' + (annual.partsQuantity === undefined ? '—' : annual.partsQuantity) + ' <span class="sg-caption">chiếc</span></strong></div>';
-    q('#sg-part-table').innerHTML = '<table><thead><tr><th>Mã linh kiện</th><th>SL dùng · ' + esc(periodLabel) + '</th><th>Tỷ trọng trong kỳ</th><th>SL lũy kế năm ' + yearLabel + '</th><th>Cách xác định kỳ</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + ' chiếc</td><td><div class="sg-part-share"><span><i style="width:' + Math.round(x.share * 100) + '%"></i></span><b>' + Math.round(x.share * 100) + '%</b></div></td><td>' + (annualByPn[x.pn] === undefined ? '—' : annualByPn[x.pn] + ' chiếc') + '</td><td>Theo ngày sửa chữa thiết bị</td></tr>'; }).join('') + '</tbody></table>';
+    q('#sg-part-sub').textContent = 'Linh kiện đã xác nhận thay cho thiết bị sửa chữa | kỳ ghi nhận theo ngày sửa chữa';
+    q('#sg-part-metrics').innerHTML = '<div><span class="sg-caption">Số lượng dùng | ' + esc(periodLabel) + '</span><strong>' + total + ' <span class="sg-caption">chiếc</span></strong></div><div><span class="sg-caption">PN chiếm tỷ trọng cao nhất trong kỳ</span><strong>' + (top ? esc(top.pn) : '—') + ' <span class="sg-caption">' + topShare + '%</span></strong></div><div><span class="sg-caption">Lũy kế từ 01/01/' + yearLabel + '</span><strong>' + (annual.partsQuantity === undefined ? '—' : annual.partsQuantity) + ' <span class="sg-caption">chiếc</span></strong></div>';
+    q('#sg-part-table').innerHTML = '<table><thead><tr><th>Mã linh kiện</th><th>SL dùng | ' + esc(periodLabel) + '</th><th>Tỷ trọng trong kỳ</th><th>SL lũy kế năm ' + yearLabel + '</th><th>Cách xác định kỳ</th></tr></thead><tbody>' + rows.map(function(x) { return '<tr><td class="sg-sn">' + esc(x.pn) + '</td><td>' + x.quantity + ' chiếc</td><td><div class="sg-part-share"><span><i style="width:' + Math.round(x.share * 100) + '%"></i></span><b>' + Math.round(x.share * 100) + '%</b></div></td><td>' + (annualByPn[x.pn] === undefined ? '—' : annualByPn[x.pn] + ' chiếc') + '</td><td>Theo ngày sửa chữa thiết bị</td></tr>'; }).join('') + '</tbody></table>';
     q('#sg-part-note').textContent = 'Định nghĩa: số lượng linh kiện được tính theo thiết bị có ngày sửa chữa thuộc kỳ đã chọn. ' + recommendation + ' Kế hoạch order cần đối chiếu thêm tồn kho, lead time và kế hoạch bảo trì.';
     const overviewMetrics = q('#sg-overview-part-metrics');
     const overviewTable = q('#sg-overview-part-table');
-    if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>' + rows.length + ' mã · PN cao nhất ' + topShare + '%</span>';
+    if (overviewMetrics) overviewMetrics.innerHTML = '<strong>' + total + '</strong><span>' + rows.length + ' mã | PN cao nhất ' + topShare + '%</span>';
     if (overviewTable) overviewTable.innerHTML = '<div class="sg-mini-table-head sg-part-list-head"><span>Part number</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-part-list-body">' + rows.map(function(x) { return '<div class="sg-part-list-row"><span class="sg-sn">' + esc(x.pn) + '</span><span>' + x.quantity + '</span><span>' + Math.round(x.share * 100) + '%</span></div>'; }).join('') + '</div>';
   }
 
@@ -875,7 +875,7 @@
     }).join('');
     q('#sg-center-month-table').className = 'sg-center-curve';
     const comparable=cs.filter(function(x){return x.received>=5;}),profiles=comparable.map(function(x){const flow=Math.min(100,(x.outflowInflowRatio||0)*100),control=Math.max(0,100-(x.overdueRate||0)*100),sla=x.slaRate===null||x.slaRate===undefined?(x.medianDays===null?0:Math.max(0,100-Math.max(0,x.medianDays-7)*12.5)):x.slaRate*100;return {name:x.center,values:[flow,control,sla,x.coverage||0]};}),excluded=cs.length-comparable.length;
-    q('#sg-center-month-table').innerHTML = curveChart(profiles,['Ra/vào','Không quá hạn','SLA 7 ngày','Dữ liệu đủ'],100,'%')+'<div class="sg-chart-definition">'+(excluded?excluded+' center chưa đủ mẫu (&lt;5 thiết bị) · ':'')+'Số tuyệt đối nằm trên thẻ center.</div>';
+    q('#sg-center-month-table').innerHTML = curveChart(profiles,['Ra/vào','Không quá hạn','SLA 7 ngày','Dữ liệu đủ'],100,'%')+'<div class="sg-chart-definition">'+(excluded?excluded+' center chưa đủ mẫu (&lt;5 thiết bị) | ':'')+'Số tuyệt đối nằm trên thẻ center.</div>';
     const colors = ['#ff7900','#606060','#9a9a9a','#c4c4c4'];
     q('#sg-center-trend-legend').innerHTML = '';
     const trendLabels=live.trends.map(function(m){return m.label;}),trendSeries=cs.map(function(c){return {name:c.center,values:live.trends.map(function(m){return m.values[c.center]||0;})};}),max=Math.max(1,...trendSeries.flatMap(function(s){return s.values;}));
@@ -1139,6 +1139,7 @@
       status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
       q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=event.data.busy===true||text.startsWith('Đang');return;
     }
+    if(event.data?.type==='sungrow-portal-local-view'&&syncFrame&&event.source===syncFrame.contentWindow&&['cases','receive','update','transfer'].includes(event.data.view)){openEntryView(event.data.view,false);return;}
     if (event.data?.type === 'sungrow-portal-dashboard') showDashboardView();
     if (event.data?.type === 'sungrow-portal-ready') {
       const frame = q('.sg-portal-frame');

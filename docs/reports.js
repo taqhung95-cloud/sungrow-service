@@ -24,7 +24,7 @@
  function invalidate(){preview=null;q('[data-report-table]').innerHTML='';q('[data-report-count]').textContent='';q('[data-export]').disabled=busy||!schema;}
  function render(data){
   const formatted=(value,type)=>value===null||value===undefined?'—':type==='percent'?(value*100).toFixed(1)+'%':type==='date'?String(value).split('-').reverse().join('/'):String(value);
-  q('[data-report-count]').textContent=data.spec.type==='cases'?data.total+' hồ sơ · '+data.knownDevices+' thiết bị đã biết số lượng'+(data.unknownQuantityCases?' · '+data.unknownQuantityCases+' hồ sơ thiếu số lượng':''):data.total+' dòng trung tâm';
+  q('[data-report-count]').textContent=data.spec.type==='cases'?data.total+' hồ sơ | '+data.knownDevices+' thiết bị đã biết số lượng'+(data.unknownQuantityCases?' | '+data.unknownQuantityCases+' hồ sơ thiếu số lượng':''):data.total+' dòng trung tâm';
   q('[data-report-table]').innerHTML='<table><thead><tr>'+data.columns.map(c=>'<th>'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+data.rows.slice(0,20).map(row=>'<tr>'+data.columns.map(c=>'<td>'+esc(formatted(row[c.key],c.type))+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
  }
  async function run(exportFile){

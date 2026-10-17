@@ -1,4 +1,6 @@
-const APP_VERSION = '1.10.25-exact-case-search';
+const APP_VERSION = '1.11.0-fan-lots';
+var PORTAL_RUNTIME_TIMEZONE_ = null;
+var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -40,7 +42,7 @@ const PORTAL_CASE_INDEX_HEADERS = Object.freeze([
   'Tình trạng bảo hành', 'Ngày nhận từ khách', 'Các trung tâm xử lý',
   'Mã công việc gần nhất', 'Trung tâm xử lý gần nhất', 'Trạng thái xử lý gần nhất',
   'Kết quả gần nhất', 'Ngày nhận công việc gần nhất', 'Ngày hoàn tất kỹ thuật gần nhất',
-  'Có luân chuyển', 'Số lượng', 'Tìm kiếm', 'Ngày cập nhật chỉ mục'
+  'Có luân chuyển', 'Số lượng', 'Tìm kiếm', 'Ngày cập nhật chỉ mục', 'Kiểu hồ sơ', 'S/N inverter liên quan', 'Tiến độ Fan'
 ]);
 const ROLE_CODES = Object.freeze({
   serviceManager: 'service_manager',
@@ -91,13 +93,24 @@ function getPortalSyncState(idToken) {
   };
 }
 
-function getBootstrap(idToken) {
+function getBootstrap(idToken, options) {
   const actor = authenticate_(idToken);
   return {
     actor: publicActor_(actor),
     centers: actor.isGlobalManager ? CENTERS.slice() : actor.centers.slice(),
     allCenters: CENTERS.slice(),
-    version: APP_VERSION
+    deviceTypes: readDeviceTypes_(!!(options && options.refreshCatalog)),
+    version: APP_VERSION,
+    notifications: typeof listNotifications === 'function',
+    portalSessions: typeof createPortalSession === 'function',
+    dashboardRanges: true,
+    reportExports: typeof readReportPage === 'function',
+    customerDirectory: typeof cdPrepareCase_ === 'function',
+    temporaryUploads: typeof temporaryUploadsEnabled_ === 'function' && temporaryUploadsEnabled_(),
+    supplementalAttachments: typeof commitCaseAttachments === 'function',
+    fanLots: typeof flEnabled_ === 'function' && flEnabled_(),
+    fanLotReader: typeof flPublic_ === 'function',
+    uploadCategories: typeof uploadCategoriesEnabled_ === 'function' && uploadCategoriesEnabled_()
   };
 }
 
@@ -106,16 +119,39 @@ function handlePortalApi_(request) {
   const functionName = clean_(request.functionName);
   const args = Array.isArray(request.args) ? request.args : [];
   const allowed = {
+    getReportBootstrap: function(){if(typeof getReportBootstrap!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return getReportBootstrap.apply(null,arguments);},
+    readReportPage: function(){if(typeof readReportPage!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return readReportPage.apply(null,arguments);},
     getBootstrap: getBootstrap,
+    createPortalSession: function(){if(typeof createPortalSession!=='function')throw publicError_('Chưa cài đặt phiên đăng nhập 8 giờ.');return createPortalSession.apply(null,arguments);},
+    revokePortalSession: function(){if(typeof revokePortalSession!=='function')throw publicError_('Chưa cài đặt phiên đăng nhập 8 giờ.');return revokePortalSession.apply(null,arguments);},
     getPortalSyncState: getPortalSyncState,
     listCases: listCases,
     getCaseDetail: getCaseDetail,
     searchCases: searchCases,
     lookupWarranty: lookupWarranty,
+    searchCustomers: function(){if(typeof searchCustomers!=='function')throw publicError_('Chưa cài đặt danh bạ khách hàng.');return searchCustomers.apply(null,arguments);},
+    saveCustomer: function(){if(typeof saveCustomer!=='function')throw publicError_('Chưa cài đặt danh bạ khách hàng.');return saveCustomer.apply(null,arguments);},
     createCase: createCase,
+    updateFanLot: function(){if(typeof updateFanLot!=='function')throw publicError_('Chưa cài FanLots.gs.');return updateFanLot.apply(null,arguments);},
+    reconcileFanLot: function(){return reconcileFanLot.apply(null,arguments);},
+    getFanLotHistory: function(){return getFanLotHistory.apply(null,arguments);},
+    previewFanGroup: function(){return previewFanGroup.apply(null,arguments);},
+    createFanGroup: function(){return createFanGroup.apply(null,arguments);},
+    listFanGroups: function(){return listFanGroups.apply(null,arguments);},
+    getFanGroup: function(){return getFanGroup.apply(null,arguments);},
     getCreationStatus: getCreationStatus,
+    beginCaseUpload: function(){if(typeof beginCaseUpload!=='function')throw publicError_('Chưa cài đặt upload tạm.');return beginCaseUpload.apply(null,arguments);},
+    uploadCaseFile: function(){if(typeof uploadCaseFile!=='function')throw publicError_('Chưa cài đặt upload tạm.');return uploadCaseFile.apply(null,arguments);},
+    getCaseUploadSession: function(){if(typeof getCaseUploadSession!=='function')throw publicError_('Chưa cài đặt upload tạm.');return getCaseUploadSession.apply(null,arguments);},
+    removeCaseUploadFile: function(){if(typeof removeCaseUploadFile!=='function')throw publicError_('Chưa cài đặt upload tạm.');return removeCaseUploadFile.apply(null,arguments);},
+    setCaseUploadCategory: function(){if(typeof setCaseUploadCategory!=='function')throw publicError_('Chưa cài đặt nhóm upload.');return setCaseUploadCategory.apply(null,arguments);},
+    commitCaseAttachments: function(){if(typeof commitCaseAttachments!=='function')throw publicError_('Chưa cài đặt bổ sung đính kèm.');return commitCaseAttachments.apply(null,arguments);},
+    getCaseAttachmentReceipt: function(){if(typeof getCaseAttachmentReceipt!=='function')throw publicError_('Chưa cài đặt bổ sung đính kèm.');return getCaseAttachmentReceipt.apply(null,arguments);},
     cancelCase: cancelCase,
     confirmWarranty: confirmWarranty,
+    requestWarrantyReview: function(){if(typeof requestWarrantyReview!=='function')throw publicError_('Cần cập nhật Notifications.gs.');return requestWarrantyReview.apply(null,arguments);},
+    listNotifications: function(){if(typeof listNotifications!=='function')throw publicError_('Cần cập nhật Notifications.gs.');return listNotifications.apply(null,arguments);},
+    markNotificationsRead: function(){if(typeof markNotificationsRead!=='function')throw publicError_('Cần cập nhật Notifications.gs.');return markNotificationsRead.apply(null,arguments);},
     updateWorkOrder: updateWorkOrder,
     correctCase: correctCase,
     createTransfer: createTransfer,
@@ -129,6 +165,7 @@ function handlePortalApi_(request) {
 }
 
 function listCases(idToken, filters) {
+  const startedAt = Date.now();
   const actor = authenticate_(idToken);
   let revision = '';
   let cache = null;
@@ -137,6 +174,7 @@ function listCases(idToken, filters) {
     revision = getPortalDatabaseRevision_();
     const cacheSeed = JSON.stringify({
       user: actor.googleSub || actor.email,
+      version: APP_VERSION,
       revision: revision,
       filters: filters || {}
     });
@@ -146,7 +184,7 @@ function listCases(idToken, filters) {
     cache = CacheService.getScriptCache();
     cacheKey = 'portal-cases-v1-' + digest;
     const cached = filters && filters.refresh === true ? null : cache.get(cacheKey);
-    if (cached) return JSON.parse(cached);
+    if (cached) { const result = JSON.parse(cached); result.timing = { serverMs: Date.now() - startedAt, cacheHit: true }; return result; }
   } catch (cacheError) {
     console.warn('Portal list cache read skipped: ' + String(cacheError && cacheError.message || cacheError));
     cache = null;
@@ -169,6 +207,7 @@ function listCases(idToken, filters) {
     cacheKey = '';
   }
   if (revision) result.revision = revision;
+  result.timing = { serverMs: Date.now() - startedAt, cacheHit: false };
   if (cache && cacheKey) {
     try {
       const serialized = JSON.stringify(result);
@@ -180,6 +219,40 @@ function listCases(idToken, filters) {
     }
   }
   return result;
+}
+
+// Manual Sheet edits do not bump the case revision. Use a separate short cache;
+// explicit sync and validation before a write always read the small catalog fresh.
+function readDeviceTypes_(fresh) {
+  const key = 'device-types-' + APP_VERSION + '-' + DATABASE_SPREADSHEET_ID;
+  const cache = CacheService.getScriptCache();
+  if (!fresh) {
+    const raw = cache.get(key);
+    if (raw) { try { const saved = JSON.parse(raw); if (Array.isArray(saved) && saved.every(function(v){return typeof v === 'string';})) return saved; } catch (e) {} }
+  }
+  const sheet = spreadsheet_().getSheetByName('Danh mục');
+  if (!sheet) throw publicError_('Thiếu tab Danh mục để đọc loại thiết bị.');
+  const last = sheet.getLastRow();
+  if (last > 5000) throw publicError_('Tab Danh mục quá lớn; vui lòng kiểm tra lại danh mục.');
+  const values = sheet.getRange(1, 1, Math.max(1,last), 4).getValues();
+  const headers = (values[0] || []).map(clean_);
+  const indexes = ['Nhóm danh mục','Mã','Giá trị hiển thị','Đang sử dụng'].map(function(h){return headers.indexOf(h);});
+  if (indexes.some(function(i){return i < 0;})) throw publicError_('Tab Danh mục thiếu cột nhóm, mã, giá trị hiển thị hoặc đang sử dụng.');
+  const types = [];
+  values.slice(1).forEach(function(row){
+    if (clean_(row[indexes[0]]) !== 'LOẠI_THIẾT_BỊ' || !bool_(row[indexes[3]])) return;
+    const code = clean_(row[indexes[1]]), label = clean_(row[indexes[2]]);
+    if (!code || !label || label.length > 2000 || /^[=+@]/.test(label)) throw publicError_('Loại thiết bị đang sử dụng phải có mã và tên hợp lệ trong Danh mục.');
+    if (types.indexOf(label) < 0) types.push(label);
+  });
+  cache.put(key, JSON.stringify(types), 60);
+  return types;
+}
+
+function assertDeviceType_(value, current) {
+  // Preserve the exact existing value on unrelated edits, even when deactivated.
+  if (current && value === current) return;
+  if (readDeviceTypes_(true).indexOf(value) < 0) throw publicError_('Loại thiết bị không hợp lệ hoặc đã ngừng sử dụng. Bấm Đồng bộ để cập nhật danh mục.');
 }
 
 function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) {
@@ -195,26 +268,51 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const pageSize = Math.max(10, Math.min(200, Number(filters.pageSize) || 20));
   const requestedPage = Math.max(1, Number(filters.page) || 1);
   const revision = clean_(dataRevision) || getPortalDatabaseRevision_();
+  const readStarted = Date.now();
   const cases = readPortalCaseIndex_(revision);
+  const filterStarted = Date.now();
 
   const filtered = cases.filter(function (item) {
     if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
     if (!canSeeIndexedCase_(actor, item)) return false;
     const searchable = clean_(item['Tìm kiếm']).toLowerCase();
     if (query && (filters.exactKey === true
-      ? clean_(item['Mã hồ sơ']).toLowerCase() !== query && clean_(item['Số sê-ri (S/N)']).toLowerCase() !== query
+      ? clean_(item['Mã hồ sơ']).toLowerCase() !== query && clean_(item['Số sê-ri (S/N)']).toLowerCase() !== query && !(typeof flExactIndexMatch_==='function'&&flExactIndexMatch_(item,query))
       : searchable.indexOf(query) === -1)) return false;
     if (status && item['Trạng thái hồ sơ'] !== status) return false;
     if (warrantyStatus && item['Tình trạng bảo hành'] !== warrantyStatus) return false;
     if (center && item['Trung tâm đang giữ hàng'] !== center) return false;
     return true;
-  }).reverse();
+  });
+  const sortStarted = Date.now();
+  const timezone = Session.getScriptTimeZone();
+  const ordered = filtered.map(function (item) {
+    return { item: item, day: portalReceiptSortKey_(item['Ngày nhận từ khách'], timezone), id: clean_(item['Mã hồ sơ']) };
+  }).sort(function (a, b) {
+    if (a.day === null || b.day === null) return a.day === null ? (b.day === null ? a.id.localeCompare(b.id) : 1) : -1;
+    return (filters.sortOrder === 'oldest' ? a.day - b.day : b.day - a.day) || a.id.localeCompare(b.id);
+  });
+  const publicStarted = Date.now();
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
-  const items = filtered.slice(start, start + pageSize).map(function (item) { return publicIndexedCase_(actor, item); });
-  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale) };
+  const items = ordered.slice(start, start + pageSize).map(function (entry) { return publicIndexedCase_(actor, entry.item); });
+  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale), phasesMs: { index: filterStarted - readStarted, filter: sortStarted - filterStarted, sort: publicStarted - sortStarted, serialize: Date.now() - publicStarted } };
+}
+
+function portalReceiptSortKey_(value, timezone) {
+  const date = asDate_(value);
+  if (!date || isNaN(date.getTime())) return null;
+  // The production database uses Vietnam calendar days (UTC+7, no DST).
+  // Never call Apps Script services from a sort comparator.
+  const offset = /^(Asia\/(Saigon|Ho_Chi_Minh|Bangkok)|Etc\/GMT-7)$/.test(timezone) ? 7 * 3600000 : /^(UTC|Etc\/UTC|GMT)$/.test(timezone) ? 0 : null;
+  if (offset !== null) {
+    const local = new Date(date.getTime() + offset);
+    return local.getUTCFullYear() * 10000 + (local.getUTCMonth() + 1) * 100 + local.getUTCDate();
+  }
+  // Preserve other configured timezones; at most one formatting call per row.
+  return Number(Utilities.formatDate(date, timezone, 'yyyyMMdd'));
 }
 
 function searchCases(idToken, rawQuery, options) {
@@ -243,10 +341,14 @@ function getCaseDetail(idToken, caseId) {
 function lookupWarranty(idToken, serialNumber) {
   authenticate_(idToken);
   const serial = clean_(serialNumber).toUpperCase();
-  if (!serial) return { status: 'no_information', label: 'Không có thông tin' };
+  if (!serial) return { status: 'no_information', label: 'Không có thông tin', model:'', modelStatus:'not_found' };
   if (serial.length > 100) throw publicError_('Số sê-ri quá dài.');
   const sheetId = PropertiesService.getScriptProperties().getProperty('WARRANTY_LOOKUP_SHEET_ID') || WARRANTY_LOOKUP_SHEET_ID;
-  const sheet = SpreadsheetApp.openById(sheetId).getSheets().find(function (candidate) {
+  const sheets = SpreadsheetApp.openById(sheetId).getSheets();
+  const canonicalSheet = sheets.find(function (candidate) {
+    return typeof candidate.getName === 'function' && candidate.getName() === 'All SN list';
+  });
+  const sheet = (canonicalSheet ? [canonicalSheet] : sheets).find(function (candidate) {
     if (!candidate.getLastRow() || !candidate.getLastColumn()) return false;
     const names = candidate.getRange(1, 1, 1, candidate.getLastColumn()).getDisplayValues()[0].map(function (value) { return clean_(value).toLowerCase(); });
     return names.indexOf('sn') !== -1 && names.indexOf('start date') !== -1 && names.indexOf('warranty package') !== -1;
@@ -256,19 +358,25 @@ function lookupWarranty(idToken, serialNumber) {
   const serialColumn = headers.findIndex(function (value) { return value.toUpperCase() === 'SN'; }) + 1;
   const startColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'start date'; }) + 1;
   const packageColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'warranty package'; }) + 1;
+  const modelColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'model'; }) + 1;
+  const standardModelColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'model chuẩn'; }) + 1;
   if (!serialColumn || !startColumn || !packageColumn) throw publicError_('Nguồn bảo hành thiếu cột SN, Start date hoặc Warranty package.');
   const found = sheet.getRange(2, serialColumn, Math.max(1, sheet.getLastRow() - 1), 1)
     .createTextFinder(serial).matchEntireCell(true).matchCase(false).findNext();
-  if (!found) return { status: 'no_information', label: 'Không có thông tin' };
+  if (!found) return { status: 'no_information', label: 'Không có thông tin', model:'', modelStatus:'not_found' };
   const row = sheet.getRange(found.getRow(), 1, 1, headers.length).getValues()[0];
+  const modelValue = standardModelColumn ? clean_(row[standardModelColumn - 1]) : (modelColumn ? clean_(row[modelColumn - 1]) : '');
+  const modelNeedsReview = /^cần xác minh$/i.test(modelValue) || /^#(?:REF!|N\/A|ERROR!|VALUE!|NAME\?|DIV\/0!|NUM!|SPILL!)/i.test(modelValue);
+  const model = modelNeedsReview ? '' : modelValue;
+  const modelStatus = modelNeedsReview ? 'needs_review' : (model ? 'found' : 'missing');
   const start = warrantyDate_(row[startColumn - 1]);
   const packageName = clean_(row[packageColumn - 1]);
   const years = /extended/i.test(packageName) ? 10 : (/standard/i.test(packageName) ? 5 : 0);
-  if (!start || !years) return { status: 'insufficient', label: 'Thiếu thông tin bảo hành', package: packageName };
+  if (!start || !years) return { status: 'insufficient', label: 'Thiếu thông tin bảo hành', package: packageName, model:model, modelStatus:modelStatus };
   const expires = new Date(start.getFullYear() + years, start.getMonth(), start.getDate());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return { status: today <= expires ? 'valid' : 'expired', label: today <= expires ? 'Còn bảo hành' : 'Hết bảo hành', package: packageName, startDate: iso_(start), expiryDate: iso_(expires) };
+  return { status: today <= expires ? 'valid' : 'expired', label: today <= expires ? 'Còn bảo hành' : 'Hết bảo hành', package: packageName, startDate: iso_(start), expiryDate: iso_(expires), model:model, modelStatus:modelStatus };
 }
 
 function warrantyDate_(value) {
@@ -309,7 +417,7 @@ function getCreationStatus(idToken, requestId) {
   if (!record) return { found: false };
   const work = readTable_(SHEETS.workOrders).find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!work) throw publicError_('Hồ sơ đã ghi nhưng công việc chưa hoàn tất. Vui lòng kiểm tra hồ sơ ' + record['Mã hồ sơ'] + ', không gửi lại.');
-  return { found: true, caseId: record['Mã hồ sơ'], workOrderId: work['Mã công việc'], cancelled: clean_(record['Trạng thái hồ sơ']) === 'Đã hủy' };
+  return { found: true, fanPending:typeof flIsLot_==='function'&&flIsLot_(record)&&!!PropertiesService.getScriptProperties().getProperty('FAN_PENDING_'+record['Mã hồ sơ']), caseId: record['Mã hồ sơ'], workOrderId: work['Mã công việc'], cancelled: clean_(record['Trạng thái hồ sơ']) === 'Đã hủy' };
 }
 
 function createCase(idToken, payload) {
@@ -320,6 +428,7 @@ function createCase(idToken, payload) {
   assertCenterAllowed_(actor, center);
   const receivedAt = parseDateRequired_(payload.receivedAt, 'Ngày nhận từ khách');
   const deviceType = required_(payload.deviceType, 'Loại thiết bị');
+  assertDeviceType_(deviceType);
   const model = required_(payload.model, 'Model');
   const serial = clean_(payload.serialNumber);
   if (deviceType !== 'Fan' && !serial) throw publicError_('Số sê-ri (S/N) là bắt buộc, trừ thiết bị Fan.');
@@ -329,7 +438,9 @@ function createCase(idToken, payload) {
   const customerEmail = emailOptional_(payload.customerEmail, 'Email khách hàng');
   const project = clean_(payload.project);
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
-  const quantity = Math.max(1, Number(payload.quantity || 1));
+  const fanState = typeof flPrepareCreate_ === 'function' ? flPrepareCreate_(payload) : null;
+  if(payload.fanMode==='lot'&&!fanState)throw publicError_('Cần cập nhật backend Fan theo lô.');
+  const quantity = fanState ? SungrowFanLotRules.totals(fanState).received : Math.max(1, Number(payload.quantity || 1));
   if (!Number.isFinite(quantity)) throw publicError_('Số lượng không hợp lệ.');
   const requestId = clean_(payload.requestId);
   if (!/^[a-zA-Z0-9-]{16,100}$/.test(requestId)) throw publicError_('Vui lòng tải lại giao diện để tạo mã yêu cầu hợp lệ.');
@@ -338,11 +449,19 @@ function createCase(idToken, payload) {
   // database lock; uncertain uploads are not automatically repeated.
   const receiptKey = 'CREATE_UPLOAD_' + requestId;
   const receipts = PropertiesService.getScriptProperties();
+  let evidenceLink;
+  if (payload.uploadSessionId) {
+    const existing = getCreationStatus(idToken, requestId);
+    if (existing.found) return existing;
+    if (typeof tuPrepareCase_ !== 'function') throw publicError_('Chưa cài đặt upload tạm.');
+    const safe = function(v){return clean_(v).replace(/[\\/:*?"<>|\r\n]/g,'_').slice(0,80)||'Chua-co';};
+    evidenceLink = tuPrepareCase_(actor,payload,[iso_(receivedAt),safe(serial||'Fan-khong-SN'),safe(model),safe(customerName)].join('-'));
+  } else {
   const reservation = LockService.getScriptLock();
   reservation.waitLock(20000);
-  let evidenceLink;
   try {
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
+    if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
     const existing = getCreationStatus(idToken, requestId);
     if (existing.found) return existing;
     const raw = receipts.getProperty(receiptKey);
@@ -361,7 +480,9 @@ function createCase(idToken, payload) {
     evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
     receipts.setProperty(receiptKey, JSON.stringify({ owner: actor.email, link: evidenceLink }));
   }
+  }
 
+  if(fanState)flAttachInitialFiles_(actor,payload,fanState);
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -370,14 +491,26 @@ function createCase(idToken, payload) {
       if (existing.found) return existing;
     }
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
+    if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
+    if(fanState)ensureSheetColumns_(SHEETS.cases,['Kiểu hồ sơ','Chi tiết lô Fan']);
     ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
     ensureSheetColumns_(SHEETS.cases, ['Mã yêu cầu tạo']);
+    var customerId = '';
+    if (payload.customerId || (payload.saveCustomer && bool_(payload.saveCustomer))) {
+      if (typeof cdPrepareCase_ !== 'function') throw publicError_('Chưa cài đặt danh bạ khách hàng trên backend.');
+      var customerActor = authenticate_(idToken); assertCapability_(customerActor,'createCase'); assertCenterAllowed_(customerActor,center);
+      customerId = cdPrepareCase_(customerActor,payload,center);
+    }
+    if (typeof cdPrepareCase_ === 'function') ensureSheetColumns_(SHEETS.cases,['Mã khách hàng']);
     const caseId = makeId_('HS');
     const workOrderId = makeId_('CV');
     const now = new Date();
-    appendObject_(SHEETS.cases, {
+    const caseData = {
       'Mã hồ sơ': caseId,
       'Mã yêu cầu tạo': requestId,
+      'Mã khách hàng': customerId,
+      'Kiểu hồ sơ': fanState ? 'Fan theo lô' : '',
+      'Chi tiết lô Fan': fanState ? SungrowFanLotRules.pack(fanState) : '',
       'Loại thiết bị': deviceType,
       'Số sê-ri (S/N)': serial,
       'Model': model,
@@ -410,8 +543,8 @@ function createCase(idToken, payload) {
       'Ngày tạo': now,
       'Người cập nhật gần nhất': actor.email,
       'Ngày cập nhật gần nhất': now
-    });
-    appendObject_(SHEETS.workOrders, {
+    };
+    const workData = {
       'Mã công việc': workOrderId,
       'Mã hồ sơ': caseId,
       'Trung tâm xử lý': center,
@@ -422,25 +555,34 @@ function createCase(idToken, payload) {
       'Ngày tạo': now,
       'Người cập nhật': actor.email,
       'Ngày cập nhật': now
-    });
-    if (initialIssue) {
-      appendObject_(SHEETS.issues, {
+    };
+    const issueData = initialIssue ? {
         'Mã ghi nhận lỗi': makeId_('LOI'),
         'Mã công việc': workOrderId,
         'Loại ghi nhận': 'Hiện tượng ban đầu',
         'Tên lỗi': initialIssue,
         'Ngày xác nhận lỗi': receivedAt,
         'Ghi chú lỗi': ''
-      });
+      } : null;
+    if(fanState){
+      receipts.setProperty('FAN_PENDING_'+caseId,requestId);
+      const writes=[flAppendRequest_(SHEETS.cases,caseData),flAppendRequest_(SHEETS.workOrders,workData)];
+      if(issueData)writes.push(flAppendRequest_(SHEETS.issues,issueData));
+      try{flBatch_(writes);}catch(error){if(error.fanNoWrite)receipts.deleteProperty('FAN_PENDING_'+caseId);throw error;}
+    }else{
+      appendObject_(SHEETS.cases,caseData);appendObject_(SHEETS.workOrders,workData);
+      if(issueData)appendObject_(SHEETS.issues,issueData);
     }
     SpreadsheetApp.flush();
+    if (payload.uploadSessionId && typeof tuCommitCase_ === 'function') {
+      try { tuCommitCase_(actor,payload,caseId); } catch(error) { console.error('TEMP_UPLOAD_COMMIT '+caseId+': '+String(error)); }
+    }
     receipts.deleteProperty(receiptKey);
     bumpPortalDatabaseRevision_();
     try { audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId }); }
     catch (error) { console.error('Hồ sơ đã tạo, lỗi ghi nhật ký: ' + String(error)); }
-    syncDashboardProjectionCase_(caseId);
-    syncPortalCaseIndexCase_(caseId);
-    bumpPortalDatabaseRevision_();
+    if(fanState)flFinishSync_(caseId);
+    else{syncDashboardProjectionCase_(caseId);syncPortalCaseIndexCase_(caseId);bumpPortalDatabaseRevision_();}
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
     lock.releaseLock();
@@ -475,6 +617,7 @@ function cancelCaseUnlocked_(idToken, payload) {
   if (!lock.tryLock(20000)) throw publicError_('Dữ liệu đang được cập nhật. Vui lòng chờ vài giây rồi xóa lại hồ sơ.');
   try {
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
+    if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
     ensureSheetColumns_(SHEETS.cases, ['Người hủy', 'Ngày hủy', 'Lý do hủy']);
     const table = readTableWithRows_(SHEETS.cases);
     const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
@@ -489,6 +632,7 @@ function cancelCaseUnlocked_(idToken, payload) {
       bumpPortalDatabaseRevision_();
       return { caseId: caseId, cancelled: true };
     }
+    if(typeof flIsLot_==='function'&&flIsLot_(record)&&findTableRowsByField_(FL_EVENT_SHEET_,'Mã hồ sơ',[caseId]).length)throw publicError_('Lô đã có nghiệp vụ; không hủy bằng thao tác tiếp nhận.');
     if (clean_(record['Tình trạng bảo hành']) !== 'Chờ xác nhận') {
       throw publicError_('Không thể xóa hồ sơ sau khi đã xác nhận tình trạng bảo hành.');
     }
@@ -582,12 +726,11 @@ function confirmWarrantyUnlocked_(idToken, payload) {
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
   };
+  if(typeof flWarrantyChanges_==='function')Object.assign(changes,flWarrantyChanges_(record,warrantyStatus,payload.fanFingerprint));
   allowHistoricalWarrantyStatus_(table.headers, record.__rowNumber, warrantyStatus);
-  updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
+  if(typeof flIsLot_==='function'&&flIsLot_(record)){PropertiesService.getScriptProperties().setProperty('FAN_PENDING_'+caseId,'warranty');try{flBatch_(flUpdateRequest_(SHEETS.cases,record.__rowNumber,changes));}catch(error){if(error.fanNoWrite)PropertiesService.getScriptProperties().deleteProperty('FAN_PENDING_'+caseId);throw error;}}else updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
-  syncDashboardProjectionCase_(caseId);
-  syncPortalCaseIndexCase_(caseId);
-  bumpPortalDatabaseRevision_();
+  if(typeof flIsLot_==='function'&&flIsLot_(record))flFinishSync_(caseId);else{syncDashboardProjectionCase_(caseId);syncPortalCaseIndexCase_(caseId);bumpPortalDatabaseRevision_();}
   SpreadsheetApp.flush();
   return { ok: true, warrantyStatus: warrantyStatus };
 }
@@ -635,6 +778,7 @@ function withSerializedWrite_(operationName, callback) {
 
   try {
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
+    if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
     return callback();
   } finally {
     lock.releaseLock();
@@ -655,8 +799,9 @@ function correctCase(idToken, payload) {
     const matches = table.rows.filter(function (c) { return clean_(c['Mã hồ sơ']) === caseId; });
     if (matches.length !== 1) throw publicError_('Không tìm thấy đúng một hồ sơ để sửa.');
     const record = matches[0];
+    if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(record);
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không sửa hồ sơ đã hủy.');
-    const fields = {serialNumber:'Số sê-ri (S/N)',model:'Model',quantity:'Số lượng',receivedAt:'Ngày nhận từ khách',readyAt:'Ngày sẵn sàng trả khách',returnedAt:'Ngày trả khách',sender:'Đơn vị gửi hàng',customerName:'Tên khách hàng',customerAddress:'Địa chỉ khách hàng',customerPhone:'Số điện thoại khách hàng',customerEmail:'Email khách hàng',note:'Ghi chú chung',evidenceLink:'Liên kết hồ sơ Drive'};
+    const fields = {deviceType:'Loại thiết bị',serialNumber:'Số sê-ri (S/N)',model:'Model',quantity:'Số lượng',receivedAt:'Ngày nhận từ khách',readyAt:'Ngày sẵn sàng trả khách',returnedAt:'Ngày trả khách',sender:'Đơn vị gửi hàng',customerName:'Tên khách hàng',customerAddress:'Địa chỉ khách hàng',customerPhone:'Số điện thoại khách hàng',customerEmail:'Email khách hàng',note:'Ghi chú chung',evidenceLink:'Liên kết hồ sơ Drive'};
     const input = payload.changes || {}, changes = {}, dates = ['receivedAt','readyAt','returnedAt'];
     Object.keys(input).forEach(function (key) {
       if (!fields[key]) throw publicError_('Trường không được phép sửa: ' + key);
@@ -667,14 +812,14 @@ function correctCase(idToken, payload) {
       else if (key === 'quantity') { value = Number(value); if (!Number.isInteger(value) || value < 1) throw publicError_('Số lượng phải là số nguyên từ 1.'); }
       else if (key === 'customerEmail' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) throw publicError_('Email không hợp lệ.');
       else if (key === 'evidenceLink' && value && !safeDriveLink_(value)) throw publicError_('Link hồ sơ phải là Google Drive hợp lệ.');
-      else if ((key === 'serialNumber' || key === 'model') && !value) throw publicError_('S/N và Model không được để trống khi sửa.');
+      else if (key === 'deviceType') assertDeviceType_(value, clean_(record['Loại thiết bị'])); else if (key === 'model' && !value) throw publicError_('S/N và Model không được để trống khi sửa.');
       if (typeof value === 'string' && /^[=+@]/.test(value)) throw publicError_('Không nhập công thức vào thông tin hồ sơ.');
       changes[fields[key]] = value;
       if(key==='sender' && table.headers.indexOf('Nơi gửi hàng')>=0)changes['Nơi gửi hàng']=value;
     });
     if (!Object.keys(changes).length) throw publicError_('Chưa chọn thông tin cần sửa.');
     const next = Object.assign({}, record, changes), received = asDate_(next['Ngày nhận từ khách']), ready = asDate_(next['Ngày sẵn sàng trả khách']), returned = asDate_(next['Ngày trả khách']);
-    if (clean_(next['Nguồn dữ liệu']) === 'Quy trình mới' && !received) throw publicError_('Hồ sơ quy trình mới phải có ngày nhận.');
+    if ((Object.prototype.hasOwnProperty.call(input,'deviceType')||Object.prototype.hasOwnProperty.call(input,'serialNumber')) && clean_(next['Loại thiết bị'])!=='Fan' && !clean_(next['Số sê-ri (S/N)'])) throw publicError_('S/N bắt buộc, trừ thiết bị Fan.'); if (clean_(next['Nguồn dữ liệu']) === 'Quy trình mới' && !received) throw publicError_('Hồ sơ quy trình mới phải có ngày nhận.');
     if (received && ((ready && ready < received) || (returned && returned < received))) throw publicError_('Ngày sẵn sàng/trả không được trước ngày nhận.');
     if (ready && returned && returned < ready) throw publicError_('Ngày trả không được trước ngày sẵn sàng trả.');
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hoàn tất' && asDate_(record['Ngày trả khách']) && !returned) throw publicError_('Hồ sơ đã hoàn tất phải giữ ngày trả khách.');
@@ -716,11 +861,13 @@ function updateWorkOrderUnlocked_(idToken, payload) {
     throw publicError_('Công việc đã kết thúc tại center này và không thể cập nhật thêm.');
   }
 
-  ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
   const caseTable = readTableWithRows_(SHEETS.cases);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của công việc.');
   assertCaseEditable_(actor, caseRecord);
+  if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(caseRecord);
+  const ruleErrors=SungrowWorkOrderRules.validate(payload,{currentStatus:clean_(record['Trạng thái xử lý']),previousReplacementType:clean_(record['Loại thiết bị đổi']),receivedAt:iso_(record['Ngày trung tâm nhận hàng']),warrantyPending:clean_(caseRecord['Tình trạng bảo hành'])==='Chờ xác nhận',caseClosed:clean_(caseRecord['Trạng thái hồ sơ'])==='Đã hoàn tất',today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
+  if(ruleErrors.length)throw publicError_(ruleErrors.join('\n'));
   const gsp = clean_(payload.gsp);
   const ma = clean_(payload.ma);
   if (gsp.length > 100 || ma.length > 100) throw publicError_('GSP hoặc MA không được vượt quá 100 ký tự.');
@@ -751,6 +898,8 @@ function updateWorkOrderUnlocked_(idToken, payload) {
     throw publicError_('Vui lòng chọn loại thiết bị đổi.');
   }
   validateTechnicalDates_(record, changes);
+  ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
+  caseTable.headers=tableHeaders_(SHEETS.cases);
   updateObjectRow_(SHEETS.workOrders, table.headers, record.__rowNumber, changes);
   updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
     'GSP': gsp,
@@ -789,6 +938,11 @@ function createTransferUnlocked_(idToken, payload) {
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ.');
   assertCaseEditable_(actor, caseRecord);
+  if(typeof flIsLot_==='function'&&flIsLot_(caseRecord)){
+    if(PropertiesService.getScriptProperties().getProperty('FAN_PENDING_'+caseId))throw publicError_('Lô cần đối soát đồng bộ trước khi luân chuyển.');
+    const state=flState_(caseRecord),totals=SungrowFanLotRules.totals(state);
+    if(totals.remaining===0)throw publicError_('Lô đã giao hết.');
+  }
   const source = caseRecord['Trung tâm đang giữ hàng'];
   assertCenterAllowed_(actor, source);
   assertTransferDestinationPolicy_(source, destination);
@@ -917,6 +1071,7 @@ function returnToCustomerUnlocked_(idToken, payload) {
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
   assertCaseEditable_(actor, record);
+  if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(record);
   assertCenterAllowed_(actor, record['Trung tâm tiếp nhận khách']);
   if (record['Trung tâm đang giữ hàng'] !== record['Trung tâm tiếp nhận khách']) throw publicError_('Thiết bị phải được chuyển về center tiếp nhận trước khi trả khách.');
   if (clean_(record['Tình trạng bảo hành']) === 'Chờ xác nhận') throw publicError_('Cần xác nhận tình trạng bảo hành trước khi giao trả khách hàng.');
@@ -946,13 +1101,18 @@ function returnToCustomerUnlocked_(idToken, payload) {
 }
 
 function authenticate_(idToken) {
+  if (typeof idToken === 'string' && idToken.indexOf('sgs1.') === 0) {
+    if (typeof authenticatePortalSession_ !== 'function') throw publicError_('Phiên đăng nhập không được hỗ trợ.');
+    return authenticatePortalSession_(idToken);
+  }
   const tokenDigest = Utilities.base64EncodeWebSafe(
     Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(idToken || ''))
   ).replace(/=+$/g, '');
   const cache = CacheService.getScriptCache();
   const cacheKey = 'portal-actor-v1-' + tokenDigest;
   const cached = cache.get(cacheKey);
-  if (cached) {
+  const claims = parseJson_(cache.get('entry-token:' + digest_(String(idToken || ''))));
+  if (cached && claims && Number(claims.exp || 0) * 1000 > Date.now()) {
     return JSON.parse(cached);
   }
   const actor = authenticateUncached_(idToken);
@@ -969,12 +1129,16 @@ function authenticateUncached_(idToken) {
     const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), { muteHttpExceptions: true });
     if (response.getResponseCode() !== 200) throw publicError_('Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
     claims = JSON.parse(response.getContentText());
-    if (claims.aud !== GOOGLE_WEB_CLIENT_ID) throw publicError_('Token không thuộc ứng dụng này.');
-    if (['accounts.google.com', 'https://accounts.google.com'].indexOf(claims.iss) === -1) throw publicError_('Nguồn đăng nhập không hợp lệ.');
-    if (Number(claims.exp || 0) * 1000 <= Date.now()) throw publicError_('Phiên đăng nhập đã hết hạn.');
-    if (!(claims.email_verified === true || claims.email_verified === 'true')) throw publicError_('Email Google chưa được xác minh.');
-    cache.put(key, JSON.stringify(claims), Math.max(1, Math.min(300, Math.floor(Number(claims.exp) - Date.now() / 1000))));
   }
+  if (claims.aud !== GOOGLE_WEB_CLIENT_ID) throw publicError_('Token không thuộc ứng dụng này.');
+  if (['accounts.google.com', 'https://accounts.google.com'].indexOf(claims.iss) === -1) throw publicError_('Nguồn đăng nhập không hợp lệ.');
+  if (!Number.isFinite(Number(claims.exp)) || Number(claims.exp || 0) * 1000 <= Date.now()) throw publicError_('Phiên đăng nhập đã hết hạn.');
+  if (!(claims.email_verified === true || claims.email_verified === 'true')) throw publicError_('Email Google chưa được xác minh.');
+  cache.put(key, JSON.stringify(claims), Math.max(1, Math.min(300, Math.floor(Number(claims.exp) - Date.now() / 1000))));
+  return portalActorFromIdentity_(claims, true);
+}
+
+function portalActorFromIdentity_(claims, allowBinding) {
   if (!clean_(claims.sub)) throw publicError_('Token Google thiếu định danh tài khoản.');
   const email = String(claims.email || '').toLowerCase();
   const googleSub = clean_(claims.sub);
@@ -994,6 +1158,7 @@ function authenticateUncached_(idToken) {
       throw publicError_('Tài khoản Google không khớp định danh đã được cấp quyền.');
     }
     if (user && !clean_(user.GoogleSub)) {
+      if (!allowBinding) throw publicError_('Định danh tài khoản đã thay đổi. Vui lòng đăng nhập lại.');
       const lock = LockService.getScriptLock();
       // First-time account binding is serialized; leave room for several users
       // signing in together instead of failing at the former 10-second limit.
@@ -1079,7 +1244,8 @@ function portalCaseIndexObject_(caseRecord, works, transfers) {
     caseRecord['Số điện thoại gửi hàng'], caseRecord['Email gửi hàng'],
     caseRecord['Đơn vị vận chuyển'], caseRecord['Mã vận đơn']
   ].map(clean_).filter(Boolean).join(' ');
-  return {
+  const fanFields=typeof flIndexFields_==='function'?flIndexFields_(caseRecord):{};
+  return Object.assign({
     'Mã hồ sơ': clean_(caseRecord['Mã hồ sơ']),
     'Dòng nguồn': Number(caseRecord.__rowNumber || 0),
     'Loại thiết bị': clean_(caseRecord['Loại thiết bị']),
@@ -1099,9 +1265,9 @@ function portalCaseIndexObject_(caseRecord, works, transfers) {
     'Ngày hoàn tất kỹ thuật gần nhất': latest['Ngày hoàn tất kỹ thuật'] || '',
     'Có luân chuyển': transfers.length > 0,
     'Số lượng': Math.max(1, Number(caseRecord['Số lượng']) || 1),
-    'Tìm kiếm': searchable,
+    'Tìm kiếm': searchable+' '+(fanFields['S/N inverter liên quan']||''),
     'Ngày cập nhật chỉ mục': new Date()
-  };
+  },fanFields);
 }
 
 function portalCaseIndexValues_(object) {
@@ -1370,6 +1536,7 @@ function publicIndexedCase_(actor, item) {
     outcome: clean_(item['Kết quả gần nhất']), issues: [], parts: [], holds: []
   }] : [];
   return {
+    fanLotSummary: clean_(item['Kiểu hồ sơ'])==='Fan theo lô' ? parseJson_(item['Tiến độ Fan']) : null,
     caseId: clean_(item['Mã hồ sơ']), deviceType: clean_(item['Loại thiết bị']),
     serialNumber: clean_(item['Số sê-ri (S/N)']), model: clean_(item.Model),
     quantity: Math.max(1, Number(item['Số lượng']) || 1), intakeCenter: intakeCenter,
@@ -1431,7 +1598,9 @@ function getCaseDetailForActor_(actor, caseId) {
   const issues = findTableRowsByField_(SHEETS.issues, 'Mã công việc', workIds);
   const parts = findTableRowsByField_(SHEETS.parts, 'Mã công việc', workIds);
   const holds = findTableRowsByField_(SHEETS.holds, 'Mã công việc', workIds);
-  return publicCase_(actor, record, works, transfers, groupBy_(issues, 'Mã công việc'), groupBy_(parts, 'Mã công việc'), groupBy_(holds, 'Mã công việc'));
+  const result=publicCase_(actor, record, works, transfers, groupBy_(issues, 'Mã công việc'), groupBy_(parts, 'Mã công việc'), groupBy_(holds, 'Mã công việc'));
+  if(typeof notificationRequestState_==='function'&&clean_(record['Tình trạng bảo hành'])==='Chờ xác nhận')result.warrantyRequest=notificationRequestState_(caseId,canApproveWarranty_(actor));
+  return result;
 }
 
 function canSeeCase_(actor, item, workOrders) {
@@ -1469,24 +1638,27 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
     };
   });
   return {
+    fanLot: typeof flPublic_==='function'?flPublic_(item):null,
+    fanGroups: typeof flGroupRefs_==='function'?flGroupRefs_(actor,item):[],
     caseId: item['Mã hồ sơ'], deviceType: item['Loại thiết bị'], serialNumber: item['Số sê-ri (S/N)'], model: item.Model,
     gsp: clean_(item.GSP), ma: clean_(item.MA),
     quantity: Number(item['Số lượng'] || 1), intakeCenter: item['Trung tâm tiếp nhận khách'], currentCenter: item['Trung tâm đang giữ hàng'],
-    caseStatus: item['Trạng thái hồ sơ'], warrantyStatus: item['Tình trạng bảo hành'],
+    caseStatus: item['Trạng thái hồ sơ'], warrantyStatus: typeof flWarrantyLabel_==='function'?flWarrantyLabel_(item):item['Tình trạng bảo hành'],
     sender: hasPrivateAccess ? senderFromCase_(item) : '', project: hasPrivateAccess ? projectFromCase_(item) : '', evidenceLink: hasPrivateAccess ? safeDriveLink_(item['Liên kết hồ sơ Drive']) : '', note: hasPrivateAccess ? item['Ghi chú chung'] : '',
     customerName: hasPrivateAccess ? item['Tên khách hàng'] : '', customerAddress: hasPrivateAccess ? item['Địa chỉ khách hàng'] : '', customerPhone: hasPrivateAccess ? item['Số điện thoại khách hàng'] : '', customerEmail: hasPrivateAccess ? item['Email khách hàng'] : '',
     senderCompany: hasPrivateAccess ? item['Tên công ty gửi hàng'] : '', senderCustomer: hasPrivateAccess ? item['Tên người gửi hàng'] : '', senderAddress: hasPrivateAccess ? item['Địa chỉ gửi hàng'] : '', senderPhone: hasPrivateAccess ? item['Số điện thoại gửi hàng'] : '',
     senderEmail: hasPrivateAccess ? item['Email gửi hàng'] : '', carrier: hasPrivateAccess ? item['Đơn vị vận chuyển'] : '', trackingCode: hasPrivateAccess ? item['Mã vận đơn'] : '',
     createdBy: item['Người tạo'], createdAt: iso_(item['Ngày tạo']),
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
-    isClosed: isClosed, canEditCase: canEditCase, canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
+    isClosed: isClosed, canEditCase: canEditCase, canSupplementAttachments: typeof saCanSupplement_==='function'&&saCanSupplement_(actor,item,workOrders), canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
     canDelete: canDeleteCase,
-    canCorrectCase: isManager, correctionRevision: isManager ? getPortalDatabaseRevision_() : '',
+    canRequestWarranty: typeof requestWarrantyReview==='function'&&!canApproveWarranty_(actor)&&hasCapability_(actor,'viewCases')&&(typeof flWarrantyLabel_==='function'?flWarrantyLabel_(item):clean_(item['Tình trạng bảo hành']))==='Chờ xác nhận'&&clean_(item['Trạng thái hồ sơ'])!=='Đã hủy',
+    canCorrectCase: isManager && !(typeof flIsLot_==='function'&&flIsLot_(item)), correctionRevision: isManager ? getPortalDatabaseRevision_() : '',
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
     workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
     transferDestinations: transferDestinationsForSource_(item['Trung tâm đang giữ hàng']),
-    canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && item['Tình trạng bảo hành'] !== 'Chờ xác nhận'
+    canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && (item['Tình trạng bảo hành'] !== 'Chờ xác nhận' || (typeof flIsLot_==='function'&&flIsLot_(item)&&SungrowFanLotRules.totals(flState_(item)).completed>0))
   };
 }
 
@@ -1596,11 +1768,12 @@ function updateCaseAfterWork_(caseId, actor, changes) {
   const table = readTableWithRows_(SHEETS.cases);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) return;
-  const terminal = !!changes['Kết quả xử lý'];
+  const terminal = ['Hoàn tất kỹ thuật','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(changes['Trạng thái xử lý'])>=0&&!!changes['Kết quả xử lý']&&!!changes['Ngày hoàn tất kỹ thuật'];
+  const closed=clean_(record['Trạng thái hồ sơ'])==='Đã hoàn tất';
   const atIntakeCenter = record['Trung tâm đang giữ hàng'] === record['Trung tâm tiếp nhận khách'];
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, {
-    'Trạng thái hồ sơ': terminal && atIntakeCenter ? 'Sẵn sàng trả khách' : 'Đang xử lý',
-    'Ngày sẵn sàng trả khách': terminal && atIntakeCenter ? changes['Ngày hoàn tất kỹ thuật'] : record['Ngày sẵn sàng trả khách'],
+    'Trạng thái hồ sơ': closed?'Đã hoàn tất':terminal && atIntakeCenter ? 'Sẵn sàng trả khách' : 'Đang xử lý',
+    'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal && atIntakeCenter ? changes['Ngày hoàn tất kỹ thuật'] : '',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
   });
@@ -1660,13 +1833,13 @@ function readTable_(sheetName) { return readTableWithRows_(sheetName).rows; }
  */
 function readTableShared_(sheetName, revision, allowStale) {
   const version = clean_(revision) || getPortalDatabaseRevision_();
-  const baseKey = 'portal-table-v2-' + digest_(sheetName + '|' + version);
-  const pointerKey = 'portal-table-current-v2-' + digest_(sheetName);
+  const baseKey = 'portal-table-v3-' + digest_(sheetName + '|' + version);
+  const pointerKey = 'portal-table-current-v3-' + digest_(sheetName);
   const cache = CacheService.getScriptCache();
   const cached = readPortalChunkedCache_(cache, baseKey);
   if (cached) return unpackPortalTable_(cached);
   const previousVersion = clean_(cache.get(pointerKey));
-  const previousKey = previousVersion && previousVersion !== version ? 'portal-table-v2-' + digest_(sheetName + '|' + previousVersion) : '';
+  const previousKey = previousVersion && previousVersion !== version ? 'portal-table-v3-' + digest_(sheetName + '|' + previousVersion) : '';
   const stale = previousKey && allowStale !== false ? readPortalChunkedCache_(cache, previousKey) : null;
 
   const leaseKey = 'PORTAL_TABLE_LEASE_' + digest_(sheetName);
@@ -1674,7 +1847,7 @@ function readTableShared_(sheetName, revision, allowStale) {
   const properties = PropertiesService.getScriptProperties();
   const lock = LockService.getScriptLock();
   let ownsLease = false;
-  if (lock.tryLock(3000)) {
+  if (lock.tryLock(150)) {
     try {
       const secondRead = readPortalChunkedCache_(cache, baseKey);
       if (secondRead) return unpackPortalTable_(secondRead);
@@ -1693,15 +1866,15 @@ function readTableShared_(sheetName, revision, allowStale) {
     // Keep the application usable while one request refreshes the new revision.
     // The revision poll will fetch again after the builder publishes its cache.
     if (stale) return stalePortalRows_(stale);
-    for (let attempt = 0; attempt < 50; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       Utilities.sleep(300);
       const ready = readPortalChunkedCache_(cache, baseKey);
       if (ready) return unpackPortalTable_(ready);
       // The previous lock may have belonged to a short write rather than a
       // cache builder. Periodically attempt to become the builder ourselves.
-      if (attempt % 10 === 9) {
+      if (attempt === 2) {
         const retryLock = LockService.getScriptLock();
-        if (retryLock.tryLock(500)) {
+        if (retryLock.tryLock(100)) {
           try {
             const lease = parseJson_(properties.getProperty(leaseKey));
             const leaseAge = lease && Number(lease.startedAt) ? Date.now() - Number(lease.startedAt) : Infinity;
@@ -1731,7 +1904,7 @@ function readTableShared_(sheetName, revision, allowStale) {
     throw error;
   } finally {
     const release = LockService.getScriptLock();
-    if (release.tryLock(3000)) {
+    if (release.tryLock(150)) {
       try {
         const current = parseJson_(properties.getProperty(leaseKey));
         if (current && current.owner === owner) properties.deleteProperty(leaseKey);
@@ -1774,7 +1947,8 @@ function readPortalChunkedCache_(cache, baseKey) {
     const keys = Array.from({ length: count }, function (_, index) { return baseKey + ':part:' + index; });
     const chunks = cache.getAll(keys);
     if (keys.some(function (key) { return typeof chunks[key] !== 'string'; })) return null;
-    return JSON.parse(keys.map(function (key) { return chunks[key]; }).join(''));
+    const payload = keys.map(function (key) { return chunks[key]; }).join('');
+    return JSON.parse(payload.indexOf('gz:') === 0 ? Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(payload.slice(3)), 'application/gzip', 'cache.json.gz')).getDataAsString('UTF-8') : payload);
   } catch (error) {
     console.warn('Shared table cache read skipped: ' + String(error && error.message || error));
     return null;
@@ -1783,8 +1957,12 @@ function readPortalChunkedCache_(cache, baseKey) {
 
 function writePortalChunkedCache_(cache, baseKey, value, ttl) {
   try {
-    const serialized = JSON.stringify(value);
-    const chunks = serialized.match(/[\s\S]{1,12000}/g) || [];
+    let serialized = JSON.stringify(value);
+    if (typeof Utilities.gzip === 'function' && typeof Utilities.base64Encode === 'function') {
+      const compressed = 'gz:' + Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(serialized, 'application/json')).getBytes());
+      if (compressed.length < serialized.length) serialized = compressed;
+    }
+    const chunks = serialized.match(serialized.indexOf('gz:') === 0 ? /[\s\S]{1,60000}/g : /[\s\S]{1,24000}/g) || [];
     if (!chunks.length || chunks.length > 250) return false;
     const entries = {};
     chunks.forEach(function (chunk, index) { entries[baseKey + ':part:' + index] = chunk; });
@@ -1814,11 +1992,29 @@ function readTableWithRows_(sheetName) {
 function appendObject_(sheetName, object) {
   const sheet = spreadsheet_().getSheetByName(sheetName);
   const headers = tableHeaders_(sheetName);
+  if (sheetName === SHEETS.cases && Object.prototype.hasOwnProperty.call(object,'Loại thiết bị')) {
+    const row = sheet.getLastRow() + 1;
+    if (row > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(),1);
+    setDeviceTypeCellValidation_(sheet, headers, row, object['Loại thiết bị']);
+  }
   sheet.appendRow(headers.map(function (header) { return object[header] == null ? '' : object[header]; }));
+}
+
+function setDeviceTypeCellValidation_(sheet, headers, row, current) {
+  const column = headers.indexOf('Loại thiết bị');
+  if (column < 0) throw publicError_('Thiếu cột Loại thiết bị trong hồ sơ.');
+  const types = readDeviceTypes_(false).slice();
+  const existing = clean_(current);
+  if (existing && types.indexOf(existing) < 0) types.push(existing);
+  if (!types.length) throw publicError_('Danh mục loại thiết bị đang trống.');
+  // Refresh only the target cell; retain strict validation and every other cell.
+  const rule = SpreadsheetApp.newDataValidation().requireValueInList(types,true).setAllowInvalid(false).build();
+  sheet.getRange(row,column+1,1,1).setDataValidation(rule);
 }
 
 function updateObjectRow_(sheetName, headers, rowNumber, changes) {
   const sheet = spreadsheet_().getSheetByName(sheetName);
+  if (sheetName === SHEETS.cases && Object.prototype.hasOwnProperty.call(changes,'Loại thiết bị')) setDeviceTypeCellValidation_(sheet,headers,rowNumber,changes['Loại thiết bị']);
   const indexes = headers.map(function (header, index) { return Object.prototype.hasOwnProperty.call(changes, header) ? index : -1; }).filter(function (index) { return index >= 0; });
   // Batch adjacent changed cells without overwriting unrelated cells or formulas.
   for (let cursor = 0; cursor < indexes.length;) {
@@ -1840,6 +2036,10 @@ function tableHeaders_(sheetName) {
 }
 
 function audit_(actor, action, type, id, center, before, after) {
+  if(typeof notificationMetadata_==='function'){
+    const metadata=notificationMetadata_(actor,action,type,id,center,before,after);
+    if(metadata)after=Object.assign({},after||{},{__notification:metadata});
+  }
   bumpPortalDatabaseRevision_();
   appendObject_(SHEETS.audit, {
     'Thời gian': new Date(), 'Email người dùng': actor.email, 'Hành động': action, 'Loại đối tượng': type,
@@ -2118,7 +2318,7 @@ function refreshDashboardData_() {
   }
 }
 
-function spreadsheet_() { return SpreadsheetApp.openById(DATABASE_SPREADSHEET_ID); }
+function spreadsheet_() { if (!PORTAL_RUNTIME_SPREADSHEET_) PORTAL_RUNTIME_SPREADSHEET_ = SpreadsheetApp.openById(DATABASE_SPREADSHEET_ID); return PORTAL_RUNTIME_SPREADSHEET_; }
 
 /**
  * Chạy thủ công trong Apps Script trước khi deploy production.
@@ -2219,7 +2419,17 @@ function bool_(value) { return value === true || String(value).toLowerCase() ===
 function parseDateRequired_(value, label) { const date = parseDateOptional_(value); if (!date) throw publicError_('Thiếu hoặc sai ' + label + '.'); return date; }
 function parseDateOptional_(value) { if (!value) return null; const date = value instanceof Date ? value : new Date(String(value) + (String(value).length === 10 ? 'T00:00:00+07:00' : '')); return isNaN(date.getTime()) ? null : date; }
 function asDate_(value) { if (!value) return null; const date = value instanceof Date ? value : new Date(value); return isNaN(date.getTime()) ? null : date; }
-function iso_(value) { const date = asDate_(value); return date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''; }
+function iso_(value) {
+  const date = asDate_(value);
+  if (!date) return '';
+  if (!PORTAL_RUNTIME_TIMEZONE_) PORTAL_RUNTIME_TIMEZONE_ = Session.getScriptTimeZone();
+  const timezone = PORTAL_RUNTIME_TIMEZONE_;
+  if (date.getUTCFullYear() >= 1976 && /^(Asia\/(Saigon|Ho_Chi_Minh|Bangkok)|Etc\/GMT-7|UTC|Etc\/UTC|GMT)$/.test(timezone)) {
+    const day = String(portalReceiptSortKey_(date, timezone)).padStart(8, '0');
+    return day.slice(0,4) + '-' + day.slice(4,6) + '-' + day.slice(6,8);
+  }
+  return Utilities.formatDate(date, timezone, 'yyyy-MM-dd');
+}
 function makeId_(prefix) { return prefix + '-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss') + '-' + Utilities.getUuid().slice(0, 6).toUpperCase(); }
 function digest_(value) { return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value)).slice(0, 40); }
 function parseJson_(value) { if (!value) return null; try { return JSON.parse(value); } catch (_) { return null; } }

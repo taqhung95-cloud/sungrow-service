@@ -2,12 +2,12 @@
 globalThis.portalUploads = (() => {
   const allowed=/\.(doc|docx|pdf|xls|xlsx|zip|rar|jpg|jpeg|png|txt|csv)$/i;
   const groups={incident:'Mẫu thu thập thông tin sự cố',sitePhotos:'Hình ảnh thiết bị tại công trình',centerPhotos:'Hình ảnh tại center',deviceLog:'Log file',waveform:'Log sóng sự cố (nếu có)'};
-  let ui,categoryPending=0,restoring=false,restoreError='';
+  let ui,categoryPending=0,restoring=false,restoreError='',fanScopes={};
   const disable=value=>ui?.setDisabled(value);
   let form,panel,input,items=[],sessionId='',requestId='',key='',center='',epoch=0,working=false,restoreFailed=false;
   const enabled=()=>typeof state!=='undefined'&&!!state.temporaryUploads;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId,uploadStarted:true}));}catch(_){}};
+  const store=()=>{try{localStorage.setItem(key,JSON.stringify({sessionId,requestId,uploadStarted:true,fanScopes:Object.fromEntries(items.map(x=>[x.id,x.fanSerial||'']))}));}catch(_){}};
   function draw(){
     if(!ui)return;
     const ready=items.filter(x=>x.status==='READY').length;
@@ -16,7 +16,7 @@ globalThis.portalUploads = (() => {
   }
   function merge(result){
     const locals=new Map(items.map(x=>[x.id,x]));
-    const remote=result.files.map(x=>({...locals.get(x.uploadId),id:x.uploadId,name:x.name,size:x.size,status:x.status,category:x.category||'',fileId:x.fileId||''}));
+    const remote=result.files.map(x=>({...locals.get(x.uploadId),id:x.uploadId,name:x.name,size:x.size,status:x.status,category:x.category||'',fileId:x.fileId||'',fanSerial:locals.get(x.uploadId)?.fanSerial||fanScopes[x.uploadId]||''}));
     const ids=new Set(remote.map(x=>x.id));
     items=[...remote,...items.filter(x=>!ids.has(x.id))];draw();
   }
@@ -30,7 +30,7 @@ globalThis.portalUploads = (() => {
     if(!center)return;
     try{
       const saved=JSON.parse(localStorage.getItem(key)||'null');
-      if(saved){sessionId=saved.sessionId;requestId=saved.requestId;restoring=true;disable(true);draw();
+      if(saved){fanScopes=saved.fanScopes||{};sessionId=saved.sessionId;requestId=saved.requestId;restoring=true;disable(true);draw();
         // Explicitly unused drafts need no server reads. Legacy records have no flag,
         // so retain their recovery checks once to protect files from older versions.
         if(saved.uploadStarted===false){localStorage.removeItem(key);disable(false);return;}
@@ -93,7 +93,7 @@ globalThis.portalUploads = (() => {
     input=form.elements.evidenceFile;
     input.accept='.doc,.docx,.pdf,.xls,.xlsx,.zip,.rar,.jpg,.jpeg,.png,.txt,.csv';input.multiple=true;input.required=false;
     const field=input.closest('.span3'),label=field.querySelector('label');label.classList.add('upload-label');
-    label.innerHTML='Hồ sơ đính kèm * <small id="uploadLabelNote" class="upload-label-note">Chọn nhiều file · Tự tải lên · Lưu tạm 24 giờ</small>';
+    label.innerHTML='Hồ sơ đính kèm * <small id="uploadLabelNote" class="upload-label-note">Chọn nhiều file | Tự tải lên | Lưu tạm 24 giờ</small>';
     label.title='DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG, TXT, CSV. File tạm chưa gắn vào case được dọn sau khi hết hạn.';
     input.setAttribute('aria-describedby','uploadLabelNote');field.querySelector('.muted').hidden=true;
     panel=document.createElement('div');panel.className='case-upload-panel';input.after(panel);
@@ -107,11 +107,11 @@ globalThis.portalUploads = (() => {
         if(!allowed.test(file.name)||!file.size){showMessage('File '+file.name+' trống hoặc không đúng định dạng được hỗ trợ.',true);continue;}
         const pending=items.find(x=>x.name===file.name&&x.size===file.size&&(x.category||'')===category&&['ERROR','UPLOADING'].includes(x.status)&&!x.file);
         if(pending){pending.file=file;pending.status='QUEUED';continue;}
-        items.push({id:crypto.randomUUID(),file,category,name:file.name,size:file.size,status:'QUEUED'});
+        items.push({id:crypto.randomUUID(),file,category,fanSerial:window.SungrowFanLots?.fileScope()||'',name:file.name,size:file.size,status:'QUEUED'});
       }
       draw();pump();
     }
-    ui=SungrowAttachmentUI.mount(panel,{categories:state.uploadCategories,onFiles:choose,
+    ui=SungrowAttachmentUI.mount(panel,{categories:state.uploadCategories,getScopeLabel:item=>form.elements.fanMode?.value==='lot'?(item.fanSerial?'S/N '+item.fanSerial:'Chung cho hồ sơ lô'):'',onFiles:choose,
       async onCategory(item,category){
         if(!item)return;const generation=epoch;categoryPending++;
         try{const result=await call('setCaseUploadCategory',[state.token,{sessionId,center,uploadId:item.id,category}]);if(generation===epoch)merge(result);}
@@ -138,7 +138,7 @@ globalThis.portalUploads = (() => {
     if(!items.length)throw new Error('Vui lòng đính kèm ít nhất một file.');
     if(working||categoryPending||items.some(x=>x.status!=='READY'))throw new Error('Các file chưa tải xong. Chờ xác nhận hoặc xử lý file lỗi trước khi tạo hồ sơ.');
     if(state.uploadCategories&&items.some(x=>!x.category))throw new Error('Vui lòng chọn nhóm cho các file cũ chưa phân nhóm.');
-    return {uploadSessionId:sessionId,uploadIds:items.map(x=>x.id)};
+    return {uploadSessionId:sessionId,uploadIds:items.map(x=>x.id),...(state.fanLots&&form.elements.fanMode?.value==='lot'?{fanFileScopes:Object.fromEntries(items.map(x=>[x.id,x.fanSerial||'']))}:{})};
   }
   function reset(){try{localStorage.removeItem(key);}catch(_){}epoch++;items=[];sessionId='';requestId='';key='';draw();scope();}
   new MutationObserver(attach).observe(document.body,{childList:true,subtree:true});attach();

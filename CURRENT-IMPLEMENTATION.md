@@ -1,5 +1,15 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Fan theo lô — 17/10/2026, 1.11.0-fan-lots
+
+Bảng cập nhật S/N đặt Kết quả và Loại đổi ở hai cột cùng hàng; Loại đổi chỉ hiện khi đổi thiết bị. Dấu phân cách thông tin trên toàn portal dùng |; giữ nguyên dấu thập phân và dữ liệu nguồn. MobileJS4, notificationsJS8, reportsJS3. Frontend liveJS132/entry114, Fan UI/rules/native CSS/JS1, uploadJS9, attachmentUI2, formDrafts4. Giữ tên đơn vị KPI Thiết bị/Hồ sơ và bố cục portal/drawer/update hiện tại. Fan tạo mới có nhập thường hoặc lô; S/N lặp cộng số Fan. Snapshot schema/revision trong hai cột bổ sung ở cuối nguồn, nhật ký thao tác và nhóm liên kết ở hai tab mới. Giới hạn120 dòng/42k ký tự. Không ghi tab lịch sử. Hồ sơ thường giữ số lượng; lô mới tính1, lượng Fan vật lý và các lần hoàn tất/giao theo ngày được thống kê riêng, cùng quy tắc Excel. Linh kiện thực dùng theo ngày/phạm vi, không nhân Fan.
+
+Code/Legacy1.11.0, bổ sung FanLotRules/FanLots, giữ các module hiện hành. Tạo lô ghi case/work/hiện tượng ban đầu trong một batch; cập nhật snapshot/nhật ký/linh kiện theo transaction, idempotency + CAS + ScriptLock, chặn pending khi projection/index lỗi và tăng revision. Nhóm cũ chỉ thêm liên kết, bảo toàn nguồn/KPI, fingerprint trước áp dụng. Editor setup/enable/disable/audit kiểm tra quản lý qua PortalReadDiagnostics. Tìm S/N mở rộng chỉ mục, không quét lịch sử hoặc hydrate chi tiết trên danh sách; canonical cache theo revision; lịch sử chỉ hydrate30 dòng/trang. File ban đầu chung/theo S/N có phạm vi trước upload; các file thực tế vẫn ở folder case. Lưu nháp nhận/cập nhật có key actor/case/kind và fingerprint nguồn, không tự ghi lại mutation.
+
+Frontend có capability gate: chưa deploy/bật backend thì không cho tạo lô. Apps Script do người dùng cập nhật theo version final/DEPLOY-1.11.0-FAN.md: copy module, enable Sheets API, chuanBiFanTheoLo tạo backup/schema và kiểm tra nguồn, audit/perf, batFanTheoLo, New version cùng URL. Chưa chạy setup, nhập nhóm hoặc mutation production trong quá trình phát triển. Không rollback backend cũ sau khi đã có dữ liệu lô.
+
+
+
 ## Mã hồ sơ chỉ trong Chi tiết thiết bị — 14/10/2026
 
 Frontend liveJS129/entry111/exact-case-search JS2: bỏ mã hồ sơ khỏi bảng danh sách, tiêu đề kết quả cập nhật và lựa chọn lần tiếp nhận khi S/N trùng. Giữ trường Mã hồ sơ trong detail-grid; caseId tiếp tục là khóa nội bộ và có thể tìm chính xác. Không đổi backend/database; phát hành cùng sửa hiển thị SĐT.

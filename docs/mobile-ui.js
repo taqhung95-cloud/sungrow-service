@@ -18,7 +18,7 @@
     if (!root) {
       top.className = 'mobile-entry-header';
       scope.querySelector('.workspace').prepend(top);
-      const title = document.createElement('span'); title.textContent = 'SUNGROW · Nhập liệu'; top.append(title);
+      const title = document.createElement('span'); title.textContent = 'SUNGROW | Nhập liệu'; top.append(title);
     }
     side.id = root ? 'sg-mobile-navigation' : 'entry-mobile-navigation';
     side.setAttribute('aria-label', 'Điều hướng hệ thống');
@@ -73,7 +73,7 @@
       const selected = el => el?.selectedOptions?.[0]?.textContent || '';
       const range = root.querySelector('.sg-range-button')?.textContent?.trim();
       const comparison = root.querySelector('#sg-compare-mode');
-      const value = [range || [year?.value, selected(month)].filter(Boolean).join(' · '), selected(center), selected(comparison)].filter(Boolean).join(' | ');
+      const value = [range || [year?.value, selected(month)].filter(Boolean).join(' | '), selected(center), selected(comparison)].filter(Boolean).join(' | ');
       if (summary.textContent !== value) summary.textContent = value;
     };
     toggle.addEventListener('click', () => {
@@ -117,7 +117,7 @@
         cells[0].append(toggle);
       }
       const text = 'Tồn cuối: ' + (cells[3].querySelector('strong')?.textContent || '—') +
-        ' · Quá hạn: ' + (cells[4].querySelector('strong')?.textContent || '—') + ' ▾';
+        ' | Quá hạn: ' + (cells[4].querySelector('strong')?.textContent || '—') + ' ▾';
       if (toggle.textContent !== text) toggle.textContent = text;
       toggle.title = 'Mở/thu gọn chi tiết KPI của ' + (cells[0].querySelector('strong')?.textContent || 'center');
     });
