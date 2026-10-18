@@ -29,6 +29,7 @@ try{
  assert.equal(data.parts.length,1);assert.equal(data.parts[0]['Số lượng'],3,'Two selected inverter S/Ns do not multiply real spare usage.');assert.equal(data.issues.length,2);assert.equal(data.holds.length,1);assert.equal(data.cases[0].GSP,'GSP-ONE');assert.equal(R.totals(snapshot()).completed,0,'Recording parts while repairing must not complete Fan.');
  ctx.updateWorkOrder('manager',initial);assert.equal(h.getCommits(),before+1,'Retry reuses the durable receipt.');
  const children=()=>({parts:data.parts.map(p=>({partUsageId:p['Mã sử dụng linh kiện'],partNumber:p['Mã linh kiện (Part Number)'],name:p['Tên linh kiện'],quantity:p['Số lượng'],usedAt:ctx.iso_(p['Ngày sử dụng'])})),issues:data.issues.map(p=>({issueId:p['Mã ghi nhận lỗi'],code:p['Mã lỗi'],name:p['Tên lỗi'],confirmedAt:ctx.iso_(p['Ngày xác nhận lỗi'])})),holds:[]});
+ ctx.updateWorkOrder('manager',request({...children(),workflowStatus:'Đang kiểm tra',fanSelections:[{lineId:'F3',quantity:1}]}));assert.equal(data.parts.length,1,'Previously logged parts from approved S/Ns must not block initial checks on another unapproved S/N.');
  deny(request({...children(),fanSelections:[{lineId:'MISSING',quantity:1}]}),/S\/N/);
  deny(request({...children(),parts:[]}),/Không xóa/);
  deny(request({...children(),parts:[{...children().parts[0],quantity:99}]}),/đối soát/);

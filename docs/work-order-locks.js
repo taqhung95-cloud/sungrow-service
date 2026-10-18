@@ -10,7 +10,7 @@ window.SungrowWorkOrderLocks=(()=>{
    const p={};for(const name of ['workflowStatus','outcome','technicalCompletedAt','diagnosisCompletedAt','replacementType'])p[name]=fields[name].value;
    p.issues=[...form.querySelectorAll('.issues .repeat-row')].map(r=>({code:r.children[0].value,name:r.children[1].value,confirmedAt:r.children[2].value}));
    p.parts=[...form.querySelectorAll('.parts .repeat-row')].map(r=>({partUsageId:r.dataset.partUsageId||'',partNumber:r.children[0].value,name:r.children[1].value,quantity:r.children[2].value,receivedAt:r.dataset.receivedAt||'',usedAt:r.querySelector('.part-used-at').value||p.technicalCompletedAt}));
-   p.holds=[...form.querySelectorAll('.holds .repeat-row')].map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));return p;
+   p.holds=[...form.querySelectorAll('.holds .repeat-row')].map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));if(form._fanSelections)p.parts=p.parts.filter(x=>!x.partUsageId);return p;
   }
   function sync(){
    context.today=today();if(form._fanWarrantyPending)context.warrantyPending=form._fanWarrantyPending();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
