@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.4-stable-transport';
+const LEGACY_API_VERSION = '1.11.5-shared-fan-forms';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -1296,3 +1296,5 @@ function doPost(e) {
 
 // Release capability checked before legacy-source conversion.
 LEGACY_DASHBOARD_API.fanLegacyKpiReady = true;
+
+LEGACY_DASHBOARD_API.fanSharedFormsReady = true;

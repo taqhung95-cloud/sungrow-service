@@ -13,7 +13,7 @@ window.SungrowWorkOrderLocks=(()=>{
    p.holds=[...form.querySelectorAll('.holds .repeat-row')].map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));return p;
   }
   function sync(){
-   context.today=today();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
+   context.today=today();if(form._fanWarrantyPending)context.warrantyPending=form._fanWarrantyPending();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
    fields.workflowStatus.disabled=context.caseClosed;
    fields.outcome.disabled=working||pending;fields.technicalCompletedAt.disabled=working||pending;
    fields.outcome.required=fields.workflowStatus.value==='Hoàn tất kỹ thuật';fields.technicalCompletedAt.required=fields.outcome.required;

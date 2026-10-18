@@ -3,7 +3,7 @@ var SungrowWorkOrderRules=(()=>{
  const active=['Đã nhận hàng','Đang kiểm tra','Chờ linh kiện','Đang sửa chữa','Đang kiểm tra sau sửa','Đang theo dõi'];
  const controlled=['Đã chuyển hàng đi','Đã đóng công việc'];
  const outcomes=['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'];
- const replacements=['Inverter','Battery','Logger','Meter','Khác'];
+ const replacements=['Inverter','Battery','Logger','Meter','Khác','Fan'];
  const clean=v=>String(v??'').trim();
  function validate(p,c){
   const errors=[],status=clean(p.workflowStatus),outcome=clean(p.outcome),completed=clean(p.technicalCompletedAt),replacement=clean(p.replacementType);

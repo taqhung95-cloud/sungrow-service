@@ -3,6 +3,7 @@
  * No history tab reads. Mutations require request IDs, CAS and ScriptLock.
  */
 var FL_RELEASE_ = 'fan-lots-1';
+var FL_SHARED_RECEIPT_GUARD_ = true;
 var FL_EVENT_SHEET_ = 'Nhật ký lô Fan';
 var FL_GROUP_SHEET_ = 'Nhóm tiếp nhận Fan';
 var FL_EVENT_HEADERS_ = ['Mã thao tác','Mã hồ sơ','Mã dòng Fan','Loại thao tác','Số lượng','Ngày thực tế','Kết quả','Nội dung','Người thực hiện','Thời gian'];
@@ -66,6 +67,7 @@ function flVerifyPartLedger_(events, suppliedParts) {
   expected.forEach(function(x){var p=x.part,matches=by[p.partUsageId]||[],r=matches[0];if(matches.length!==1||clean_(r['Mã công việc'])!==clean_(x.event.workOrderId||((parseJson_(x.event['Nội dung'])||{}).workOrderId))||clean_(r['Mã linh kiện (Part Number)'])!==p.partNumber||Number(r['Số lượng'])!==Number(p.quantity)||iso_(r['Ngày sử dụng'])!==p.usedAt)throw publicError_('Spare part lệch nguồn hoặc bị ghi trùng: '+p.partUsageId);});
 }
 function flFinishSync_(caseId){
+  if(typeof fwVerifyPending_==='function')fwVerifyPending_(caseId);
   var props=PropertiesService.getScriptProperties();
   var source=findTableRowsByField_(SHEETS.cases,'Mã hồ sơ',[caseId])[0],state=source&&flState_(source);
   if(!state||SungrowFanLotRules.totals(state).received!==Number(source['Số lượng']))throw publicError_('Nguồn lô không cân bằng. Chưa bỏ chặn đồng bộ.');

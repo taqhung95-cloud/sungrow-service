@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.4-stable-transport';
+const APP_VERSION = '1.11.5-shared-fan-forms';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -132,6 +132,7 @@ function getBootstrap(idToken, options) {
     supplementalAttachments: typeof commitCaseAttachments === 'function',
     fanLots: typeof flEnabled_ === 'function' && flEnabled_(),
     fanLotReader: typeof flPublic_ === 'function',
+    fanSharedForms: typeof fwSharedFormsReady_ === 'function' && fwSharedFormsReady_(),
     fanLotPartsWithTechnical: typeof flPartUsageRequests_ === 'function',
     uploadCategories: typeof uploadCategoriesEnabled_ === 'function' && uploadCategoriesEnabled_()
   };
@@ -735,6 +736,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   const table = readTableWithRows_(SHEETS.cases);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
+  if(typeof flIsLot_==='function'&&flIsLot_(record)&&typeof fwConfirmWarranty_==='function'&&payload.fanSelections)return fwConfirmWarranty_(actor,record,payload);
   assertCaseEditable_(actor, record);
   const note = clean_(payload.note);
   const currentStatus = clean_(record['Tình trạng bảo hành']);
@@ -822,7 +824,7 @@ function correctCase(idToken, payload) {
     const matches = table.rows.filter(function (c) { return clean_(c['Mã hồ sơ']) === caseId; });
     if (matches.length !== 1) throw publicError_('Không tìm thấy đúng một hồ sơ để sửa.');
     const record = matches[0];
-    if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(record);
+    if(typeof flIsLot_==='function'&&flIsLot_(record)){if(typeof fwUpdateWorkOrder_!=='function')flAssertOrdinary_(record);if(PropertiesService.getScriptProperties().getProperty('FAN_PENDING_'+caseId))throw publicError_('Đối soát đồng bộ trước khi sửa hồ sơ.');const protectedFields=['deviceType','serialNumber','quantity','receivedAt','readyAt','returnedAt'];if(protectedFields.some(function(k){return Object.prototype.hasOwnProperty.call(payload.changes||{},k);}))throw publicError_('S/N, số Fan và các mốc tiếp nhận/giao trả của lô phải giữ nguyên để đối soát.');}
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không sửa hồ sơ đã hủy.');
     const fields = {deviceType:'Loại thiết bị',serialNumber:'Số sê-ri (S/N)',model:'Model',quantity:'Số lượng',receivedAt:'Ngày nhận từ khách',readyAt:'Ngày sẵn sàng trả khách',returnedAt:'Ngày trả khách',sender:'Đơn vị gửi hàng',customerName:'Tên khách hàng',customerAddress:'Địa chỉ khách hàng',customerPhone:'Số điện thoại khách hàng',customerEmail:'Email khách hàng',note:'Ghi chú chung',evidenceLink:'Liên kết hồ sơ Drive'};
     const input = payload.changes || {}, changes = {}, dates = ['receivedAt','readyAt','returnedAt'];
@@ -880,13 +882,14 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   const record = table.rows.find(function (row) { return row['Mã công việc'] === workOrderId; });
   if (!record) throw publicError_('Không tìm thấy công việc.');
   assertCenterAllowed_(actor, record['Trung tâm xử lý']);
-  if (!actor.isGlobalManager && ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(record['Trạng thái xử lý']) !== -1) {
-    throw publicError_('Công việc đã kết thúc tại center này và không thể cập nhật thêm.');
-  }
 
   const caseTable = readTableWithRows_(SHEETS.cases);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của công việc.');
+  if(typeof flIsLot_==='function'&&flIsLot_(caseRecord)&&typeof fwUpdateWorkOrder_==='function')return fwUpdateWorkOrder_(actor,caseRecord,record,payload);
+  if (!actor.isGlobalManager && ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(record['Trạng thái xử lý']) !== -1) {
+    throw publicError_('Công việc đã kết thúc tại center này và không thể cập nhật thêm.');
+  }
   assertCaseEditable_(actor, caseRecord);
   if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(caseRecord);
   const ruleErrors=SungrowWorkOrderRules.validate(payload,{currentStatus:clean_(record['Trạng thái xử lý']),previousReplacementType:clean_(record['Loại thiết bị đổi']),receivedAt:iso_(record['Ngày trung tâm nhận hàng']),warrantyPending:clean_(caseRecord['Tình trạng bảo hành'])==='Chờ xác nhận',caseClosed:clean_(caseRecord['Trạng thái hồ sơ'])==='Đã hoàn tất',today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
@@ -1093,6 +1096,7 @@ function returnToCustomerUnlocked_(idToken, payload) {
   const table = readTableWithRows_(SHEETS.cases);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
+  if(typeof flIsLot_==='function'&&flIsLot_(record)&&typeof fwReturn_==='function')return fwReturn_(actor,record,payload);
   assertCaseEditable_(actor, record);
   if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(record);
   assertCenterAllowed_(actor, record['Trung tâm tiếp nhận khách']);
@@ -1677,7 +1681,7 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
     isClosed: isClosed, canEditCase: canEditCase, canSupplementAttachments: typeof saCanSupplement_==='function'&&saCanSupplement_(actor,item,workOrders), canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
     canDelete: canDeleteCase,
     canRequestWarranty: typeof requestWarrantyReview==='function'&&!canApproveWarranty_(actor)&&hasCapability_(actor,'viewCases')&&(typeof flWarrantyLabel_==='function'?flWarrantyLabel_(item):clean_(item['Tình trạng bảo hành']))==='Chờ xác nhận'&&clean_(item['Trạng thái hồ sơ'])!=='Đã hủy',
-    canCorrectCase: isManager && !(typeof flIsLot_==='function'&&flIsLot_(item)), correctionRevision: isManager ? getPortalDatabaseRevision_() : '',
+    canCorrectCase: isManager && (!(typeof flIsLot_==='function'&&flIsLot_(item))||typeof fwUpdateWorkOrder_==='function'), correctionRevision: isManager ? getPortalDatabaseRevision_() : '',
     readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
     workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
     canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
