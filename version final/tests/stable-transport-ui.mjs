@@ -2,10 +2,10 @@ import {fanDashboardFixture as dashboard} from './fan-lot-analytics.mjs';
 import fs from 'node:fs';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const docs=path.resolve(import.meta.dirname,'../../docs'),bridgeHtml=fs.readFileSync(new URL('../PortalBridge.html',import.meta.url),'utf8');
-const endpoint='https://script.google.com/macros/s/fixture/exec',calls=[];let legacyPosts=0;
+const endpoint='https://script.google.com/macros/s/fixture/exec',calls=[];let legacyPosts=0,setupRequests=0;
 const server=http.createServer((req,res)=>{
  const p=new URL(req.url,'http://local').pathname;
- if(p==='/config.js'){res.setHeader('Content-Type','text/javascript');res.end('window.SUNGROW_CONFIG='+JSON.stringify({appsScriptUrl:endpoint,googleClientId:'fixture'})+';');return;}
+ if(p==='/config.js'){res.setHeader('Content-Type','text/javascript');res.end('window.SUNGROW_CONFIG='+JSON.stringify({appsScriptUrl:endpoint,googleClientId:'fixture',appsScriptTransport:'bridge'})+';');return;}
  const file=path.join(docs,p==='/'?'index.html':p.slice(1));if(!file.startsWith(docs+path.sep)||!fs.existsSync(file)){res.writeHead(404).end();return;}
  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.jpg')?'image/jpeg':'text/html');res.end(fs.readFileSync(file));
 });await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let browser;
@@ -20,11 +20,12 @@ try{
   else if(payload.functionName==='uncertainSave')throw Error('Disconnected after dispatch');
   return JSON.stringify({ok:true,data});
  });
- await page.addInitScript(()=>{sessionStorage.setItem('sungrow_id_token','fixture');window.google={accounts:{id:{initialize(){},renderButton(){},disableAutoSelect(){}}}};});
+ await page.addInitScript(()=>{const originalTimeout=window.setTimeout;window.setTimeout=(fn,ms,...args)=>originalTimeout(fn,ms===12000?100:ms,...args);sessionStorage.setItem('sungrow_id_token','fixture');window.google={accounts:{id:{initialize(){},renderButton(){},disableAutoSelect(){}}}};});
  await page.route('**/*',async route=>{
   const req=route.request(),url=new URL(req.url());if(url.origin===base)return route.continue();
   if(url.hostname==='script.google.com'){
    if(req.method()==='POST'){legacyPosts++;return route.abort();}
+   setupRequests++;if(url.searchParams.get('bridge_attempt')==='1')return route.fulfill({contentType:'text/html',body:'<!doctype html><p>Stalled Google wrapper</p>'});
    const inner=new URL('https://n-fixture-script.googleusercontent.com/bridge');inner.search=url.search;
    return route.fulfill({contentType:'text/html',body:'<!doctype html><iframe src="'+inner.href.replaceAll('&','&amp;')+'"></iframe>'});
   }
@@ -36,7 +37,7 @@ try{
   return route.abort();
  });
  await page.goto(base,{waitUntil:'networkidle'});await page.waitForSelector('#sg-preview[data-live-data=true]');
- assert.equal(await page.locator('.sg-data-state').isVisible(),false);assert.ok(calls.includes('dashboard.read'));assert.equal(legacyPosts,0);
+ assert.equal(setupRequests,2);assert.equal((await page.evaluate(()=>SungrowTransport.info()))[0].attempts,2);assert.equal(await page.locator('.sg-data-state').isVisible(),false);assert.ok(calls.includes('dashboard.read'));assert.equal(legacyPosts,0);
  assert.equal(await page.locator('iframe[title="Kết nối dữ liệu Service Center"]').count(),1);
  await page.locator('[data-portal-view=receive]').first().evaluate(el=>el.click());await page.waitForFunction(()=>document.querySelector('.sg-portal-frame')?.contentDocument?.querySelector('#appView:not(.hidden)'));
  const shared=await page.evaluate(()=>document.querySelector('.sg-portal-frame').contentWindow.SungrowTransport===window.SungrowTransport);assert.equal(shared,true,'Entry uses the parent connection.');

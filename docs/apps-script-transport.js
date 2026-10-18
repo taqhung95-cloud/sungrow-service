@@ -23,28 +23,31 @@
   }
   function connection(url) {
     const previous=connections.get(url);
-    if(previous && !(previous.state==='unavailable' && Date.now()-previous.unavailableAt>=5000))return previous;
-    const c={state:'connecting',queue:[],pending:new Map(),active:0,frame:null,remote:null,origin:null,lastError:null,startedAt:Date.now()};
+    if(previous && previous.state!=='unavailable')return previous;
+    const c={state:'connecting',queue:[],pending:new Map(),active:0,frame:null,frames:[],attempts:0,remote:null,origin:null,lastError:null,startedAt:Date.now()};
     connections.set(url,c);
     const bytes=crypto.getRandomValues(new Uint8Array(24));
     c.channel=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
     let resolveReady,rejectReady;
     c.ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
     c.ready.catch(()=>{});
-    const frame=document.createElement('iframe');c.frame=frame;
-    frame.hidden=true;frame.title='Kết nối dữ liệu Service Center';frame.setAttribute('aria-hidden','true');
-    frame.referrerPolicy='origin';
-    const src=new URL(url);src.searchParams.set('portal_bridge','1');src.searchParams.set('bridge_origin',location.origin);src.searchParams.set('bridge_channel',c.channel);
-    frame.src=src.href;
+    function openFrame() {
+      const frame=document.createElement('iframe');c.frame=frame;c.frames.push(frame);c.attempts++;
+      frame.hidden=true;frame.title='Kết nối dữ liệu Service Center';frame.setAttribute('aria-hidden','true');frame.referrerPolicy='origin';
+      const src=new URL(url);src.searchParams.set('portal_bridge','1');src.searchParams.set('bridge_origin',location.origin);src.searchParams.set('bridge_channel',c.channel);src.searchParams.set('bridge_attempt',String(c.attempts));
+      frame.src=src.href;(document.body||document.documentElement).append(frame);
+    }
     function stop(reason) {
       if(c.state!=='connecting')return;
       c.state='unavailable';c.unavailableAt=Date.now();c.lastError=reason.code;clearTimeout(c.timer);
-      window.removeEventListener('message',onMessage);frame.remove();rejectReady(reason);
+      window.removeEventListener('message',onMessage);c.frames.forEach(f=>f.remove());rejectReady(reason);
     }
     function onMessage(e) {
       const m=e.data;
-      if(!m||m.channel!==c.channel||!googleOrigin(e.origin)||!descendant(e.source,frame))return;
+      if(!m||m.channel!==c.channel||!googleOrigin(e.origin))return;
+      const ownerFrame=c.frames.find(f=>descendant(e.source,f));if(!ownerFrame)return;
       if(m.type==='sungrow-bridge-ready'&&m.protocol===1&&c.state==='connecting') {
+        c.frames.filter(f=>f!==ownerFrame).forEach(f=>f.remove());c.frames=[ownerFrame];c.frame=ownerFrame;
         c.remote=e.source;c.origin=e.origin;c.state='ready';c.readyMs=Date.now()-c.startedAt;c.version=String(m.version||'');clearTimeout(c.timer);resolveReady(c);return;
       }
       if(m.type!=='sungrow-bridge-result'||e.source!==c.remote||e.origin!==c.origin)return;
@@ -54,8 +57,6 @@
       catch (_) {item.finish(error('Phản hồi kết nối không hợp lệ.','BRIDGE_RESPONSE'));}
     }
     window.addEventListener('message',onMessage);
-    c.timer=setTimeout(()=>stop(error('Chưa kết nối được Web App. Kiểm tra deployment Apps Script mới.','BRIDGE_UNAVAILABLE')),20000);
-    (document.body||document.documentElement).append(frame);
     c.pump=()=>{
       while(c.active<4&&c.queue.length) {
         const item=c.queue.shift();if(item.done)continue;
@@ -64,6 +65,14 @@
         c.remote.postMessage({type:'sungrow-bridge-request',channel:c.channel,id:item.id,payload:item.payload},c.origin);
       }
     };
+    openFrame();
+    c.timer=setTimeout(()=>{
+      if(c.state!=='connecting')return;
+      // Only bootstrap another HTML frame: no API or mutation has been sent.
+      // Keep the slow first frame alive so a late valid handshake can win.
+      openFrame();
+      c.timer=setTimeout(()=>stop(error('Kết nối tới hệ thống đang gián đoạn. Vui lòng thử đăng nhập lại.','BRIDGE_UNAVAILABLE')),20000);
+    },12000);
     return c;
   }
   function bridge(c,payload,signal) {
@@ -104,5 +113,9 @@
     }
     if(options.signal?.aborted)throw aborted();return bridge(c,payload,options.signal);
   }
-  window.SungrowTransport={fetch:fetchViaBridge,info:()=>Array.from(connections.values(),c=>({state:c.state,version:c.version||null,readyMs:c.readyMs??null,lastRpcMs:c.lastRpcMs??null,active:c.active,queued:c.queue.length,lastError:c.lastError}))};
+  window.SungrowTransport={fetch:fetchViaBridge,info:()=>Array.from(connections.values(),c=>({state:c.state,version:c.version||null,attempts:c.attempts,readyMs:c.readyMs??null,lastRpcMs:c.lastRpcMs??null,active:c.active,queued:c.queue.length,lastError:c.lastError}))};
+  function warmConnection() {
+    try {const url=new URL(window.SUNGROW_CONFIG?.appsScriptUrl||'',location.href);if(url.protocol==='https:'&&url.hostname==='script.google.com')connection(url.href).ready.catch(()=>{});}catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',warmConnection,{once:true});else warmConnection();
 })();

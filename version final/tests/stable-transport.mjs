@@ -45,20 +45,21 @@ bridgeListener({origin,source:owner,data:{...request,channel:'wrong'}});assert.e
 bridgeListener({origin,source:owner,data:request});bridgeListener({origin,source:owner,data:request});assert.equal(calls,1,'Duplicate active messages must not replay a save.');
 success('{"ok":true,"data":1}');assert.equal(messages.at(-1).message.json,'{"ok":true,"data":1}');
 
-function harness() {
-  const listeners=new Set(),timers=new Map(),sent=[];let timerId=0,frame,nativeCalls=0,now=0;
+function harness(config={}) {
+  const listeners=new Set(),timers=new Map(),sent=[],frames=[];let timerId=0,frame,activeSource,nativeCalls=0,now=0;
   class Clock extends Date {static now(){return now;}}
-  const win={location:{origin,href:origin+'/'},SUNGROW_CONFIG:{},fetch:async()=>{nativeCalls++;return new Response('{"ok":true,"data":"legacy"}')},addEventListener:(_,f)=>listeners.add(f),removeEventListener:(_,f)=>listeners.delete(f)};win.parent=win;
-  const document={body:{append:f=>{frame=f}},createElement:()=>({setAttribute(){},remove(){this.removed=true},contentWindow:{parent:win}})};
+  const win={location:{origin,href:origin+'/'},SUNGROW_CONFIG:config,fetch:async()=>{nativeCalls++;return new Response('{"ok":true,"data":"legacy"}')},addEventListener:(_,f)=>listeners.add(f),removeEventListener:(_,f)=>listeners.delete(f)};win.parent=win;
+  const document={body:{append:f=>{frame=f;frames.push(f)}},createElement:()=>({setAttribute(){},remove(){this.removed=true},contentWindow:{parent:win}})};
   const child={get parent(){return frame.contentWindow},postMessage:(message,target)=>sent.push({message,target})};
   const ctx={window:win,parent:win,location:win.location,document,crypto:webcrypto,URL,Response,AbortController,Error,Uint8Array,Map,JSON,Promise,Date:Clock,setTimeout:(f,ms)=>{const id=++timerId;timers.set(id,{f,ms});return id},clearTimeout:id=>timers.delete(id)};
   vm.runInNewContext(client,ctx);
   const emit=(data,source=child,eventOrigin=google)=>listeners.forEach(fn=>fn({data,source,origin:eventOrigin}));
-  const ready=()=>emit({type:'sungrow-bridge-ready',protocol:1,channel:new URL(frame.src).searchParams.get('bridge_channel'),version:'fixture'});
-  const reply=(index,data={ok:true,data:'bridge'})=>{const m=sent[index].message;emit({type:'sungrow-bridge-result',channel:m.channel,id:m.id,json:JSON.stringify(data)});};
-  return {transport:win.SungrowTransport,win,ready,emit,reply,sent,timers,advance:ms=>{now+=ms},get frame(){return frame},get nativeCalls(){return nativeCalls}};
+  const ready=(target=frame)=>{activeSource=target===frame?child:{parent:target.contentWindow,postMessage:child.postMessage};emit({type:'sungrow-bridge-ready',protocol:1,channel:new URL(target.src).searchParams.get('bridge_channel'),version:'fixture'},activeSource);};
+  const reply=(index,data={ok:true,data:'bridge'})=>{const m=sent[index].message;emit({type:'sungrow-bridge-result',channel:m.channel,id:m.id,json:JSON.stringify(data)},activeSource);};
+  return {transport:win.SungrowTransport,win,ready,emit,reply,sent,timers,frames,advance:ms=>{now+=ms},get frame(){return frame},get nativeCalls(){return nativeCalls}};
 }
 const url='https://script.google.com/macros/s/deployment/exec';
+const warmed=harness({appsScriptUrl:url,appsScriptTransport:'bridge'});assert.equal(warmed.frames.length,1,'Prewarm starts before login without an API payload.');assert.equal(warmed.sent.length,0);warmed.ready();assert.equal(warmed.transport.info()[0].state,'ready');
 const opts=(name='getBootstrap',signal)=>({method:'POST',body:new URLSearchParams({payload:JSON.stringify({action:'portal.call',functionName:name,args:['secret-fixture']})}),signal});
 const h=harness(),initial=h.transport.fetch(url,opts());
 assert.ok(!h.frame.src.includes('secret-fixture'),'Credentials must not enter iframe/query/referrer URLs.');
@@ -67,8 +68,11 @@ await tick();assert.equal(h.sent.length,0);h.ready();await tick();assert.equal(h
 const requests=Array.from({length:6},()=>h.transport.fetch(url,opts()));await tick();assert.equal(h.sent.length,5,'At most four calls are in flight.');h.reply(1);await tick();assert.equal(h.sent.length,6);h.reply(2);await tick();assert.equal(h.sent.length,7);for(let i=3;i<7;i++)h.reply(i);await Promise.all(requests);
 const controller=new AbortController(),cancelled=h.transport.fetch(url,opts('listCases',controller.signal));const rejected=assert.rejects(cancelled,{name:'AbortError'});await tick();const cancelledIndex=h.sent.length-1;controller.abort();await rejected;assert.equal(h.transport.info()[0].active,1,'Cancelled server work retains its concurrency slot until it finishes.');h.reply(cancelledIndex);assert.equal(h.transport.info()[0].active,0);
 const mutation=h.transport.fetch(url,opts('createCase'));await tick();const index=h.sent.length-1;h.reply(index,{ok:false,error:{code:'BRIDGE_SERVER_ERROR',message:'Uncertain'}});assert.equal((await (await mutation).json()).ok,false);assert.equal(h.nativeCalls,0,'Never replay an uncertain save through the old transport.');
-const old=harness(),legacy=old.transport.fetch(url,opts('createCase'));[...old.timers.values()].find(t=>t.ms===20000).f();assert.equal((await (await legacy).json()).data,'legacy');assert.equal(old.nativeCalls,1,'Pre-dispatch fallback sends an operation once.');
-const strict=harness();strict.win.SUNGROW_CONFIG.appsScriptTransport='bridge';const strictPending=strict.transport.fetch(url,opts());const strictError=assert.rejects(strictPending,{code:'BRIDGE_UNAVAILABLE'});[...strict.timers.values()].find(t=>t.ms===20000).f();await strictError;assert.equal(strict.nativeCalls,0,'Strict bridge mode never falls back to ContentService.');
-strict.advance(5001);const recovered=strict.transport.fetch(url,opts());strict.ready();await tick();strict.reply(0);assert.equal((await (await recovered).json()).data,'bridge','A failed handshake can reconnect after the cooldown without a page reload.');
+function expireSetup(h){[...h.timers.values()].find(t=>t.ms===12000).f();[...h.timers.values()].find(t=>t.ms===20000).f();}
+const slow=harness(),slowRequest=slow.transport.fetch(url,opts());const first=slow.frame;[...slow.timers.values()].find(t=>t.ms===12000).f();assert.equal(slow.frames.length,2);assert.equal(slow.sent.length,0,'Bootstrap retry cannot dispatch API calls.');slow.ready(first);await tick();assert.equal(slow.frames[1].removed,true);assert.equal(slow.sent.length,1,'Late first handshake wins without replay.');slow.reply(0);await slowRequest;
+const retry=harness(),retryRequest=retry.transport.fetch(url,opts());[...retry.timers.values()].find(t=>t.ms===12000).f();retry.ready();await tick();assert.equal(retry.frames[0].removed,true);assert.equal(retry.transport.info()[0].attempts,2);retry.reply(0);await retryRequest;
+const old=harness(),legacy=old.transport.fetch(url,opts('createCase'));expireSetup(old);assert.equal((await (await legacy).json()).data,'legacy');assert.equal(old.nativeCalls,1,'Pre-dispatch fallback sends an operation once.');
+const strict=harness();strict.win.SUNGROW_CONFIG.appsScriptTransport='bridge';const strictPending=strict.transport.fetch(url,opts());const strictError=assert.rejects(strictPending,{code:'BRIDGE_UNAVAILABLE'});expireSetup(strict);await strictError;assert.equal(strict.nativeCalls,0,'Strict bridge mode never falls back to ContentService.');
+assert.equal(strict.frames.length,2);assert.ok(strict.frames.every(f=>f.removed));const recovered=strict.transport.fetch(url,opts());strict.ready();await tick();strict.reply(0);assert.equal((await (await recovered).json()).data,'bridge','A failed handshake reconnects immediately on the next request without a page reload.');
 const stopped=harness(),abort=new AbortController(),pending=stopped.transport.fetch(url,opts('createCase',abort.signal));const noSend=assert.rejects(pending,{name:'AbortError'});abort.abort();stopped.ready();await noSend;assert.equal(stopped.sent.length,0);assert.equal(stopped.nativeCalls,0);
 console.log('Stable transport passed: real dispatcher/auth whitelist, JSON dates, trusted origins/ancestors/channels, nested Google wrapper, single connection, four concurrent calls, cancellation, no replay of uncertain saves and pre-dispatch legacy fallback.');

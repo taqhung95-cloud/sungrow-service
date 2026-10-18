@@ -145,7 +145,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=118#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=119#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -231,7 +231,7 @@
       } catch (error) {
         if (signal?.aborted) throw error;
         lastError = error;
-        if (/AUTH|TOKEN|FORBIDDEN|INVALID|ACTION_NOT_ALLOWED|UNAUTHORIZED|READ_TIMEOUT/.test(String(error.code || ''))) throw error;
+        if (/AUTH|TOKEN|FORBIDDEN|INVALID|ACTION_NOT_ALLOWED|UNAUTHORIZED|READ_TIMEOUT|BRIDGE_UNAVAILABLE/.test(String(error.code || ''))) throw error;
         if (attempt < attempts - 1) await delay([700,1800,3500][attempt] || 3500);
       } finally {
         clearTimeout(timeout);

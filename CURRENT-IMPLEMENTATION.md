@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Khôi phục khởi tạo bridge — 18/10/2026, liveJS138 / entry119 / transport2
+
+Tái hiện trên production: cùng deployment hợp lệ có lần handshake quá20s dù wrapper Google trả200; lần tiếp theo ready3338ms và RPC1838ms. Client cũ hủy frame sau20s và cache lỗi5s, khiến các retry700/1800ms tiếp tục dùng lỗi cũ. Nay prewarm không credentials khi trang sẵn sàng; sau12s chưa ready mở thêm đúng một frame dự phòng và giữ frame đầu. Ready hợp lệ đầu tiên thắng, xóa frame còn lại, rồi mới gửi API. Tổng hạn32s; lần đăng nhập tiếp theo tạo kết nối mới ngay khi cả hai thất bại. Chỉ initializer quản lý retry; BRIDGE_UNAVAILABLE không bị dashboard retry thêm. Production vẫn bridge bắt buộc, không REST fallback, không replay save; không sửa backend/dữ liệu/KPI và không cần deploy Apps Script. info thêm attempts. Probe client mới trên tên miền thật: attempts2, ready14221ms, RPC1267ms, phản hồi từ dispatcher bằng phiên giả; không dùng credential thật hoặc ghi dữ liệu. Node kiểm tra cả frame đầu đến muộn, frame dự phòng thắng, hết hạn hai frame, reconnect ngay, auth/origin/concurrency/no-replay; browser fixture cho frame đầu treo và xác nhận dashboard/entry hoạt động qua frame thứ hai.
+
 ## Đồng hồ đồng bộ và danh sách đang xem — 17/10/2026, liveJS137
 
 Ảnh người dùng cho thấy Đã đồng bộ21:20 trong khi đồng hồ21:31. Header trước đây lấy sourceUpdatedAt trong response cache; không phải thời gian browser vừa kiểm tra. loadLive còn báo xanh trước khi tải xong tickets.page. Sửa markDashboardSynced dùng thời gian hoàn tất nhận dữ liệu/kiểm tra revision thành công; không chạy đồng hồ giả theo từng giây. Chờ danh sách đang xem hoàn tất và giữ trang hiện tại; lỗi danh sách không xác nhận đồng bộ. Revision so với live.source.revision, chỉ acknowledge sau tải thành công để lỗi tải không làm bỏ lỡ revision. Poll không đổi phiên bản chỉ kiểm tra nhẹ và cập nhật mốc kiểm tra; không che lỗi danh sách đang hiện. Giữ polling60–75s và làm mới5phút khi tab hiển thị, không phải push realtime. Không đổi backend/cache/quy tắc dữ liệu. Apps Script vẫn1.11.4 và bridge bắt buộc, không cần deploy lại. Node regression tái hiện cache21:20 nhận21:31, chờ list/fail/preserve page/retry revision; CI chạy cùng validator.
@@ -10,7 +14,7 @@
 
 Người dùng xác nhận transport ready/version1.11.4, readyMs11062/lastRpcMs3408. Probe từ trình duyệt sạch trên tên miền production bằng phiên giả: 3 roundtrip tới dispatcher trả đúng lỗi phiên không hợp lệ (không dùng tài khoản hoặc ghi dữ liệu); tổng9563ms gồm handshake7780ms, sau đó1835ms/1779ms. Không có ContentService POST từ ứng dụng, không có CORS; active0/queued0/lastErrornull. Đây là bằng chứng transport/auth boundary hoạt động, không phải benchmark dashboard có đăng nhập.
 
-config.js đặt appsScriptTransport: bridge; index/entry nạp config?v=2. Handshake lỗi sẽ báo lỗi có giới hạn thời gian và có thể kết nối lại sau cooldown5s; không quay lại fetch ContentService. Node regression bắt buộc production config dùng bridge và kiểm tra strict mode không fallback. Giữ backend1.11.4, không deploy Apps Script lần nữa, không sửa dữ liệu. Phần yêu cầu deploy/xác minh của mục trước đã hoàn tất.
+config.js đặt appsScriptTransport: bridge; index/entry nạp config?v=2. Handshake lỗi sẽ báo lỗi có giới hạn thời gian và có thể kết nối lại ngay ở lần thử tiếp theo (cơ chế18/10 thay cooldown5s); không quay lại fetch ContentService. Node regression bắt buộc production config dùng bridge và kiểm tra strict mode không fallback. Giữ backend1.11.4, không deploy Apps Script lần nữa, không sửa dữ liệu. Phần yêu cầu deploy/xác minh của mục trước đã hoàn tất.
 
 ## Kết nối ổn định qua HTMLService — 17/10/2026, 1.11.4-stable-transport
 
