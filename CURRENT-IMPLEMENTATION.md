@@ -2,6 +2,8 @@
 
 ## Tỷ trọng model Fan theo số Fan — 18/10/2026, backend1.11.7 / liveJS145 / entry126
 
+Bổ sung regression nhánh Fan → Tất cả thiết bị: fixture9Fan+3Inverter=12 số lượng, Fan75%, KPI5Thiết bị/Hồ sơ giữ. Không có nhóm Fan theo lô hoặc đơn vị Thiết bị/Hồ sơ trong biểu đồ mới. Website kiểm tra trảliveJS145; ảnh cũ có16/Thiết bị-Hồ sơ/Fan theo lô cần tải lại frontend, backend cũ hiện thông báo cập nhật ngay tại card. Không đổi code runtime hoặc yêu cầu thêm file Apps Script trong lượt kiểm tra này.
+
 Thay kết luận cũ dùng6hồ sơ Fan làm tổng biểu đồ model. KPI phía trên tiếp tục Thiết bị/Hồ sơ, Fan thường1/lô1. Riêng modelTypes của Tỷ trọng model cộng số Fan vật lý thực nhận theo Model/Mã Fan và kỳ/center/quyền: Fan thường lấy Số lượng nguồn, lô lấy snapshot totals.received. Nhãn Fan | mã model; trống/Fan → Fan | Chưa xác định model. Không suy mã từ inverter hoặc part tiêu hao, không gán ES000173 từ ví dụ. Trường Model cũ lưu model inverter cần quản lý sửa đúng, không auto rewrite. Dropdown tổng và tỷ trọng cùng số lượng vật lý, Fan dùng đơn vị Fan; all dùng Số lượng. Mẫu số giữ cả thiếu model. Models/modelDeviceStats của phân tích duy nhất khác không đổi; KPI/parts/report không đổi. Không thêm nguồn/schema/Sheet scan; modelQuantity là thuộc tính reader.
 
 API marker modelDistributionUnit physical-items tách response mới khỏi backend cũ, card yêu cầu deploy khi backend cũ, tránh gắn nhãn sốquạt cho sốhồsơ. Entry Fan thường/lô cùng nhãn Model/Mã Fan. Test9FanES000173 từ2hồsơ,75%trong12Fan, KPI3Fan-case+2Inverter=5, canceled/date/center/role/parts/warmreads giữ; UI donutFan9 từ thường5+lô4. Apps Script thay Code/Legacy, Save/New version cùngURL, theo DEPLOY-1.11.7-FAN-MODEL-QUANTITY.md. Không sửa dữ liệu production.
