@@ -1,6 +1,6 @@
 # Sungrow Service Center - Current Implementation Handbook
 
-## Fan compact tables và danh mục nhập liệu — 18/10/2026, backend1.11.6 / liveJS143 / entry124
+## Fan compact tables và danh mục nhập liệu — 18/10/2026, backend1.11.6 / liveJS144 / entry125
 
 Fan summary/work/warranty/return dùng bảng có cùng cột S/N, số quạt lỗi, bảo hành, trạng thái, đã trả/còn lại; scope thêm Chọn52px và Số Fan xử lý/Hoàn tất thêm/Giao lần này. Canh giữa header/cell, row36–43px, sticky header, vùng scroll210–240px; reset width/ẩn cột/mobile rules của case-table thường để không ảnh hưởng bảng Fan. Bỏ help riêng parts; giữ immutable/link receipt. Intake auto count/total tô xám cả khi glass theme bật, không nhập tay; Chưa thêm inverter thay0S/N, hướng dẫn Excel2–3cột và bỏ header, giảm khoảng trống. Chuyển center vẫn whole-case và chỉ Fan còn trong hồ sơ. Desktop hover menus auto-close, keyboard/click/mobile giữ, loading trắng phủ panel, report sync ở phải.
 

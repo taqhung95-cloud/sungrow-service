@@ -31,6 +31,7 @@ window.SungrowFanLots=(()=>{
     if(line.returned===line.quantity)return 'Đã trả hết';
     if(line.completed===line.quantity)return 'Hoàn tất kỹ thuật';
     const state=item.fanLot.state,works=item.workOrders||[],work=works[works.length-1]||{};
+    if(line.completed>0&&(!line.workflowStatus||line.workflowStatus==='Hoàn tất kỹ thuật'))return 'Hoàn tất '+line.completed+'/'+line.quantity+' Fan';
     if(state.workflowWorkId===work.workOrderId)return line.workflowStatus||state.workflowDefault||work.workflowStatus||item.caseStatus||'Mới tiếp nhận';
     return (line.completed?'Hoàn tất '+line.completed+'/'+line.quantity:work.workflowStatus==='Hoàn tất kỹ thuật'?'Đang sửa chữa':work.workflowStatus)||item.caseStatus||'Mới tiếp nhận';
   }

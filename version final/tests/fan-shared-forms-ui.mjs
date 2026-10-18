@@ -22,6 +22,7 @@ try{
  await page.selectOption('#sg-center','DAT Center');await page.waitForTimeout(200);assert.ok(calls.some(c=>c.action==='dashboard.read'&&c.request.center==='DAT Center'),'The real dashboard center filter must reach the scoped API.');
  await page.locator('[data-portal-view=update]').first().evaluate(el=>el.click());await page.waitForFunction(()=>document.querySelector('.sg-portal-frame')?.contentDocument?.querySelector('#appView:not(.hidden)'));const app=page.frames().find(f=>f.url().includes('entry.html'));
  const show=async value=>{await app.evaluate(value=>{showView('update');document.getElementById('updateResults').innerHTML=renderCase(value,'update',1);},value);};
+ assert.equal(await app.evaluate(item=>SungrowFanLots.lineStatus(item,{quantity:3,completed:1,returned:0,workflowStatus:'Hoàn tất kỹ thuật'}),item),'Hoàn tất 1/3 Fan','Partial completion must not be labeled as fully completed.');
  const open=async()=>{await show(item);await app.getByRole('button',{name:'Cập nhật công việc',exact:true}).click();};
  await open();const form=app.locator('.case-form-panel form.work-edit');await form.waitFor();assert.equal(await app.locator('.fl-native-work').count(),0,'No separate Fan update screen.');assert.equal(await form.locator('button[type=submit]').count(),1);assert.equal(await form.locator('.row-list.parts').count(),1);assert.equal(await form.locator('.row-list.issues').count(),1);assert.equal(await form.locator('.row-list.holds').count(),1);
  await app.waitForFunction(()=>document.querySelector('#entry-part-options option[value="KNOWN-PN"]'));
