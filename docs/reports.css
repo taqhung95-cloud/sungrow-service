@@ -34,3 +34,5 @@
 @keyframes sg-report-spin{to{transform:rotate(360deg)}}
 @media(max-width:760px){#sg-preview .sg-reports-view{padding:12px}#sg-preview .sg-report-pane{padding:14px}#sg-preview .sg-report-grid,#sg-preview .sg-report-checks,#sg-preview .sg-report-templates{grid-template-columns:1fr}#sg-preview .sg-report-wide{grid-column:auto}#sg-preview .sg-report-grid input,#sg-preview .sg-report-grid select{font-size:16px;height:44px}#sg-preview .sg-report-checks label{min-height:38px}}
 @media(prefers-reduced-motion:reduce){#sg-preview .sg-report-status[data-busy=true]::before{animation:none}}
+
+@media(min-width:761px){#sg-preview .sg-main.sg-reports-mode>.sg-top{display:flex!important;align-items:center;justify-content:space-between!important}#sg-preview .sg-main.sg-reports-mode>.sg-top>.sg-live-box{margin-left:auto!important;flex:0 0 auto}}

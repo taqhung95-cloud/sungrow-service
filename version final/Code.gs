@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.5-shared-fan-forms';
+const APP_VERSION = '1.11.6-fan-ui-catalog';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -123,6 +123,7 @@ function getBootstrap(idToken, options) {
     allCenters: CENTERS.slice(),
     deviceTypes: readDeviceTypes_(!!(options && options.refreshCatalog)),
     version: APP_VERSION,
+    entrySuggestions: typeof getEntrySuggestions === 'function',
     notifications: typeof listNotifications === 'function',
     portalSessions: typeof createPortalSession === 'function',
     dashboardRanges: true,
@@ -146,6 +147,7 @@ function handlePortalApi_(request) {
     getReportBootstrap: function(){if(typeof getReportBootstrap!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return getReportBootstrap.apply(null,arguments);},
     readReportPage: function(){if(typeof readReportPage!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return readReportPage.apply(null,arguments);},
     getBootstrap: getBootstrap,
+    getEntrySuggestions: function(){if(typeof getEntrySuggestions!=='function')throw publicError_('Cần cập nhật EntrySuggestions.gs.');return getEntrySuggestions.apply(null,arguments);},
     createPortalSession: function(){if(typeof createPortalSession!=='function')throw publicError_('Chưa cài đặt phiên đăng nhập 8 giờ.');return createPortalSession.apply(null,arguments);},
     revokePortalSession: function(){if(typeof revokePortalSession!=='function')throw publicError_('Chưa cài đặt phiên đăng nhập 8 giờ.');return revokePortalSession.apply(null,arguments);},
     getPortalSyncState: getPortalSyncState,

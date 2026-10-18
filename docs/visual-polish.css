@@ -1323,3 +1323,8 @@
 @media(min-width:761px){
  #sg-preview #sg-tickets .sg-toolbar .sg-control{height:42px!important;min-height:42px!important;padding-top:8px!important;padding-bottom:8px!important;line-height:22px!important}
 }
+
+/* Loading covers the entire list panel while retaining its layout. */
+#sg-preview #sg-tickets .sg-panel.sg-is-loading{position:relative;isolation:isolate}
+#sg-preview #sg-tickets .sg-is-loading .sg-ticket-loading{position:absolute;inset:0;z-index:5;min-height:0;border-radius:inherit;background:#fff}
+#sg-preview #sg-tickets .sg-is-loading .sg-ticket-footer{visibility:hidden}

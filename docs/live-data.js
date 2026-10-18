@@ -145,7 +145,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=123#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=124#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -546,6 +546,7 @@
     syncTicketStatusOptions(ticketSearchState.statuses.length ? ticketSearchState.statuses : (live.tickets || []));
     q('#sg-ticket-page-size').value = String(ticketSearchState.pageSize || 20);
     q('#sg-tickets-table').setAttribute('aria-busy',ticketSearchState.loading?'true':'false');
+    q('#sg-tickets .sg-panel').classList.toggle('sg-is-loading',ticketSearchState.loading);
     q('#sg-tickets-table').innerHTML = ticketSearchState.loading ? ticketLoading() : ticketTable(rows);
     if (ticketSearchState.loading) q('#sg-result-count').textContent = 'Đang tải danh sách thiết bị…';
     else if (ticketSearchState.error) q('#sg-result-count').textContent = ticketSearchState.error;
@@ -689,6 +690,7 @@
       const option = document.createElement('option');
       option.value = group.name;
       option.textContent = group.name + ' (' + group.count + ')';
+      if(group.name==='Fan')option.title='Fan nhập thường: 1 thiết bị; mỗi lô Fan: 1 hồ sơ. Không đếm số quạt vật lý.';
       select.appendChild(option);
     });
     select.value = groups.some(function(group){ return group.name === current; }) ? current : 'all';
@@ -701,12 +703,13 @@
     const selectedGroup = groups.find(function(group){ return group.name === selectedType; });
     const rows = selectedType === 'all' ? live.models : (selectedGroup ? selectedGroup.models : []);
     const total = rows.reduce((n,x) => n+x.count, 0);
+    q('#sg-model-type').title=selectedType==='Fan'?'Fan nhập thường: 1 thiết bị; mỗi lô Fan: 1 hồ sơ. Số quạt xem trong chi tiết hồ sơ.':'Phân bổ Thiết bị/Hồ sơ tiếp nhận theo loại thiết bị trong kỳ.';
     const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',') || '#e8ecef 0 100%';
     const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="false"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('') || '<div class="sg-caption sg-model-empty">Không có dữ liệu model cho loại thiết bị đã chọn.</div>';
     q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>Thiết bị/Hồ sơ</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
-    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' thiết bị tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
+    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' Thiết bị/Hồ sơ tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
     if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' thiết bị trong kỳ đang chọn.</div>';
     else q('#sg-model-insight').innerHTML = '<div class="sg-caption">Chưa có model trong nhóm đã chọn.</div>';
   }

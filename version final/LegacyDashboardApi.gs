@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.5-shared-fan-forms';
+const LEGACY_API_VERSION = '1.11.6-fan-ui-catalog';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -692,7 +692,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const slaEligible = sumDevices_(returned);
   const slaMet = sumDevices_(returned.filter(function (r) { return ageDays_(r.receivedDate, r.returnDate) <= SLA_DAYS; }));
   const slaBreachedOpen = sumDevices_(openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }));
-  const models = groupCount_(periodRows, function (r) { return r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định'); });
+  const models = groupCount_(periodRows, function (r) { return r.model || (r.fanLot ? 'Fan theo lô' : r.deviceType ? r.deviceType + ' | chưa có model' : 'Chưa xác định'); });
   const modelDeviceStats = groupModelDeviceStats_(periodRows);
   const modelCatalog = Object.keys(records.reduce(function (catalog, r) {
     const model = clean_(r.model);
@@ -938,7 +938,7 @@ function serialSha256Key_(value) {
 function groupModelDeviceStats_(rows) {
   const groups = {};
   rows.forEach(function (r) {
-    const name = r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định');
+    const name = r.model || (r.fanLot ? 'Fan theo lô' : r.deviceType ? r.deviceType + ' | chưa có model' : 'Chưa xác định');
     const key = normalizeDeviceKey_(name);
     if (!groups[key]) groups[key] = { name: name, key: key, rowCount: 0, missingSerialRows: 0, serialKeys: {} };
     const group = groups[key];
@@ -962,7 +962,7 @@ function groupModelTypes_(rows) {
   const groups = {};
   rows.forEach(function (r) {
     const type = r.deviceType || 'Chưa xác định';
-    const model = r.model || (r.deviceType ? r.deviceType + ' · chưa có model' : 'Chưa xác định');
+    const model = r.model || (r.fanLot ? 'Fan theo lô' : r.deviceType ? r.deviceType + ' | chưa có model' : 'Chưa xác định');
     if (!groups[type]) groups[type] = { count: 0, models: {} };
     groups[type].count += deviceQuantity_(r);
     groups[type].models[model] = (groups[type].models[model] || 0) + deviceQuantity_(r);
@@ -982,8 +982,8 @@ function groupConfirmedIssueCategories_(rows) {
   const counts = {};
   const labels = {};
   rows.forEach(function (record) {
-    if(record.fanLot){const categories={};(record.fanIssues||[]).forEach(function(i){if(!i.name||!i.lineId||!Number.isSafeInteger(i.quantity)||i.quantity<1)return;const category=/\bfan\b|quạt/i.test(i.name)?'Lỗi quạt':i.name,key=category.toLocaleLowerCase('vi'),line=record.fanLot.lines.find(function(l){return l.lineId===i.lineId;});if(!line)return;if(!categories[key])categories[key]={label:category,lines:{}};categories[key].lines[i.lineId]=Math.min(line.quantity,(categories[key].lines[i.lineId]||0)+i.quantity);});Object.keys(categories).forEach(function(k){counts[k]=(counts[k]||0)+Object.keys(categories[k].lines).reduce(function(n,id){return n+categories[k].lines[id];},0);labels[k]=categories[k].label;});return;}
-    const issues = (record.issues || []).map(function (name) { return clean_(name).replace(/\s+/g, ' '); }).filter(Boolean);
+    if(record.fanLot){const categories={};(record.fanIssues||[]).forEach(function(i){if(!i.name||!i.lineId||!Number.isSafeInteger(i.quantity)||i.quantity<1)return;const issueName=typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(i.name):clean_(i.name),category=/\bfan\b|quạt/i.test(issueName)?'Lỗi quạt':issueName,key=category.toLocaleLowerCase('vi'),line=record.fanLot.lines.find(function(l){return l.lineId===i.lineId;});if(!line)return;if(!categories[key])categories[key]={label:category,lines:{}};categories[key].lines[i.lineId]=Math.min(line.quantity,(categories[key].lines[i.lineId]||0)+i.quantity);});Object.keys(categories).forEach(function(k){counts[k]=(counts[k]||0)+Object.keys(categories[k].lines).reduce(function(n,id){return n+categories[k].lines[id];},0);labels[k]=categories[k].label;});return;}
+    const issues = (record.issues || []).map(function (name) { return typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(name):clean_(name).replace(/\s+/g, ' '); }).filter(Boolean);
     const hasFanIssue = issues.some(function (name) { return /\bfan\b|quạt/i.test(name); });
     const categoriesForDevice = {};
     issues.forEach(function (name) {
