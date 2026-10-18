@@ -1,6 +1,6 @@
 # Tab toàn website và tra bảo hành Fan — 1.11.8
 
-Frontend: liveJS146 / entry127. Backend: 1.11.8-workspace-fan-warranty.
+Frontend: liveJS147 / entry128. Backend: 1.11.8-workspace-fan-warranty.
 
 ## Phần website
 

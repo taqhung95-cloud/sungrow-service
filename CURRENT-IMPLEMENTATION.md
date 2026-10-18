@@ -1,6 +1,6 @@
 # Sungrow Service Center - Current Implementation Handbook
 
-## Tab toàn website và bảo hành Fan — 18/10/2026, backend1.11.8 / liveJS146 / entry127
+## Tab toàn website và bảo hành Fan — 18/10/2026, backend1.11.8 / liveJS147 / entry128
 
 Tab34px, chữ12px, menu12px/28px, SVG đồng bộ; bỏ footer, không cắt panel. Không giới hạn số tab logic. Dashboard/report/entry/case mọi loại thiết bị dùng chung router; case ID dedup, lịch sửyear-row có tab chỉ đọc từ ticket snapshot. Một iframe nhập liệu, không bootstrap/heartbeat mỗi tab; giữ DOM/form/file nháp, xác nhận đóng chưa lưu; ngữ cảnh sạch giới hạn4 trong bộ nhớ nhưng tab vẫn mở; ngữ cảnh dirty không bị loại. Read chi tiết khi rời bị abort, mutation không replay. Poll nhập liệu tắt khi iframe ẩn, report không chạy dashboard heartbeat. Tab chưa lưu đồng bộ thủ công báo đang sửa, không ghi đè. Đăng xuất clear tab/frame.
 
