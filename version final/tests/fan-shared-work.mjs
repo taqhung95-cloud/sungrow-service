@@ -20,6 +20,7 @@ try{
  let n=0;const found=()=>ctx.findTableRowsByField_('cases','Mã hồ sơ',['UNIFIED'])[0],snapshot=()=>R.parse(found()['Chi tiết lô Fan']);
  const request=(extra={})=>({workOrderId:'W-UNIFIED',fanFingerprint:ctx.digest_(R.pack(snapshot())),fanSelections:[{lineId:'F1',quantity:2},{lineId:'F2',quantity:1}],requestId:'shared-'+String(++n).padStart(20,'0'),gsp:'GSP-ONE',ma:'MA-ONE',workflowStatus:'Đang sửa chữa',diagnosisCompletedAt:'2026-10-16',technicalCompletedAt:'',outcome:'',replacementType:'',note:'Work note',parts:[],issues:[],holds:[],...extra});
  const unchanged=()=>JSON.stringify(data),deny=(p,re)=>{const before=unchanged();assert.throws(()=>ctx.updateWorkOrder('manager',p),re);assert.equal(unchanged(),before,'Invalid common-form update must write nothing.');};
+ ctx.FL_SHARED_RECEIPT_GUARD_=false;deny(request(),/cập nhật đủ/);ctx.FL_SHARED_RECEIPT_GUARD_=true;
  deny(request({parts:[{partNumber:'SHARED-PN',name:'Fan',quantity:3,usedAt:'2026-10-16'}]}),/bảo hành/);
  const warranty={caseId:'UNIFIED',fanFingerprint:ctx.digest_(R.pack(snapshot())),fanSelections:[{lineId:'F1'},{lineId:'F2'}],requestId:'warranty-request-0000001',warrantyStatus:'Trong bảo hành',note:''};
  ctx.confirmWarrantyUnlocked_('manager',warranty);ctx.confirmWarrantyUnlocked_('manager',warranty);assert.equal(snapshot().lines[2].warrantyStatus,undefined,'Unselected inverter warranty must stay unchanged.');

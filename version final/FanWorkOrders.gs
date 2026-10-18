@@ -2,7 +2,7 @@
  * Same source tables/readers, one atomic batch, CAS + durable retry receipt.
  * Call only from the existing serialized and authenticated entry points.
  */
-function fwSharedFormsReady_(){return typeof LEGACY_DASHBOARD_API!=='undefined'&&LEGACY_DASHBOARD_API.fanSharedFormsReady===true&&typeof FL_SHARED_RECEIPT_GUARD_!=='undefined'&&FL_SHARED_RECEIPT_GUARD_===true&&SungrowWorkOrderRules.replacements.indexOf('Fan')>=0;}
+function fwSharedFormsReady_(){return typeof LEGACY_DASHBOARD_API!=='undefined'&&LEGACY_DASHBOARD_API.fanSharedFormsReady===true&&typeof FL_SHARED_RECEIPT_GUARD_!=='undefined'&&FL_SHARED_RECEIPT_GUARD_===true&&typeof SungrowWorkOrderRules!=='undefined'&&Array.isArray(SungrowWorkOrderRules.replacements)&&SungrowWorkOrderRules.replacements.indexOf('Fan')>=0;}
 function fwBegin_(actor,row,payload,kind){
   if(!fwSharedFormsReady_())throw publicError_('Chưa cập nhật đủ các file biểu mẫu Fan. Không ghi dữ liệu.');
   flAssertEnabled_();
