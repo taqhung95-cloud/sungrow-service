@@ -214,7 +214,7 @@
         const adopted=window.SungrowSessionClient?await window.SungrowSessionClient.adopt(credential,data,(name,args)=>call(name,args)):credential;
         if(generation!==state.authSequence)return;
         state.token=adopted;sessionStorage.setItem('sungrow_id_token',state.token);
-        applyDeviceTypes(data);state.entrySuggestions=data.entrySuggestions===true;
+        applyDeviceTypes(data);state.entrySuggestions=data.entrySuggestions===true;state.warrantyBatchLookup=data.warrantyBatchLookup===true;
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.fanSharedForms=data.fanSharedForms===true;state.fanLots=!!data.fanLots;state.fanLotReader=!!data.fanLotReader;state.fanLotPartsWithTechnical=!!data.fanLotPartsWithTechnical;window.SungrowFanLots?.configure();state.uploadCategories=!!data.uploadCategories;state.supplementalAttachments=!!data.supplementalAttachments;state.customerPicker?.sync();
         applyActorCapabilities();
         state.notifications= data.notifications===true;
@@ -317,6 +317,7 @@
       let warrantyTimer=0,lookupSequence=0;
       receiveForm.elements.deviceType.addEventListener('change',()=>{
         const fan=receiveForm.elements.deviceType.value==='Fan';
+        if(fan&&modelInput.dataset.autoSerial){modelInput.value='';delete modelInput.dataset.autoSerial;}
         serialInput.required=!fan;
         $('#serialRequired').textContent=fan?'(không bắt buộc)':'*';
         serialInput.dispatchEvent(new Event('input'));
@@ -335,17 +336,18 @@
           setWarrantyLookup(fan?'Fan không yêu cầu S/N':'Chưa tra cứu');
           return;
         }
-        modelInput.readOnly=true;
-        modelInput.setAttribute('aria-busy','true');
-        modelInput.placeholder='Đang tra Model…';
+        modelInput.readOnly=!fan;
+        modelInput.setAttribute('aria-busy',String(!fan));
+        modelInput.placeholder=fan?'Nhập Model / Mã Fan':'Đang tra Model…';
         modelInput.title='Đang tra Model theo SN';
-        setWarrantyLookup(fan?'Fan không yêu cầu S/N':'Đang tra cứu…');
+        setWarrantyLookup('Đang tra cứu…');
         warrantyTimer=setTimeout(async()=>{
           try{
-            const result=await call('lookupWarranty',[state.token,serial]);
+            const result=window.SungrowWarranty?await SungrowWarranty.lookup(serial):await call('lookupWarranty',[state.token,serial]);
             if(sequence!==lookupSequence || serialInput.value.trim().toUpperCase()!==serial)return;
             modelInput.setAttribute('aria-busy','false');
-            if(result.model && String(result.model).trim()){
+            if(fan){manualModel('Model / Mã Fan được nhập riêng; S/N inverter chỉ dùng tra bảo hành.');}
+            else if(result.model && String(result.model).trim()){
               modelInput.value=String(result.model).trim();
               modelInput.dataset.autoSerial=serial;
               modelInput.readOnly=true;
@@ -355,12 +357,12 @@
               if(modelInput.dataset.autoSerial){modelInput.value='';delete modelInput.dataset.autoSerial;}
               manualModel('Không có Model trong kết quả tra cứu. Nhập Model thủ công.');
             }
-            if(!fan)setWarrantyLookup(result.label+(result.expiryDate?` | Đến ${result.expiryDate}`:''),result.status);
+            setWarrantyLookup(result.label+(result.expiryDate?` | Đến ${result.expiryDate}`:''),result.status);
           }catch(error){
             if(sequence!==lookupSequence || serialInput.value.trim().toUpperCase()!==serial)return;
             if(modelInput.dataset.autoSerial){modelInput.value='';delete modelInput.dataset.autoSerial;}
             manualModel('Không thể tra Model. Nhập Model thủ công.');
-            if(!fan)setWarrantyLookup('Không thể tra cứu');
+            setWarrantyLookup('Không thể tra cứu');
           }
         },450);
       });
@@ -420,7 +422,7 @@
 
     function viewAllowed(id){const c=state.actor?.capabilities||{};return id==='cases'?c.viewCases!==false:id==='receive'?!!c.createCase:id==='update'?!!c.updateWorkOrder:id==='transfer'?!!c.createTransfer:id==='dashboard'?!!c.viewDashboard:false}
     function applyActorCapabilities(){$$('.tab[data-view]').forEach(button=>button.classList.toggle('hidden',!viewAllowed(button.dataset.view)))}
-    function showView(id){if(window.SungrowSupplementAttachments&&!window.SungrowSupplementAttachments.canLeave())return;if(!viewAllowed(id))id='cases';if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
+    function showView(id){if(window.SungrowEntryWorkspace&&!SungrowEntryWorkspace.canLeave())return;if(window.SungrowSupplementAttachments&&!window.SungrowSupplementAttachments.canLeave())return;if(!viewAllowed(id))id='cases';if(id==='dashboard'){sessionStorage.setItem('sungrow_id_token',state.token);if(EMBEDDED)parent.postMessage({type:'sungrow-portal-dashboard'},location.origin);else window.location.href='./';return}window.SungrowEntryWorkspace?.localView(id);state.currentView=id;history.replaceState(null,'','#'+id);$$('.tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));$$('.view').forEach(v=>v.classList.toggle('hidden',v.id!==id));if(id==='cases'&&state.token)loadCases(false)}
     window.addEventListener('message',event=>{if(!EMBEDDED||event.origin!==location.origin||event.source!==parent||event.data?.type!=='sungrow-portal-view'||!state.actor)return;const view=event.data.view;if(view===state.currentView&&!event.data.refresh)return;if(['cases','receive','update','transfer'].includes(view)&&viewAllowed(view))showView(view)});
     function fillCenters(){$$('.center-select').forEach(select=>{select.innerHTML='<option value="">Chọn trung tâm</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');if(state.centers.length===1)select.value=state.centers[0]});const filter=$('#caseCenter');if(filter){const current=filter.value;filter.innerHTML='<option value="">Tất cả center</option>'+state.centers.map(c=>`<option>${esc(c)}</option>`).join('');filter.value=current}}
     function setupDashboardAccess(){
@@ -513,7 +515,7 @@
     function renderCasesResponse(data){const box=$('#caseResults');state.casePage=data.page;state.casePageSize=data.pageSize;state.caseTotal=data.total;state.caseTotalPages=data.totalPages;$('#casePageSize').value=String(data.pageSize);box.innerHTML=data.items.length?data.items.map(renderCaseTableRows).join(''):'<tr class="empty-row"><td colspan="7">Không có hồ sơ phù hợp.</td></tr>';const first=data.total?(data.page-1)*data.pageSize+1:0,last=Math.min(data.page*data.pageSize,data.total);$('#caseCount').textContent=`Hiển thị ${first}–${last} / ${data.total} hồ sơ`;renderPager()}
     function renderPager(){const total=state.caseTotalPages,current=state.casePage,pages=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-current)<=2)pages.push(p)}let html=`<button class="page-button" ${current<=1?'disabled':''} onclick="goCasePage(${current-1})">‹</button>`,previous=0;pages.forEach(p=>{if(previous&&p-previous>1)html+='<span style="padding:8px 3px">…</span>';html+=`<button class="page-button ${p===current?'active':''}" onclick="goCasePage(${p})">${p}</button>`;previous=p});html+=`<button class="page-button" ${current>=total?'disabled':''} onclick="goCasePage(${current+1})">›</button>`;$('#casePager').innerHTML=html}
     function goCasePage(page){if(page<1||page>state.caseTotalPages||page===state.casePage)return;state.casePage=page;loadCases(false)}
-    function refreshCurrent(){if(state.currentView==='cases')loadCases(false);else if(state.currentView==='transfer')$('#transferSearch').click();else $('#updateSearch').click()}
+    function refreshCurrent(){if(window.SungrowEntryWorkspace?.isCase()){SungrowEntryWorkspace.refresh();return;}if(state.currentView==='cases')loadCases(false);else if(state.currentView==='transfer')$('#transferSearch').click();else $('#updateSearch').click()}
     async function searchInto(query,target,mode){return SungrowExactSearch.search(query,target,mode)}
 
     function badgeClass(value){const text=String(value||'').toLowerCase();if(/đã hoàn tất|đã sửa chữa|đã giao|trong bảo hành|hàng good/.test(text))return'good';if(/chờ|không sửa|ngoài bảo hành/.test(text))return'wait';if(/kiểm tra|đang xử lý|luân chuyển|đổi/.test(text))return'info';return''}
@@ -543,6 +545,7 @@
     }
     function openSupplementAttachments(raw){const item=JSON.parse(raw),host=document.getElementById('supplement-'+item.caseId);if(!host)return;host.classList.remove('hidden');window.SungrowSupplementAttachments.mount(host,item);}
     async function openCaseDrawer(raw){
+      if(EMBEDDED&&window.SungrowEntryWorkspace){SungrowEntryWorkspace.request(JSON.parse(raw).caseId);return;}
       if(window.SungrowSupplementAttachments&&!window.SungrowSupplementAttachments.canLeave())return;
       window.SungrowSupplementAttachments?.dispose();
       const summary=JSON.parse(raw),requestId=`${summary.caseId}-${Date.now()}`;
@@ -579,7 +582,7 @@
       const history=`<details class="case-history"><summary>${works.length} công việc | Gần nhất: ${esc(latest.outcome||latest.workflowStatus||'Chưa cập nhật')}</summary><div class="case-history-body">${historyRows}</div></details>`;
       const link=item.evidenceLink?`<a class="drive-link" href="${esc(item.evidenceLink)}" target="_blank" rel="noopener">Mở Google Drive ↗</a>`:'<span class="muted">Chưa có liên kết</span>';
       const lockLine=item.isClosed?`<div class="case-lock-note">${item.canEditCase?'Hồ sơ đã hoàn tất | Quyền quản lý được phép điều chỉnh':'Hồ sơ đã hoàn tất | Các thao tác đã được khóa'}</div>`:'';
-      return `<article class="result"><div class="result-head"><div><div class="case-sequence">Kết quả #${position||1} | Nhận ngày ${esc(item.receivedAt||'—')}</div><div class="result-title"><strong>${esc(item.model||item.deviceType||'Chưa có Model')}</strong><span class="device-sn">S/N: ${esc(item.serialNumber||'Không có')}</span></div></div><span class="badge ${badgeClass(item.caseStatus)}">${esc(item.caseStatus||'Chưa cập nhật')}</span></div><div class="case-info-grid"><div class="case-info"><span>Center đang giữ</span><strong>${esc(shortCenter(item.currentCenter))}</strong></div><div class="case-info"><span>Bảo hành</span><strong>${esc(item.warrantyStatus||'Chờ xác nhận')}</strong></div><div class="case-info"><span>Đơn vị gửi / Dự án</span><strong>${esc(item.sender||'—')} | ${esc(item.project||'—')}</strong></div><div class="case-info"><span>Hồ sơ thiết bị</span><strong>${link}</strong></div></div>${lockLine}${window.SungrowFanLots?SungrowFanLots.summary(item):''}${history}<div class="case-action-grid">${correctionAction}${updateAction}${warrantyAction}${returnAction}${transferAction}${acceptAction}</div><div class="case-form-panel" id="panel-${esc(item.caseId)}"></div></article>`;
+      return `<article class="result" data-workspace-case-id="${esc(item.caseId)}"><div class="result-head"><div><div class="case-sequence">Kết quả #${position||1} | Nhận ngày ${esc(item.receivedAt||'—')}</div><div class="result-title"><strong ${EMBEDDED?'data-workspace-case="'+esc(item.caseId)+'" tabindex="0" role="button"':''}>${esc(item.model||item.deviceType||'Chưa có Model')}</strong><span class="device-sn">S/N: ${esc(item.serialNumber||'Không có')}</span></div></div><span class="badge ${badgeClass(item.caseStatus)}">${esc(item.caseStatus||'Chưa cập nhật')}</span></div><div class="case-info-grid"><div class="case-info"><span>Center đang giữ</span><strong>${esc(shortCenter(item.currentCenter))}</strong></div><div class="case-info"><span>Bảo hành</span><strong>${esc(item.warrantyStatus||'Chờ xác nhận')}</strong></div><div class="case-info"><span>Đơn vị gửi / Dự án</span><strong>${esc(item.sender||'—')} | ${esc(item.project||'—')}</strong></div><div class="case-info"><span>Hồ sơ thiết bị</span><strong>${link}</strong></div></div>${lockLine}${window.SungrowFanLots?SungrowFanLots.summary(item):''}${history}<div class="case-action-grid">${correctionAction}${updateAction}${warrantyAction}${returnAction}${transferAction}${acceptAction}</div><div class="case-form-panel" id="panel-${esc(item.caseId)}"></div></article>`;
     }
     function toggleCase(btn){const body=btn.closest('.result').querySelector('.case-body');body.classList.toggle('hidden');btn.textContent=body.classList.contains('hidden')?'Xem chi tiết':'Thu gọn'}
 
@@ -649,7 +652,7 @@
     async function call(name,args,attempt=0,signal){
       const syncRead=['getBootstrap','getPortalSyncState','listCases'].includes(name);
       if(syncRead)updateSyncActivity(1);
-      const readOnly=['getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','getCreationStatus','searchCustomers','getCaseUploadSession','getCaseAttachmentReceipt','getFanLotHistory','previewFanGroup','listFanGroups','getFanGroup','listNotifications','markNotificationsRead'].includes(name);
+      const readOnly=['getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','lookupWarrantyBatch','getCreationStatus','searchCustomers','getCaseUploadSession','getCaseAttachmentReceipt','getFanLotHistory','previewFanGroup','listFanGroups','getFanGroup','listNotifications','markNotificationsRead'].includes(name);
       const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile','setCaseUploadCategory'].includes(name);
       const mutation=!readOnly&&!uploadOnly;
       if(mutation&&document.getElementById('mutationProgress'))throw new Error('Một thao tác đang được lưu. Vui lòng chờ kết quả trước khi gửi tiếp.');
@@ -737,6 +740,7 @@
     }
 
     async function checkPortalRevision() {
+      if (window.SungrowEntryWorkspace&&!SungrowEntryWorkspace.isVisible())return;
       if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token || state.caseLoading) return;
       realtime.busy = true;
       try {
@@ -747,10 +751,12 @@
         if (nextRevision === String(state.caseDataRevision || '')) return;
         state.caseCache = {};
         realtime.revision = nextRevision;
+        window.SungrowEntryWorkspace?.invalidate();
         if (state.currentView === 'cases' && hasOpenCaseEditor()) {
           showRealtimeNotice();
           return;
         }
+        if(window.SungrowEntryWorkspace?.isCase()){if(hasOpenCaseEditor())showRealtimeNotice();else if(await SungrowEntryWorkspace.refresh())state.caseDataRevision=nextRevision;return;}
         const notice = document.getElementById('portalRealtimeNotice');
         if (notice) notice.remove();
         if (state.currentView === 'cases' && typeof loadCases === 'function') {
@@ -772,6 +778,7 @@
     async function syncPortalNow() {
       if (!state.token){$('#portalSyncStatus').textContent='Chưa đồng bộ | Vui lòng chờ đăng nhập';return;}
       if(state.manualSyncBusy)return;
+      if(window.SungrowEntryWorkspace?.isCase()){await SungrowEntryWorkspace.sync();return;}
       state.manualSyncBusy=true;
       $('#caseSync').disabled=true;
       $('#portalSyncStatus').textContent='Đang đồng bộ…';
@@ -853,5 +860,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=4"></script><script src="work-order-rules.js?v=3"></script><script src="work-order-locks.js?v=4"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=4"></script><script src="fan-lots.js?v=8"></script><script src="fan-lot-native.js?v=6"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=2"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script></body>
+<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=4"></script><script src="work-order-rules.js?v=3"></script><script src="work-order-locks.js?v=4"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=4"></script><script src="fan-lots.js?v=8"></script><script src="fan-lot-native.js?v=6"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=2"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script><script src="entry-workspace.js?v=1"></script><script src="fan-warranty.js?v=1"></script><link rel="stylesheet" href="fan-warranty.css?v=1"></body>
 </html>

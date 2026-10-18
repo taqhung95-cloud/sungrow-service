@@ -129,6 +129,8 @@
   }
 
   function openEntryView(view, refresh = true) {
+    window.SungrowWorkspace?.observe({kind:'entry',view});
+    const currentFrame=q('.sg-portal-frame');currentFrame?.contentWindow.SungrowEntryWorkspace?.setVisible(true);
     if(activeController){activeController.abort();activeController=null;loadSequence++;}
     if(ticketSearchController){ticketSearchController.abort();ticketSearchController=null;ticketSearchSequence++;}
     q('#sg-refresh').disabled=!token;
@@ -145,7 +147,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=126#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=127#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -629,9 +631,9 @@
     ticketSearchTimer = setTimeout(function(){ loadTicketPage(true); },300);
   }
 
-  function showTicketDetail(ticketId) {
+  function showTicketDetail(ticketId, snapshot) {
     const candidates = (Array.isArray(ticketSearchState.rows) ? ticketSearchState.rows : []).concat(live.tickets || []);
-    const ticket = candidates.find(function(item) { return String(item.id) === String(ticketId); });
+    const ticket = snapshot || candidates.find(function(item) { return String(item.id) === String(ticketId); });
     if (!ticket) return;
     const status = ticketStatus(ticket);
     const duration = ticketDuration(ticket);
@@ -1026,8 +1028,21 @@
       window.SungrowPeriod?.activate(bootstrap.dashboardRanges===true);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
+      window.SungrowWorkspace?.configure({actor:bootstrap.actor,
+        allowed:r=>(r.kind==='dashboard'||r.kind==='history')?!!bootstrap.actor?.isGlobalManager:r.kind==='reports'?!!bootstrap.actor?.isGlobalManager:r.kind==='case'?bootstrap.actor?.capabilities?.viewCases!==false:({cases:bootstrap.actor?.capabilities?.viewCases!==false,receive:!!bootstrap.actor?.capabilities?.createCase,update:!!bootstrap.actor?.capabilities?.updateWorkOrder,transfer:!!bootstrap.actor?.capabilities?.createTransfer})[r.view]===true,
+        title:r=>r.kind==='case'?r.id:r.kind==='history'?r.title:r.kind==='reports'?'Báo cáo':({overview:'Tổng quan',centers:'Service center',tickets:'Danh sách thiết bị',parts:'Linh kiện',quality:'Kiểm tra dữ liệu',cases:'Danh sách hồ sơ',receive:'Tiếp nhận mới',update:'Cập nhật hồ sơ',transfer:'Luân chuyển center'})[r.view]||'Hồ sơ',
+        canLeave:()=>{const frame=q('.sg-portal-frame');return !frame?.contentDocument?.getElementById('mutationProgress')&&(frame?.contentWindow.SungrowEntryWorkspace?.canLeave()??true);},
+        discard:r=>{const frame=q('.sg-portal-frame');frame?.contentWindow.postMessage({type:'sungrow-workspace-discard',route:r},location.origin);},
+        action:r=>q('.sg-portal-frame')?.contentWindow.postMessage({type:'sungrow-workspace-case',caseId:r.id,action:r.action},location.origin),
+        activate:r=>{window.SungrowReports?.close();const frame=q('.sg-portal-frame');frame?.contentWindow.SungrowEntryWorkspace?.setVisible(r.kind==='entry'||r.kind==='case');
+          if(r.kind==='history'){closePortalView();q('button[data-page=tickets]').click();showTicketDetail(r.id,r.ticket);}
+          else if(r.kind==='dashboard'){closePortalView();q('button[data-page="'+r.view+'"]').click();}
+          else if(r.kind==='reports'){closePortalView();q('.sg-report-parent').click();}
+          else{openEntryView(r.kind==='case'?'update':r.view,false);const next=q('.sg-portal-frame');if(r.kind==='case'){if(next.dataset.ready==='true')next.contentWindow.postMessage({type:'sungrow-workspace-case',caseId:r.id,action:r.action},location.origin);else{next.dataset.workspaceCase=r.id;next.dataset.workspaceAction=r.action||'';}}}
+        }
+      });
       window.SungrowReports?.configure({actor:bootstrap.actor,available:bootstrap.reportExports===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1)});
-      window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{window.SungrowReports?.close();openEntryView('cases',false);const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
+      window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{if(window.SungrowWorkspace){window.SungrowWorkspace.open({kind:'case',id:caseId});return;}window.SungrowReports?.close();openEntryView('cases',false);const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {
@@ -1099,6 +1114,7 @@
 
   async function signOut() {
     const previous=token;authSequence++;
+    window.SungrowWorkspace?.configure(null);
     token = '';
     activeController?.abort();ticketSearchController?.abort();
     window.SungrowReports?.configure(null);
@@ -1137,19 +1153,19 @@
   root.addEventListener('click',e => {
     if (!live) return;
     const detailButton = e.target.closest('[data-live-ticket]');
-    if (detailButton) { showTicketDetail(detailButton.dataset.liveTicket); return; }
+    if (detailButton) { if(window.SungrowWorkspace){const id=detailButton.dataset.liveTicket,ticket=(ticketSearchState.rows||[]).concat(live.tickets||[]).find(t=>String(t.id)===id);window.SungrowWorkspace.open(/^HS-/i.test(id)?{kind:'case',id}:{kind:'history',id,title:(ticket?.model||'Hồ sơ')+' | '+id,ticket});}else showTicketDetail(detailButton.dataset.liveTicket); return; }
     const ticketPageButton = e.target.closest('[data-live-ticket-page]');
     if (ticketPageButton && !ticketPageButton.disabled) { goTicketPage(Number(ticketPageButton.dataset.liveTicketPage)); return; }
     if (e.target.closest('[data-live-close]')) { q('#sg-detail').classList.add('sg-hidden'); return; }
     const pageButton = e.target.closest('[data-page]');
-    if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ loadTicketPage(true); },0);
+    if (pageButton && pageButton.dataset.page === 'tickets') setTimeout(function(){ if(window.SungrowWorkspace&&Array.isArray(ticketSearchState.rows))renderTickets();else loadTicketPage(false); },0);
     if (e.target.closest('[data-part],[data-page]')) setTimeout(renderAll,0);
   });
   q('#sg-refresh').addEventListener('click',() => {if(!token)return;if(window.SungrowReports?.isOpen()){window.SungrowReports.refresh();return;}if(q('.sg-main').classList.contains('sg-portal-mode')){const frame=q('.sg-portal-frame');if(frame){q('#sg-refresh').disabled=true;frame.contentWindow.postMessage({type:'sungrow-portal-sync'},window.location.origin);}}else loadLive({force:true});});
   q('#sg-calc-fail').addEventListener('click',() => {if(live)calculateFailureRate();});
   q('#sg-fail-model').addEventListener('change',() => {if(live)renderQuality();});
   q('#sg-sold-quantity').addEventListener('keydown',e => {if(e.key === 'Enter' && live)calculateFailureRate();});
-  setInterval(() => {if(token && !document.hidden && !activeController && !q('.sg-main').classList.contains('sg-portal-mode'))loadLive({comparison:false});},AUTO_SYNC_MS);
+  setInterval(() => {if(token && !document.hidden && !activeController && !window.SungrowReports?.isOpen() && !q('.sg-main').classList.contains('sg-portal-mode'))loadLive({comparison:false});},AUTO_SYNC_MS);
   setInterval(checkDashboardRevision,REVISION_SYNC_MS);
   document.addEventListener('visibilitychange',() => {if(!document.hidden && token && !q('.sg-main').classList.contains('sg-portal-mode') && Date.now()-lastSuccessfulSync>=AUTO_SYNC_MS && !activeController)loadLive({comparison:false});});
   document.addEventListener('visibilitychange',() => {if(!document.hidden)checkDashboardRevision();});
@@ -1163,6 +1179,8 @@
   else {initGoogle();const warning=sessionStorage.getItem('sungrow_logout_warning');if(warning){sessionStorage.removeItem('sungrow_logout_warning');setAuthMessage(warning,true);}}
   window.addEventListener('message',event => {
     if (event.origin !== window.location.origin) return;
+    const workspaceFrame=q('.sg-portal-frame');
+    if(workspaceFrame&&event.source===workspaceFrame.contentWindow&&event.data?.type?.startsWith('sungrow-workspace-')){const data=event.data;if(data.type==='sungrow-workspace-open')window.SungrowWorkspace?.open(data.route);if(data.type==='sungrow-workspace-observe'&&q('.sg-main').classList.contains('sg-portal-mode')&&!(data.route?.kind==='entry'&&data.route.view==='update'&&window.SungrowWorkspace?.active()?.kind==='case'))window.SungrowWorkspace?.observe(data.route);if(data.type==='sungrow-workspace-dirty')window.SungrowWorkspace?.mark(data.route,data.dirty===true);return;}
     const syncFrame=q('.sg-portal-frame');
     if(event.data?.type==='sungrow-portal-notifications-changed'&&syncFrame&&event.source===syncFrame.contentWindow){window.SungrowNotifications?.refresh();return;}
     if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
@@ -1176,7 +1194,10 @@
       const frame = q('.sg-portal-frame');
       if (!frame || event.source !== frame.contentWindow) return;
       frame.dataset.ready = 'true';
+      const visible=q('.sg-main').classList.contains('sg-portal-mode');frame.contentWindow.SungrowEntryWorkspace?.setVisible(visible);
+      if(!visible){delete frame.dataset.workspaceCase;delete frame.dataset.workspaceAction;return;}
       frame.contentWindow.postMessage({type:'sungrow-portal-view',view:frame.dataset.portalView || 'cases'},window.location.origin);
+      if(frame.dataset.workspaceCase){frame.contentWindow.postMessage({type:'sungrow-workspace-case',caseId:frame.dataset.workspaceCase,action:frame.dataset.workspaceAction||''},location.origin);delete frame.dataset.workspaceCase;}
       if(frame.dataset.notificationCase){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId:frame.dataset.notificationCase},window.location.origin);delete frame.dataset.notificationCase;}
     }
   });

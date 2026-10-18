@@ -1,5 +1,14 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tab toàn website và bảo hành Fan — 18/10/2026, backend1.11.8 / liveJS146 / entry127
+
+Tab34px, chữ12px, menu12px/28px, SVG đồng bộ; bỏ footer, không cắt panel. Không giới hạn số tab logic. Dashboard/report/entry/case mọi loại thiết bị dùng chung router; case ID dedup, lịch sửyear-row có tab chỉ đọc từ ticket snapshot. Một iframe nhập liệu, không bootstrap/heartbeat mỗi tab; giữ DOM/form/file nháp, xác nhận đóng chưa lưu; ngữ cảnh sạch giới hạn4 trong bộ nhớ nhưng tab vẫn mở; ngữ cảnh dirty không bị loại. Read chi tiết khi rời bị abort, mutation không replay. Poll nhập liệu tắt khi iframe ẩn, report không chạy dashboard heartbeat. Tab chưa lưu đồng bộ thủ công báo đang sửa, không ghi đè. Đăng xuất clear tab/frame.
+
+Fan thường dùng S/N inverter tra bảo hành nhưng không ghi Model inverter vào Model Fan. Fan theo lô có kết quả lookup dưới từng S/N, gộp trùng và giới hạn concurrency. Backend lookupWarrantyBatch tối đa20, auth trước shared cache5phút; một TextFinder cho tập S/N chưa cache; giữ helper tính ngày/gói/model và API lookupWarranty đơn tương thích. Backend cũ frontend fallback2 lượt đơn đồng thời, không lỗi vì thiếu API mới. Không tự duyệt bảo hành/đổi dữ liệu nguồn; không thay KPI/parts/schema. Cần thay duy nhất Code.gs khi đã1.11.7, Save/New version cùngURL; guide DEPLOY-1.11.8-WORKSPACE-FAN-WARRANTY.md. Backend manual, không coi đã deploy khi chỉ push Pages.
+
+Validation backend toàn hệ thống và warranty-batch; Edge workspace-ui kiểm thử >20tab, Fan/Inverter bản nháp, mở lại cache không đọc, trùng S/N, Inverter tự điền model, Fan giữ mã, báo cáo, một iframe, hidden poll, menu12px và panel viewport. Không load-test nhiều tài khoản thật/không ghi database production.
+
+
 ## Tỷ trọng model Fan theo số Fan — 18/10/2026, backend1.11.7 / liveJS145 / entry126
 
 Bổ sung regression nhánh Fan → Tất cả thiết bị: fixture9Fan+3Inverter=12 số lượng, Fan75%, KPI5Thiết bị/Hồ sơ giữ. Không có nhóm Fan theo lô hoặc đơn vị Thiết bị/Hồ sơ trong biểu đồ mới. Website kiểm tra trảliveJS145; ảnh cũ có16/Thiết bị-Hồ sơ/Fan theo lô cần tải lại frontend, backend cũ hiện thông báo cập nhật ngay tại card. Không đổi code runtime hoặc yêu cầu thêm file Apps Script trong lượt kiểm tra này.
