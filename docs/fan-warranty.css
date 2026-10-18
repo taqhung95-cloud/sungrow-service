@@ -1,6 +1,8 @@
-.fl-sn-warranty{min-width:0;display:flex;flex-direction:column;gap:3px}
-.fl-warranty-result{display:block;font-size:10px!important;line-height:13px;color:#6b7884;overflow-wrap:anywhere}
+.fl-sn-warranty{min-width:0;display:flex;align-items:center;gap:0}
+.fl-sn-warranty.serial-lookup-control input{flex:1 1 0;width:0;min-width:60px;border:0;border-radius:0;background:transparent;box-shadow:none}
+.fl-sn-warranty .fl-warranty-result{flex:0 1 auto;min-width:0;max-width:66%;margin:0 6px 0 0;font-size:11px!important;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fl-warranty-result.valid{color:#28704b}.fl-warranty-result.expired{color:#b43c35}
-.fl-intake .fl-sn-warranty input{height:34px;min-height:34px}
+.fl-intake .fl-sn-warranty{height:42px;min-height:42px}
+.fl-intake .fl-sn-warranty input{height:40px;min-height:0}
 [data-workspace-case]{cursor:pointer}[data-workspace-case]:hover{color:#ba5900;text-decoration:underline}
 #workspaceCase{overflow:auto;min-height:0}
