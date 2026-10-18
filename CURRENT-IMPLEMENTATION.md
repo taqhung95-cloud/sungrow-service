@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Tỷ trọng model Fan theo số Fan — 18/10/2026, backend1.11.7 / liveJS145 / entry126
+
+Thay kết luận cũ dùng6hồ sơ Fan làm tổng biểu đồ model. KPI phía trên tiếp tục Thiết bị/Hồ sơ, Fan thường1/lô1. Riêng modelTypes của Tỷ trọng model cộng số Fan vật lý thực nhận theo Model/Mã Fan và kỳ/center/quyền: Fan thường lấy Số lượng nguồn, lô lấy snapshot totals.received. Nhãn Fan | mã model; trống/Fan → Fan | Chưa xác định model. Không suy mã từ inverter hoặc part tiêu hao, không gán ES000173 từ ví dụ. Trường Model cũ lưu model inverter cần quản lý sửa đúng, không auto rewrite. Dropdown tổng và tỷ trọng cùng số lượng vật lý, Fan dùng đơn vị Fan; all dùng Số lượng. Mẫu số giữ cả thiếu model. Models/modelDeviceStats của phân tích duy nhất khác không đổi; KPI/parts/report không đổi. Không thêm nguồn/schema/Sheet scan; modelQuantity là thuộc tính reader.
+
+API marker modelDistributionUnit physical-items tách response mới khỏi backend cũ, card yêu cầu deploy khi backend cũ, tránh gắn nhãn sốquạt cho sốhồsơ. Entry Fan thường/lô cùng nhãn Model/Mã Fan. Test9FanES000173 từ2hồsơ,75%trong12Fan, KPI3Fan-case+2Inverter=5, canceled/date/center/role/parts/warmreads giữ; UI donutFan9 từ thường5+lô4. Apps Script thay Code/Legacy, Save/New version cùngURL, theo DEPLOY-1.11.7-FAN-MODEL-QUANTITY.md. Không sửa dữ liệu production.
+
 ## Fan compact tables và danh mục nhập liệu — 18/10/2026, backend1.11.6 / liveJS144 / entry125
 
 Fan summary/work/warranty/return dùng bảng có cùng cột S/N, số quạt lỗi, bảo hành, trạng thái, đã trả/còn lại; scope thêm Chọn52px và Số Fan xử lý/Hoàn tất thêm/Giao lần này. Canh giữa header/cell, row36–43px, sticky header, vùng scroll210–240px; reset width/ẩn cột/mobile rules của case-table thường để không ảnh hưởng bảng Fan. Bỏ help riêng parts; giữ immutable/link receipt. Intake auto count/total tô xám cả khi glass theme bật, không nhập tay; Chưa thêm inverter thay0S/N, hướng dẫn Excel2–3cột và bỏ header, giảm khoảng trống. Chuyển center vẫn whole-case và chỉ Fan còn trong hồ sơ. Desktop hover menus auto-close, keyboard/click/mobile giữ, loading trắng phủ panel, report sync ở phải.

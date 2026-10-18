@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.6-fan-ui-catalog';
+const LEGACY_API_VERSION = '1.11.7-fan-model-quantity';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -219,6 +219,7 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       serialNumber: clean_(item['Số sê-ri (S/N)']),
       model: clean_(item.Model),
       quantity: clean_(item['Loại thiết bị']) === 'Fan' ? 1 : knownQuantity_(item['Số lượng']),
+      modelQuantity: fanState ? SungrowFanLotRules.totals(fanState).received : knownQuantity_(item['Số lượng']),
       caseCount: 1,
       fanLot: fanState ? {totals:SungrowFanLotRules.totals(fanState),lines:fanState.lines,events:(fanEventsByCase[caseId]||[]).map(function(e){return {kind:e['Loại thao tác'],quantity:Number(e['Số lượng']),date:iso_(date_(e['Ngày thực tế'])),lineId:e['Mã dòng Fan'],outcome:e['Kết quả']};})} : null,
       relatedCaseIds: fanState&&fanState.legacyImport?fanState.legacyImport.sources.map(function(r){return r.caseId;}):[],
@@ -773,6 +774,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     modelDeviceStats: modelDeviceStats,
     modelCatalog: modelCatalog,
     modelTypes: modelTypes,
+    modelDistributionUnit: 'physical-items',
     errors: errors,
     parts: parts,
     tickets: tickets,
@@ -958,14 +960,25 @@ function groupModelDeviceStats_(rows) {
     };
   }).sort(function (a, b) { return b.rowCount - a.rowCount || a.name.localeCompare(b.name); });
 }
+// This card measures received physical units by model, independently of case KPIs.
+function modelDistributionQuantity_(r) {
+  if(!/^fan$/i.test(clean_(r.deviceType)))return deviceQuantity_(r);
+  if(r.fanLot)return Number(r.fanLot.totals.received)||0;
+  if(r.modelQuantity!==undefined)return knownQuantity_(r.modelQuantity)||0;
+  return deviceQuantity_(r); // A historical source row represents one Fan.
+}
+function modelDistributionLabel_(r) {
+  if(/^fan$/i.test(clean_(r.deviceType))){const model=clean_(r.model);return 'Fan | '+(!model||/^fan$/i.test(model)?'Chưa xác định model':model);}
+  return r.model || (r.deviceType ? r.deviceType+' | chưa có model' : 'Chưa xác định');
+}
 function groupModelTypes_(rows) {
   const groups = {};
   rows.forEach(function (r) {
     const type = r.deviceType || 'Chưa xác định';
-    const model = r.model || (r.fanLot ? 'Fan theo lô' : r.deviceType ? r.deviceType + ' | chưa có model' : 'Chưa xác định');
+    const model = modelDistributionLabel_(r);
     if (!groups[type]) groups[type] = { count: 0, models: {} };
-    groups[type].count += deviceQuantity_(r);
-    groups[type].models[model] = (groups[type].models[model] || 0) + deviceQuantity_(r);
+    groups[type].count += modelDistributionQuantity_(r);
+    groups[type].models[model] = (groups[type].models[model] || 0) + modelDistributionQuantity_(r);
   });
   return Object.keys(groups).map(function (name) {
     const group = groups[name];

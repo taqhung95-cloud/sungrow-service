@@ -145,7 +145,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=125#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=126#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -674,7 +674,7 @@
   }
 
   function availableModelTypes() {
-    return Array.isArray(live.modelTypes) && live.modelTypes.length ? live.modelTypes : fallbackModelTypes();
+    return live.modelDistributionUnit==='physical-items'&&Array.isArray(live.modelTypes) ? live.modelTypes : [];
   }
 
   function syncModelTypeOptions() {
@@ -690,7 +690,7 @@
       const option = document.createElement('option');
       option.value = group.name;
       option.textContent = group.name + ' (' + group.count + ')';
-      if(group.name==='Fan')option.title='Fan nhập thường: 1 thiết bị; mỗi lô Fan: 1 hồ sơ. Không đếm số quạt vật lý.';
+      if(group.name==='Fan')option.title='Số Fan thực tế tiếp nhận trong kỳ, cộng theo model Fan cho cả nhập thường và theo lô.';
       select.appendChild(option);
     });
     select.value = groups.some(function(group){ return group.name === current; }) ? current : 'all';
@@ -701,16 +701,19 @@
     const groups = syncModelTypeOptions();
     const selectedType = q('#sg-model-type').value;
     const selectedGroup = groups.find(function(group){ return group.name === selectedType; });
-    const rows = selectedType === 'all' ? live.models : (selectedGroup ? selectedGroup.models : []);
+    const merged={};groups.forEach(g=>g.models.forEach(m=>{merged[m.name]=(merged[m.name]||0)+m.count;}));
+    const rows = selectedType === 'all' ? Object.keys(merged).map(name=>({name,count:merged[name]})).sort((a,b)=>b.count-a.count) : (selectedGroup ? selectedGroup.models : []);
+    const modelUnit=selectedType==='Fan'?'Fan':selectedType==='all'?'Số lượng':'Thiết bị';
     const total = rows.reduce((n,x) => n+x.count, 0);
-    q('#sg-model-type').title=selectedType==='Fan'?'Fan nhập thường: 1 thiết bị; mỗi lô Fan: 1 hồ sơ. Số quạt xem trong chi tiết hồ sơ.':'Phân bổ Thiết bị/Hồ sơ tiếp nhận theo loại thiết bị trong kỳ.';
+    q('#sg-model-type').title='Tỷ trọng theo số lượng thực nhận: Fan đếm số quạt của model Fan; thiết bị khác đếm số lượng thiết bị. Các thẻ KPI phía trên vẫn theo Thiết bị/Hồ sơ.';
     const palette=['#ff7900','#ff9d4d','#3f5f73','#f3b37b','#7f8d97','#c5cdd2'];
     let cursor=0;
     const segments=rows.map(function(x,i){const start=cursor,end=cursor+(total?100*x.count/total:0);cursor=end;return palette[i%palette.length]+' '+start+'% '+end+'%';}).join(',') || '#e8ecef 0 100%';
     const legend=rows.map(function(x,i){const share=total?(100*x.count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0;return '<button class="sg-donut-item '+(/chưa/i.test(x.name)?'unknown':'')+'" aria-pressed="false"><i style="background:'+palette[i%palette.length]+'"></i><span title="'+esc(x.name)+'">'+esc(x.name)+'</span><strong>'+x.count+'</strong><em>'+share+'%</em></button>';}).join('') || '<div class="sg-caption sg-model-empty">Không có dữ liệu model cho loại thiết bị đã chọn.</div>';
-    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>Thiết bị/Hồ sơ</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
-    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' Thiết bị/Hồ sơ tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
-    if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' thiết bị trong kỳ đang chọn.</div>';
+    q('#sg-model-bars').innerHTML = '<div class="sg-model-donut-layout"><div class="sg-model-donut" style="--donut:conic-gradient('+segments+')"><div><strong>'+total+'</strong><span>'+esc(modelUnit)+'</span></div></div><div class="sg-model-donut-legend"><div class="sg-mini-table-head sg-model-list-head"><span>Model</span><span>SL</span><span>Tỷ trọng</span></div><div class="sg-card-list-body sg-model-list-body">'+legend+'</div></div></div>';
+    q('#sg-model-denominator').textContent = 'Mẫu số: ' + total + ' '+modelUnit+' tiếp nhận | ' + (selectedType === 'all' ? 'tất cả loại thiết bị' : selectedType) + ' | ' + live.period.label + '.';
+    if(live.modelDistributionUnit!=='physical-items')q('#sg-model-bars').innerHTML='<div class="sg-caption">Cần cập nhật Apps Script 1.11.7 để xem tỷ trọng model theo số lượng Fan.</div>';
+    if (rows[0]) q('#sg-model-insight').innerHTML = '<div class="sg-caption">MODEL NHIỀU NHẤT</div><h3>'+esc(rows[0].name)+'</h3><div class="sg-model-selected-number">'+(total?(100*rows[0].count/total).toLocaleString('vi-VN',{maximumFractionDigits:1}):0)+'% <small>tỷ trọng tiếp nhận</small></div><div class="sg-caption">'+rows[0].count+' '+esc(modelUnit)+' trong kỳ đang chọn.</div>';
     else q('#sg-model-insight').innerHTML = '<div class="sg-caption">Chưa có model trong nhóm đã chọn.</div>';
   }
 

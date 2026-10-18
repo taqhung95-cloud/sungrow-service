@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.6-fan-ui-catalog';
+const APP_VERSION = '1.11.7-fan-model-quantity';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
