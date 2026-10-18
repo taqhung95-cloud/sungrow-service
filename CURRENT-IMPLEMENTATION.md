@@ -1,5 +1,12 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Thông báo cập nhật theo nội dung hồ sơ và màu đồng bộ — 19/10/2026, liveJS149 / entry130
+
+Không dùng caseDataRevision của danh sách làm bằng chứng hồ sơ đang xem thay đổi. Workspace ghi snapshot/revision khi đọc chi tiết, poll nhẹ; khi revision khác mới đọc một hồ sơ đang xem và đối chiếu nội dung (bỏ correctionRevision/dataRevision kỹ thuật). Nội dung giống thì xác nhận mốc mới, không hiện thông báo; có thay đổi thật và đang mở form/nháp thì giữ form và báo riêng hồ sơ đó, cache kết quả chờ để không gọi detail lại cùng revision. Hồ sơ sạch nhận nội dung mới tự động. Bỏ qua poll khi đang tải hồ sơ; abort đối soát khi rời, chặn phản hồi cũ, dọn notice lúc park/chuyển view/tải thành công. Không thêm interval, không đổi backend hoặc mutation.
+
+Header nhận trạng thái entry: hoàn tất xanh ok, busy cam kèm Đang đồng bộ, lỗi đỏ; không hiển thị Đã đồng bộ cùng chấm cam. Test portal-header-status chạy cùng validate kiểm tra màu/label/nguồn message; Edge workspace-ui kiểm tra chuyển tab không cảnh báo giả, global revision đổi nhưng hồ sơ không đổi, không lặp đọc, dữ liệu thật không ghi đè nháp, thông báo không tràn sang tab khác, hồ sơ sạch tự cập nhật. Không cần deploy Apps Script.
+
+
 ## Chip bảo hành trong ô S/N Fan theo lô — 19/10/2026, liveJS148 / entry129
 
 Dùng serial-lookup-control/warranty-chip chung như nhập thường: S/N bên trái, chip kết quả và ngày hết hạn bên phải cùng ô; giữ chiều cao42px, thu gọn bằng ellipsis/title khi cột hẹp. Chỉ frontend, không đổi lookup/cache/Model/KPI/parts hoặc backend; không cần deploy Apps Script.

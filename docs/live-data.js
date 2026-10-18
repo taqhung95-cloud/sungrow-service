@@ -147,7 +147,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=129#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=130#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -1185,7 +1185,8 @@
     if(event.data?.type==='sungrow-portal-notifications-changed'&&syncFrame&&event.source===syncFrame.contentWindow){window.SungrowNotifications?.refresh();return;}
     if(event.data?.type==='sungrow-portal-sync-status'&&syncFrame&&event.source===syncFrame.contentWindow&&q('.sg-main').classList.contains('sg-portal-mode')){
       const text=String(event.data.text||'').slice(0,220);
-      status(text.startsWith('Đã đồng bộ')?text:text.startsWith('Đang')?'Đang đồng bộ…':'Chưa đồng bộ','',text.startsWith('Chưa')?'error':'');
+      const syncing=event.data.busy===true||text.startsWith('Đang'),synced=text.startsWith('Đã đồng bộ');
+      status(syncing?'Đang đồng bộ…':synced?text:'Chưa đồng bộ','',syncing?'':synced?'ok':'error');
       q('.sg-live-box').title=String(event.data.detail||text).slice(0,250);q('#sg-refresh').disabled=event.data.busy===true||text.startsWith('Đang');return;
     }
     if(event.data?.type==='sungrow-portal-local-view'&&syncFrame&&event.source===syncFrame.contentWindow&&['cases','receive','update','transfer'].includes(event.data.view)){openEntryView(event.data.view,false);return;}
