@@ -926,6 +926,7 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   validateTechnicalDates_(record, changes);
   ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
   caseTable.headers=tableHeaders_(SHEETS.cases);
+  if(changes['Loại thiết bị đổi']==='Fan'&&typeof allowListValidationValue_==='function')allowListValidationValue_(SHEETS.workOrders,table.headers,record.__rowNumber,'Loại thiết bị đổi','Fan','Quy tắc loại thiết bị đổi cần quản lý đối soát.');
   updateObjectRow_(SHEETS.workOrders, table.headers, record.__rowNumber, changes);
   updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
     'GSP': gsp,
