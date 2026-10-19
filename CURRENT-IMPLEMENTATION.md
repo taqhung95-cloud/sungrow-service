@@ -4,7 +4,9 @@
 
 Tab hồ sơ dùng cùng renderer thông tin đầy đủ với drawer: mã hồ sơ, loại/Model/SN/số lượng, GSP/MA, center, bảo hành/người và ngày xác nhận/ghi chú, khách hàng, giao nhận/vận chuyển, dự án, ngày tạo/sẵn sàng trả/trả hàng và tài liệu. Hiện lịch sử công việc có ngày nhận/chẩn đoán/hoàn tất, kết quả và ghi chú; giữ sáu nút thao tác. Render từ getCaseDetail đã tải, không thêm API/poll hoặc thay quyền. Danh sách kết quả tìm kiếm vẫn gọn. entry-workspace v3, fan-warranty CSS v3. Chỉ Pages, không cần Apps Script.
 
-validate và Edge workspace-ui kiểm tra đầy đủ trường chi tiết, hành động và draft/cache/revision. Mô phỏng Fan nhiều Model ở thư mục Mo-phong-Fan-2-model-20261019 là artifact riêng dùng dữ liệu giả, chưa triển khai schema, nhập liệu hay KPI theo Model từng S/N.
+validate và Edge workspace-ui kiểm tra đầy đủ trường chi tiết, hành động và draft/cache/revision. Quy tắc hiển thị bảng S/N Fan: toàn bộ ô của mỗi inverter (S/N + chip bảo hành, Model inverter, Model Fan, số Fan, ghi chú, thao tác) và tiêu đề tương ứng phải trên một hàng; không wrap hoặc đẩy ô xuống dòng thứ hai. Khi hẹp giữ cấu trúc cột và cuộn ngang. Mô phỏng đã kiểm tra tại1920/1366/768px.
+
+Mô phỏng Fan nhiều Model ở thư mục Mo-phong-Fan-2-model-20261019 là artifact riêng dùng dữ liệu giả, chưa triển khai schema, nhập liệu hay KPI theo Model từng S/N.
 
 ## Thông báo cập nhật theo nội dung hồ sơ và màu đồng bộ — 19/10/2026, liveJS149 / entry130
 
