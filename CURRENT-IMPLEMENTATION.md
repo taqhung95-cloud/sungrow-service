@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Phân nhóm thông tin hồ sơ — 19/10/2026, liveJS151 / entry132
+
+Renderer chi tiết chung chia thành Thiết bị & tiếp nhận, Bảo hành & tiến độ, Khách hàng, Giao nhận & vận chuyển; thông tin tạo hồ sơ và tài liệu ở cuối. Desktop hai nhóm mỗi hàng, drawer/màn hình hẹp một nhóm mỗi hàng; bên trong giữ các trường liên quan cạnh nhau, địa chỉ/ghi chú nguyên bề rộng nhóm, chữ11/12px. Giữ đủ dữ liệu và quyền/tài liệu/hành động, không thêm API hay đổi backend/KPI. Bảng S/N Fan vẫn tuân quy tắc mỗi inverter một hàng, cuộn ngang khi hẹp. Edge workspace-ui xác nhận trường thuộc đúng nhóm và các thao tác/cache/draft; validate đạt. Cache CSS4; không cần deploy Apps Script.
+
 ## Khôi phục thông tin đầy đủ trong tab hồ sơ — 19/10/2026, liveJS150 / entry131
 
 Tab hồ sơ dùng cùng renderer thông tin đầy đủ với drawer: mã hồ sơ, loại/Model/SN/số lượng, GSP/MA, center, bảo hành/người và ngày xác nhận/ghi chú, khách hàng, giao nhận/vận chuyển, dự án, ngày tạo/sẵn sàng trả/trả hàng và tài liệu. Hiện lịch sử công việc có ngày nhận/chẩn đoán/hoàn tất, kết quả và ghi chú; giữ sáu nút thao tác. Render từ getCaseDetail đã tải, không thêm API/poll hoặc thay quyền. Danh sách kết quả tìm kiếm vẫn gọn. entry-workspace v3, fan-warranty CSS v3. Chỉ Pages, không cần Apps Script.

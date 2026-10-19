@@ -6,7 +6,7 @@
 .fl-intake .fl-sn-warranty input{height:40px;min-height:0}
 [data-workspace-case]{cursor:pointer}[data-workspace-case]:hover{color:#ba5900;text-decoration:underline}
 #workspaceCase{overflow:auto;min-height:0}
-#workspaceCase .detail-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 22px;margin:14px 0;padding-bottom:14px;border-bottom:1px solid #edf0f2}
+.detail-grid.case-information,.case-drawer .detail-grid.case-information{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0;padding-bottom:14px;border-bottom:1px solid #edf0f2}
 #workspaceCase .detail-field{min-width:0}
 #workspaceCase .detail-field span{font-size:11px}
 #workspaceCase .detail-field strong{font-size:12px;line-height:18px}
@@ -14,5 +14,9 @@
 #workspaceCase .case-work-full{padding:10px 0;border-top:1px solid #edf0f2}
 #workspaceCase .case-work-full>.badge{margin-left:10px}
 #workspaceCase .case-work-full .meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:7px;font-size:11px}
-@media(max-width:1100px){#workspaceCase .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){#workspaceCase .detail-grid{grid-template-columns:1fr}#workspaceCase .detail-grid .span2{grid-column:auto}}
+
+
+
+.case-information-group{min-width:0;border:1px solid #e7edf2;border-radius:7px;padding:12px 14px;align-self:stretch;background:#fcfdfe}.case-information-group h4{margin:0 0 12px;font-size:12px;font-weight:600;color:#425563}.case-information-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px;align-content:start}.case-information .detail-field{min-width:0}.case-information .detail-field span{font-size:11px;line-height:16px}.case-information .detail-field strong{font-size:12px;line-height:18px;white-space:normal;overflow-wrap:anywhere}.case-information .case-field-wide{grid-column:1/-1}.case-information-footer{grid-column:1/-1;background:#fff}.case-information-footer .case-information-fields{grid-template-columns:repeat(4,minmax(0,1fr))}.case-drawer .detail-grid.case-information{grid-template-columns:1fr}.case-drawer .case-information-fields,.case-drawer .case-information-footer .case-information-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:1100px){#workspaceCase .detail-grid.case-information{grid-template-columns:1fr}}
+@media(max-width:600px){.case-information-fields,.case-information-footer .case-information-fields,.case-drawer .case-information-fields,.case-drawer .case-information-footer .case-information-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.case-information-group{padding:10px}.case-information-fields{gap:10px 12px}}
