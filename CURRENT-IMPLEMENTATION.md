@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Khôi phục thông tin đầy đủ trong tab hồ sơ — 19/10/2026, liveJS150 / entry131
+
+Tab hồ sơ dùng cùng renderer thông tin đầy đủ với drawer: mã hồ sơ, loại/Model/SN/số lượng, GSP/MA, center, bảo hành/người và ngày xác nhận/ghi chú, khách hàng, giao nhận/vận chuyển, dự án, ngày tạo/sẵn sàng trả/trả hàng và tài liệu. Hiện lịch sử công việc có ngày nhận/chẩn đoán/hoàn tất, kết quả và ghi chú; giữ sáu nút thao tác. Render từ getCaseDetail đã tải, không thêm API/poll hoặc thay quyền. Danh sách kết quả tìm kiếm vẫn gọn. entry-workspace v3, fan-warranty CSS v3. Chỉ Pages, không cần Apps Script.
+
+validate và Edge workspace-ui kiểm tra đầy đủ trường chi tiết, hành động và draft/cache/revision. Mô phỏng Fan nhiều Model ở thư mục Mo-phong-Fan-2-model-20261019 là artifact riêng dùng dữ liệu giả, chưa triển khai schema, nhập liệu hay KPI theo Model từng S/N.
+
 ## Thông báo cập nhật theo nội dung hồ sơ và màu đồng bộ — 19/10/2026, liveJS149 / entry130
 
 Không dùng caseDataRevision của danh sách làm bằng chứng hồ sơ đang xem thay đổi. Workspace ghi snapshot/revision khi đọc chi tiết, poll nhẹ; khi revision khác mới đọc một hồ sơ đang xem và đối chiếu nội dung (bỏ correctionRevision/dataRevision kỹ thuật). Nội dung giống thì xác nhận mốc mới, không hiện thông báo; có thay đổi thật và đang mở form/nháp thì giữ form và báo riêng hồ sơ đó, cache kết quả chờ để không gọi detail lại cùng revision. Hồ sơ sạch nhận nội dung mới tự động. Bỏ qua poll khi đang tải hồ sơ; abort đối soát khi rời, chặn phản hồi cũ, dọn notice lúc park/chuyển view/tải thành công. Không thêm interval, không đổi backend hoặc mutation.
