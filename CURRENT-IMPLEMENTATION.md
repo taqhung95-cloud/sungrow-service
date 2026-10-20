@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Khung bo ngoài bảng sửa Model — 20/10/2026, liveJS156 / entry137
+
+Chỉ thêm khung ngoài fl-model-correction giống bảng tổng hợp phía trên: border1px#e3e7eb, radius8px, nền#f8fafc, padding10x12. Giữ nguyên ba cột S/N/Model inverter/Model Fan, toàn bộ nội dung và form bên dưới; không thêm cột hoặc đổi chức năng. Chỉ CSS, không thay Apps Script.
+
 ## Bảng sửa Model compact — 20/10/2026, liveJS155 / entry136
 
 Chỉ bảng Model theo S/N inverter trong Sửa thông tin hồ sơ: colgroup30/35/35, header/giá trị/ô nhập canh giữa đồng trục, input30px/hàng38px, readonly inverter xám, scroll khi hẹp, khoảng cách dưới bảng12px. Giữ nguyên form và thứ tự trường bên dưới, không gom nhóm theo yêu cầu người dùng. Chỉ frontend CSS/markup, không đổi lookup/lưu/backend. fan-shared-forms JS5/CSS7; không cần thay Apps Script.
