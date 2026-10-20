@@ -1,6 +1,7 @@
 import './portal-header-status.mjs';
 import './warranty-batch.mjs';
 import './fan-model-quantity.mjs';
+import './case-corrections.mjs';
 import './entry-suggestions.mjs';
 import './warranty-inline.mjs';
 import './dashboard-sync-clock.mjs';
@@ -158,7 +159,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.11\.8-workspace-fan-warranty/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.11\.9-fan-line-models/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
 assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
@@ -487,11 +488,11 @@ assert.match(entryHtml, /class="loading-spinner"/, 'Danh sách hồ sơ phải h
 assert.match(entryHtml, /installLoadingIndicators/, 'Các trạng thái tải động phải tự động được gắn vòng xoay.');
 assert.match(entryHtml, /querySelectorAll\('\.empty-row td,\.empty,button,\[role="status"\]'\)/, 'Vòng xoay chỉ được gắn vào trạng thái tải thực sự.');
 assert.doesNotMatch(entryHtml, /querySelectorAll\('td,\.empty,button/, 'Không được hiểu nhầm trạng thái nghiệp vụ trong ô bảng là trạng thái tải.');
-assert.match(liveDataSource, /v=132#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=133#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=151/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=152/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -579,3 +580,7 @@ assert.throws(()=>creationSandbox.createCase('owner',{...draft,requestId:pending
 assert.equal(uploadCount,1);
 assert.equal(locked,false);
 console.log('Validation passed: syntax, roles/KPI, shared cache (10 readers / 1 Sheet read), contention hand-off, creation idempotency and upload lock isolation.');
+
+// Exercise actual createCase with line-model preparation and atomic write route.
+vm.runInContext(read('FanLotRules.gs')+'\n'+read('FanLots.gs'),creationSandbox);Object.assign(creationSandbox,{LEGACY_DASHBOARD_API:{fanModels:true},Utilities:{formatDate:()=> '2026-10-19'},flEnabled_:()=>true,assertDeviceType_:value=>assert.equal(value,'Fan'),flAppendRequest_:(name,row)=>({name,row}),flBatch_:writes=>{assert.equal(locked,true);for(const w of writes)creationRows[w.name].push(w.row);},flFinishSync_:()=>{}});
+const mixedDraft={...draft,requestId:'12345678-abcd-1234-abcd-111111111111',deviceType:'Fan',serialNumber:'',fanMode:'lot',fanModelsVersion:1,model:'INVALID COMMON MODEL',quantity:999,fanLines:[{serialNumber:'INV-A',fanModel:'FAN-A',inverterModel:'SG110CX',quantity:2},{serialNumber:'INV-B',fanModel:'FAN-B',inverterModel:'SG125CX-P2',quantity:3}]};const mixedCreated=creationSandbox.createCase('owner',mixedDraft);const writtenLot=creationRows.cases.find(r=>r['Mã hồ sơ']===mixedCreated.caseId);assert.equal(writtenLot.Model,'2 Model Fan');assert.equal(writtenLot['Số lượng'],5);const writtenLines=creationSandbox.SungrowFanLotRules.parse(writtenLot['Chi tiết lô Fan']).lines;assert.equal(writtenLines[0].fanModel,'FAN-A');assert.equal(writtenLines[1].fanModel,'FAN-B');assert.equal(writtenLines[1].inverterModel,'SG125CX-P2');assert.equal(creationSandbox.createCase('owner',mixedDraft).caseId,mixedCreated.caseId);assert.equal(creationRows.cases.length,2);console.log('Mixed Fan create integration passed: canonical summary/quantity, real line metadata persisted via atomic route and idempotent retry.');

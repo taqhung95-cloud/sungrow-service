@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.7-fan-model-quantity';
+const LEGACY_API_VERSION = '1.11.9-fan-line-models';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -775,6 +775,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     modelCatalog: modelCatalog,
     modelTypes: modelTypes,
     modelDistributionUnit: 'physical-items',
+    fanModelDistribution: 'per-line',
     errors: errors,
     parts: parts,
     tickets: tickets,
@@ -975,10 +976,9 @@ function groupModelTypes_(rows) {
   const groups = {};
   rows.forEach(function (r) {
     const type = r.deviceType || 'Chưa xác định';
-    const model = modelDistributionLabel_(r);
     if (!groups[type]) groups[type] = { count: 0, models: {} };
-    groups[type].count += modelDistributionQuantity_(r);
-    groups[type].models[model] = (groups[type].models[model] || 0) + modelDistributionQuantity_(r);
+    const entries=r.fanLot&&Array.isArray(r.fanLot.lines) ? r.fanLot.lines.map(function(l){return {name:modelDistributionLabel_({deviceType:r.deviceType,model:l.fanModel||r.model}),quantity:l.quantity};}) : [{name:modelDistributionLabel_(r),quantity:modelDistributionQuantity_(r)}];
+    entries.forEach(function(e){groups[type].count+=e.quantity;groups[type].models[e.name]=(groups[type].models[e.name]||0)+e.quantity;});
   });
   return Object.keys(groups).map(function (name) {
     const group = groups[name];
@@ -1311,3 +1311,6 @@ function doPost(e) {
 LEGACY_DASHBOARD_API.fanLegacyKpiReady = true;
 
 LEGACY_DASHBOARD_API.fanSharedFormsReady = true;
+
+// Bootstrap refuses line-model writes if this reader is not installed.
+LEGACY_DASHBOARD_API.fanModels = true;

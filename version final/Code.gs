@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.8-workspace-fan-warranty';
+const APP_VERSION = '1.11.9-fan-line-models';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -125,6 +125,7 @@ function getBootstrap(idToken, options) {
     version: APP_VERSION,
     entrySuggestions: typeof getEntrySuggestions === 'function',
     warrantyBatchLookup: true,
+    fanLotModels: typeof flModelsReady_==='function'&&flModelsReady_(),
     notifications: typeof listNotifications === 'function',
     portalSessions: typeof createPortalSession === 'function',
     dashboardRanges: true,
@@ -472,7 +473,7 @@ function createCase(idToken, payload) {
   const receivedAt = parseDateRequired_(payload.receivedAt, 'Ngày nhận từ khách');
   const deviceType = required_(payload.deviceType, 'Loại thiết bị');
   assertDeviceType_(deviceType);
-  const model = required_(payload.model, 'Model');
+  let model = required_(payload.model, 'Model');
   const serial = clean_(payload.serialNumber);
   if (deviceType !== 'Fan' && !serial) throw publicError_('Số sê-ri (S/N) là bắt buộc, trừ thiết bị Fan.');
   const customerName = required_(payload.customerName, 'Tên khách hàng');
@@ -483,6 +484,7 @@ function createCase(idToken, payload) {
   const initialIssue = required_(payload.initialIssue, 'Hiện tượng ban đầu');
   const fanState = typeof flPrepareCreate_ === 'function' ? flPrepareCreate_(payload) : null;
   if(payload.fanMode==='lot'&&!fanState)throw publicError_('Cần cập nhật backend Fan theo lô.');
+  if(fanState&&fanState.lines.some(function(l){return !!l.fanModel;}))model=SungrowFanLotRules.modelLabel(fanState);
   const quantity = fanState ? SungrowFanLotRules.totals(fanState).received : Math.max(1, Number(payload.quantity || 1));
   if (!Number.isFinite(quantity)) throw publicError_('Số lượng không hợp lệ.');
   const requestId = clean_(payload.requestId);
@@ -847,7 +849,10 @@ function correctCase(idToken, payload) {
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') throw publicError_('Không sửa hồ sơ đã hủy.');
     const fields = {deviceType:'Loại thiết bị',serialNumber:'Số sê-ri (S/N)',model:'Model',quantity:'Số lượng',receivedAt:'Ngày nhận từ khách',readyAt:'Ngày sẵn sàng trả khách',returnedAt:'Ngày trả khách',sender:'Đơn vị gửi hàng',customerName:'Tên khách hàng',customerAddress:'Địa chỉ khách hàng',customerPhone:'Số điện thoại khách hàng',customerEmail:'Email khách hàng',note:'Ghi chú chung',evidenceLink:'Liên kết hồ sơ Drive'};
     const input = payload.changes || {}, changes = {}, dates = ['receivedAt','readyAt','returnedAt'];
+    if(Object.prototype.hasOwnProperty.call(input,'fanModels'))Object.assign(changes,flCorrectModels_(record,input.fanModels));
+    if(typeof flIsLot_==='function'&&flIsLot_(record)&&flState_(record).lines.some(function(l){return l.fanModel;})&&Object.prototype.hasOwnProperty.call(input,'model'))throw publicError_('Model Fan của lô phải sửa theo từng S/N inverter.');
     Object.keys(input).forEach(function (key) {
+      if(key==='fanModels')return;
       if (!fields[key]) throw publicError_('Trường không được phép sửa: ' + key);
       if (table.headers.indexOf(fields[key]) === -1) throw publicError_('Thiếu cột đích: ' + fields[key]);
       let value = clean_(input[key]);

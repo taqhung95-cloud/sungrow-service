@@ -1,5 +1,13 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Fan nhiều Model theo S/N & hồ sơ gọn — 20/10/2026, backend1.11.9 / liveJS152 / entry133
+
+Mỗi dòng gồm S/N kèm chip bảo hành, Model inverter tự tra chỉ đọc, Model/Mã Fan nhập riêng, số Fan, ghi chú, Xóa; header/cell luôn một hàng và cuộn ngang. Tổng Model/số inverter/tổng Fan tự tính tô xám. Excel3–4cột SN/ModelFan/SL/ghi chú. Gộp cùngSN cùngModel, chặn cùngSN khácModel. Không suy mã Fan từ inverter. Lookup giữ cache/batch, không thêm poll. Capability fanLotModels kiểm tra đủ bộ backend mới; thiếu thì báo và chặn lưu lô mới để tránh mất thuộc tính.
+
+fanModel/inverterModel là thuộc tính tùy chọn trong JSON Chi tiết lô Fan hiện có, giữ schema1/hồ sơ cũ; không thêm tab/cột hoặc migration. createCase/correctCase gốc giữ atomic create, quyền quản lý/CAS/lý do/audit/index/projection/revision; sửa Model không đổi số lượng/SN/tiến độ. Chỉ mục tìm kiếm thêm Model dòng. ModelTypes cộng số Fan từng dòng theo kỳ/center/quyền, hồ sơ cũ fallback Model nguồn; KPI mỗi lô1, parts thực dùng giữ. Thông tin hồ sơ padding8x10/gap5px; linkDrive/Bổ sung đính kèm cùng hàng.
+
+Validate/Edge kiểm tra actual create atomic/retry, correction, tiến độ, Model quantities/cache/parts, row1920/1366/768, inline attachment/draft/tab/revision. Cần thay4file theo DEPLOY-1.11.9-FAN-LINE-MODELS.md. Self-check kiemTraFanNhieuModel không ghi nguồn. Frontend Pages đã push không có nghĩa backend đã deploy; backend manual.
+
 ## Phân nhóm thông tin hồ sơ — 19/10/2026, liveJS151 / entry132
 
 Renderer chi tiết chung chia thành Thiết bị & tiếp nhận, Bảo hành & tiến độ, Khách hàng, Giao nhận & vận chuyển; thông tin tạo hồ sơ và tài liệu ở cuối. Desktop hai nhóm mỗi hàng, drawer/màn hình hẹp một nhóm mỗi hàng; bên trong giữ các trường liên quan cạnh nhau, địa chỉ/ghi chú nguyên bề rộng nhóm, chữ11/12px. Giữ đủ dữ liệu và quyền/tài liệu/hành động, không thêm API hay đổi backend/KPI. Bảng S/N Fan vẫn tuân quy tắc mỗi inverter một hàng, cuộn ngang khi hẹp. Edge workspace-ui xác nhận trường thuộc đúng nhóm và các thao tác/cache/draft; validate đạt. Cache CSS4; không cần deploy Apps Script.
