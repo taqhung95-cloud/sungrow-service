@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Bảng sửa Model compact — 20/10/2026, liveJS155 / entry136
+
+Chỉ bảng Model theo S/N inverter trong Sửa thông tin hồ sơ: colgroup30/35/35, header/giá trị/ô nhập canh giữa đồng trục, input30px/hàng38px, readonly inverter xám, scroll khi hẹp, khoảng cách dưới bảng12px. Giữ nguyên form và thứ tự trường bên dưới, không gom nhóm theo yêu cầu người dùng. Chỉ frontend CSS/markup, không đổi lookup/lưu/backend. fan-shared-forms JS5/CSS7; không cần thay Apps Script.
+
 ## Bộ lọc Kết quả gần nhất — 20/10/2026, Code1.11.10 / liveJS154 / entry135
 
 Danh sách hồ sơ thêm dropdown Tất cả kết quả, options từ các dòng chỉ mục được phép xem và các bộ lọc khác. latestResult khớp đúng nội dung cột: kết quả xử lý ưu tiên, nếu trống dùng trạng thái công việc, không có công việc/không được xem chặng gần nhất → Chưa cập nhật. Không lộ kết quả chặng ngoài quyền, bỏ hồ sơ hủy. Lọc toàn chỉ mục trước sort/phân trang, serialize mỗi trang; vẫn một shared-index read, không đọc chi tiết/lịch sử. Cache seed có filters/revision/APP_VERSION nên tách giá trị lọc. Đổi lựa chọn về trang1, giữ kết hợp query/status/warranty/center/sort. Dropdown disabled khi backend cũ chưa có capability; tránh lọc giả20dòng.
