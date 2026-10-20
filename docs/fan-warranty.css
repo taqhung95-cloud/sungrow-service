@@ -33,3 +33,5 @@
 
 /* Match the rounded outer shell of the lot summary; preserve the three-column table. */
 .fl-model-correction{border:1px solid #e3e7eb;border-radius:8px;background:#f8fafc;padding:10px 12px;margin:12px 0}.fl-model-correction .fl-correction-heading{margin-top:0}#appView .fl-model-correction .fan-scope-table{margin-bottom:0}
+
+#appView .system-fan-correction .fan-compact-table{min-width:1000px!important}#appView .system-fan-correction .fan-compact-table input{min-width:0!important;width:100%!important;height:30px!important;min-height:30px!important;box-sizing:border-box;text-align:center!important;padding:4px 6px!important}#appView .system-fan-correction .fan-compact-table td{padding:4px 8px!important}

@@ -1,5 +1,15 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Quyền sửa thông tin gốc — 20/10/2026, backend1.11.11 / liveJS157 / entry138
+
+Chỉ roleCode service_manager được correctCase, lấy correctionRevision và mở form; center_manager/center_staff bị chặn cả UI/API kể cả isGlobalManager=true của quản lý center Sungrow. Quyền cập nhật công việc thường ngày giữ nguyên. Sửa thông tin gốc mọi loại thiết bị, mọi center, kể cả hồ sơ đã hoàn tất; sửa SN/Model/SL/ngày và thông tin khách/giao nhận/GSP/MA/dự án. Không chặn do trùng SN hay có công việc/luân chuyển trước đó. Giữ caseId, lịch sử cũ và liên kết. Các ràng buộc định dạng, ngày hợp lệ, CAS/lý do/audit vẫn áp dụng. Hồ sơ hủy chỉ xem trực tiếp theo ID bởi hệ thống, vẫn ẩn khỏi danh sách thường.
+
+Lô Fan giữ khung bo, mỗi inverter một hàng: sửa SN, Model inverter, Model Fan, số quạt lỗi, hoàn tất, đã trả; common SN/Model/SL là tổng dẫn xuất. Không thêm/xóa lineId hay đổi lô thành loại thiết bị khác làm mất tham chiếu. Cho phép giảm SL và sửa đồng thời bộ đếm, với 0≤đã trả≤hoàn tất≤SL. Đổi SN đặt bảo hành dòng về Chờ xác nhận, không tự duyệt. Lookup debounce/cache/batch chỉ trên form đang mở; không poll mới. Giữ form thường phẳng, không gom nhóm.
+
+Case snapshot và journal correction có delta ký hiệu được ghi một atomic batch, pending guard/reconciliation giữ khi kết quả chưa rõ. Nhật ký nghiệp vụ và parts gốc không viết lại; audit trước/sau có lý do. Ledger/projection/index/revision đồng bộ, reader dashboard/report cộng delta kỹ thuật/giao trả theo ngày hiệu lực chỉnh sửa; tỷ trọng Model dùng SL mới, KPI hồ sơ và parts thực dùng giữ định nghĩa. Lô chuyển đổi giữ original source snapshots, receivedCorrection cân bằng tổng mới. Đóng/mở lại theo số trả có ngày trả/sẵn sàng tương ứng. Các ngày nguồn vẫn kiểm tra thứ tự.
+
+Phải copy đủ Code.gs, LegacyDashboardApi.gs, FanLotRules.gs, FanLots.gs; Save/New version Web App hiện tại, giữ URL. Hướng dẫn DEPLOY-1.11.11-SYSTEM-CORRECTIONS.md, self-check kiemTraQuyenSuaHoSo không ghi DB. Cache rules6/shared6/CSS9. Tests validate và Edge kiểm tra role denial, mọi loại/closed, atomic failure, giảm SL/tiến độ, CAS/retry, reader KPI/parts và payload UI. Không migration, không schema/history writes. Frontend Pages phát hành độc lập; backend cần người dùng deploy thủ công.
+
 ## Khung bo ngoài bảng sửa Model — 20/10/2026, liveJS156 / entry137
 
 Chỉ thêm khung ngoài fl-model-correction giống bảng tổng hợp phía trên: border1px#e3e7eb, radius8px, nền#f8fafc, padding10x12. Giữ nguyên ba cột S/N/Model inverter/Model Fan, toàn bộ nội dung và form bên dưới; không thêm cột hoặc đổi chức năng. Chỉ CSS, không thay Apps Script.

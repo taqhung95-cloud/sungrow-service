@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.9-fan-line-models';
+const LEGACY_API_VERSION = '1.11.11-system-case-corrections';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -221,7 +221,7 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       quantity: clean_(item['Loại thiết bị']) === 'Fan' ? 1 : knownQuantity_(item['Số lượng']),
       modelQuantity: fanState ? SungrowFanLotRules.totals(fanState).received : knownQuantity_(item['Số lượng']),
       caseCount: 1,
-      fanLot: fanState ? {totals:SungrowFanLotRules.totals(fanState),lines:fanState.lines,events:(fanEventsByCase[caseId]||[]).map(function(e){return {kind:e['Loại thao tác'],quantity:Number(e['Số lượng']),date:iso_(date_(e['Ngày thực tế'])),lineId:e['Mã dòng Fan'],outcome:e['Kết quả']};})} : null,
+      fanLot: fanState ? {totals:SungrowFanLotRules.totals(fanState),lines:fanState.lines,events:(fanEventsByCase[caseId]||[]).reduce(function(all,e){const date=iso_(date_(e['Ngày thực tế'])),lineId=e['Mã dòng Fan'];if(e['Loại thao tác']==='correction'){const d=parseJson_(e['Nội dung'])||{};all.push({kind:'technical',quantity:Number(d.completedDelta)||0,date:date,lineId:lineId},{kind:'return',quantity:Number(d.returnedDelta)||0,date:date,lineId:lineId});}else all.push({kind:e['Loại thao tác'],quantity:Number(e['Số lượng']),date:date,lineId:lineId,outcome:e['Kết quả']});return all;},[])} : null,
       relatedCaseIds: fanState&&fanState.legacyImport?fanState.legacyImport.sources.map(function(r){return r.caseId;}):[],
       relatedSerials: fanState ? fanState.lines.map(function(l){return l.serialNumber;}).filter(Boolean) : [],
       gsp: clean_(item.GSP),
@@ -1314,3 +1314,5 @@ LEGACY_DASHBOARD_API.fanSharedFormsReady = true;
 
 // Bootstrap refuses line-model writes if this reader is not installed.
 LEGACY_DASHBOARD_API.fanModels = true;
+
+LEGACY_DASHBOARD_API.systemCorrections = true;
