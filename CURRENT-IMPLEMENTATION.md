@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Model inverter cho hồ sơ lô cũ — 20/10/2026, liveJS153 / entry134
+
+Sửa thông tin hồ sơ lô thêm cột Model inverter tự tra và nút tra lại, dùng lookup cache/batch hiện có cho S/N thiếu Model. Không chép Model inverter vào Model Fan, không auto save/duyệt bảo hành. Lưu chỉnh sửa qua correctCase hiện có nhận inverterModel tùy chọn cùng fanModel theo lineId; giữ CAS/quyền/audit/index/revision, không đổi SN/số lượng/tiến độ. Kết quả tra lỗi/không thấy giữ Model cũ; không gửi blank xóa dữ liệu. Không tra khi chỉ mở tab hồ sơ.
+
+FanLots.gs thêm capability inverterModelCorrection trong detail; frontend cũ tương thích, backend chưa có thì báo thay FanLots.gs và không gửi trường có nguy cơ bị bỏ qua. Code/Legacy/Rules vẫn1.11.9, chỉ cần thay FanLots.gs từ bản sửa này rồi Save/New version deployment hiện tại. Không migration/ghi history. Test correction lưu Model inverter/giữ Model cũ khi không gửi/chặn formula, Edge hồ sơ cũ tra đủ cột và payload lưu không đổi Model Fan.
+
 ## Fan nhiều Model theo S/N & hồ sơ gọn — 20/10/2026, backend1.11.9 / liveJS152 / entry133
 
 Mỗi dòng gồm S/N kèm chip bảo hành, Model inverter tự tra chỉ đọc, Model/Mã Fan nhập riêng, số Fan, ghi chú, Xóa; header/cell luôn một hàng và cuộn ngang. Tổng Model/số inverter/tổng Fan tự tính tô xám. Excel3–4cột SN/ModelFan/SL/ghi chú. Gộp cùngSN cùngModel, chặn cùngSN khácModel. Không suy mã Fan từ inverter. Lookup giữ cache/batch, không thêm poll. Capability fanLotModels kiểm tra đủ bộ backend mới; thiếu thì báo và chặn lưu lô mới để tránh mất thuộc tính.

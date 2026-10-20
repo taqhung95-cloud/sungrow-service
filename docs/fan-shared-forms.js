@@ -55,6 +55,26 @@ window.SungrowFanSharedForms=(()=>{
     const signature=form._fanItem.caseId+'|'+form._fanOperation+'|'+JSON.stringify(data);data.requestId=requests.get(signature)||crypto.randomUUID();requests.set(signature,data.requestId);return data;
   }
   function attachScope(form,item,operation){enhanceActionForm(form);return scope(form,item,operation);}
-  function correction(form,item){if(!item.fanLot)return;for(const name of ['deviceType','serialNumber','quantity','receivedAt','readyAt','returnedAt'])form.elements[name].disabled=true;if(!state.fanLotModels){if(item.fanLot.state.lines.some(l=>l.fanModel))form.elements.model.disabled=true;return;}form.elements.model.disabled=true;const box=document.createElement('div');box.className='fl-model-correction';box.innerHTML='<h4>Model Fan theo S/N inverter</h4><div class="fan-scope-table"><table class="case-table fan-compact-table"><thead><tr><th>S/N inverter</th><th>Model / Mã Fan</th></tr></thead><tbody>'+item.fanLot.state.lines.map(l=>'<tr><td>'+esc(l.serialNumber||l.note||'Chưa rõ S/N')+'</td><td><input name="fanModel-'+esc(l.lineId)+'" data-model-line="'+esc(l.lineId)+'" aria-label="Model Fan '+esc(l.serialNumber||l.lineId)+'" maxlength="100" required value="'+esc(l.fanModel||item.model||'')+'"></td></tr>').join('')+'</tbody></table></div>';form.querySelector('.grid').before(box);}
+  function correction(form,item){
+    if(!item.fanLot)return;for(const name of ['deviceType','serialNumber','quantity','receivedAt','readyAt','returnedAt'])form.elements[name].disabled=true;
+    if(!state.fanLotModels){if(item.fanLot.state.lines.some(l=>l.fanModel))form.elements.model.disabled=true;return;}
+    form.elements.model.disabled=true;const supported=item.fanLot.inverterModelCorrection===true;form.dataset.inverterModelCorrection=String(supported);
+    const box=document.createElement('div');box.className='fl-model-correction';
+    box.innerHTML='<div class="fl-correction-heading"><h4>Model theo S/N inverter</h4><button type="button" class="secondary" data-lookup-models>Tra lại Model inverter</button></div><p class="parts-date-help" data-model-status></p><div class="fan-scope-table"><table class="case-table fan-compact-table"><thead><tr><th>S/N inverter</th><th>Model inverter — tự tra</th><th>Model / Mã Fan</th></tr></thead><tbody>'+item.fanLot.state.lines.map(l=>'<tr><td>'+esc(l.serialNumber||l.note||'Chưa rõ S/N')+'</td><td><input data-inverter-line="'+esc(l.lineId)+'" aria-label="Model inverter '+esc(l.serialNumber||l.lineId)+'" readonly class="fl-derived-field" value="'+esc(l.inverterModel||'')+'"></td><td><input name="fanModel-'+esc(l.lineId)+'" data-model-line="'+esc(l.lineId)+'" aria-label="Model Fan '+esc(l.serialNumber||l.lineId)+'" maxlength="100" required value="'+esc(l.fanModel||item.model||'')+'"></td></tr>').join('')+'</tbody></table></div>';
+    form.querySelector('.grid').before(box);const status=box.querySelector('[data-model-status]'),button=box.querySelector('[data-lookup-models]');
+    const note=supported?'Model inverter tra theo S/N; Model Fan nhập riêng. Bấm Lưu chỉnh sửa để ghi vào hồ sơ.':'Cần cập nhật FanLots.gs để lưu Model inverter cho hồ sơ cũ. Model Fan vẫn sửa được.';
+    async function lookup(force=false){
+      if(form.dataset.modelLookupBusy==='true')return;const token=state.token;form.dataset.modelLookupBusy='true';button.disabled=true;
+      const submit=form.querySelector('button[type=submit]'),wasDisabled=submit.disabled;submit.disabled=true;status.textContent='Đang tra Model inverter…';let found=0,missing=0;
+      try{await Promise.all(item.fanLot.state.lines.map(async line=>{
+        const input=box.querySelector('[data-inverter-line="'+CSS.escape(line.lineId)+'"]');if(!line.serialNumber||(!force&&input.value))return;
+        try{const result=await SungrowWarranty.lookup(line.serialNumber);if(!form.isConnected||token!==state.token)return;if(result.model){input.value=result.model;found++;input.title=result.model;}else{missing++;input.placeholder='Chưa tìm thấy Model';input.title=result.label||'Nguồn tra chưa có Model';}}
+        catch(error){missing++;if(form.isConnected){input.placeholder='Chưa tra được — thử lại';input.title=error.message;}}
+      }));if(form.isConnected&&token===state.token)status.textContent=note+(found?' Đã tra được '+found+' inverter.':'')+(missing?' Có '+missing+' S/N chưa tra được; giữ nguyên Model đã lưu.':'');}
+      finally{delete form.dataset.modelLookupBusy;button.disabled=false;submit.disabled=wasDisabled;}
+    }
+    button.onclick=()=>lookup(true);status.textContent=note;lookup();
+  }
+
   return {attachWork,attachScope,prepare,correction};
 })();
