@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.11-system-case-corrections';
+const APP_VERSION = '1.11.12-sungrow-case-corrections';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -839,11 +839,11 @@ function withSerializedWrite_(operationName, callback) {
 }
 
 /** Administrative correction updates the existing case; never creates a case or transfer. */
-function systemCaseManager_(actor){return !!actor&&actor.roleCode===ROLE_CODES.serviceManager;}
+function systemCaseManager_(actor){return !!actor&&(actor.roleCode===ROLE_CODES.serviceManager||(actor.roleCode===ROLE_CODES.centerManager&&actor.homeCenter===SUNGROW_CENTER));}
 function correctCase(idToken, payload) {
   return withSerializedWrite_('sửa thông tin hồ sơ', function () {
     const actor = authenticate_(idToken);
-    if (!systemCaseManager_(actor)) throw publicError_('Chỉ tài khoản quản lý hệ thống được sửa thông tin gốc.');
+    if (!systemCaseManager_(actor)) throw publicError_('Chỉ quản lý hệ thống hoặc quản lý Sungrow Center được sửa thông tin gốc.');
     payload = payload || {};
     const caseId = required_(payload.caseId, 'Mã hồ sơ');
     const reason = required_(payload.reason, 'Lý do sửa');
@@ -2476,7 +2476,7 @@ function safeDriveLink_(value) {
 function validateDriveLink_(value) {
   if (!safeDriveLink_(value)) throw publicError_('Liên kết hồ sơ phải là link Google Drive hợp lệ.');
 }
-function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, roleCode: actor.roleCode, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, capabilities: Object.assign({}, actor.capabilities), canApproveWarranty: canApproveWarranty_(actor) }; }
+function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, roleCode: actor.roleCode, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, canCorrectCaseSources: systemCaseManager_(actor), capabilities: Object.assign({}, actor.capabilities), canApproveWarranty: canApproveWarranty_(actor) }; }
 function groupBy_(rows, field) { return rows.reduce(function (out, row) { const key = row[field]; if (!out[key]) out[key] = []; out[key].push(row); return out; }, {}); }
 function stripInternal_(value) { const copy = Object.assign({}, value); delete copy.__rowNumber; return copy; }
 function required_(value, label) { const result = clean_(value); if (!result) throw publicError_('Thiếu ' + label + '.'); return result; }

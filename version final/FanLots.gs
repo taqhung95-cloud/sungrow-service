@@ -299,7 +299,7 @@ function kiemTraFanNhieuModel(){if(!flModelsReady_())throw Error('Cập nhật �
 // System-only source corrections. Case ID and line IDs remain stable for journal/file references.
 function flAdminCorrectionReady_(){return typeof SungrowFanLotRules.adminCorrections==='boolean'&&SungrowFanLotRules.adminCorrections&&typeof LEGACY_DASHBOARD_API!=='undefined'&&LEGACY_DASHBOARD_API.systemCorrections===true;}
 function flAdminPrepareCorrection_(actor,row,rows,reason,payload){
-  if(!systemCaseManager_(actor)||!flAdminCorrectionReady_())throw publicError_('Chỉ quản lý hệ thống trên bản sửa hồ sơ mới được thao tác.');
+  if(!systemCaseManager_(actor)||!flAdminCorrectionReady_())throw publicError_('Chỉ quản lý hệ thống hoặc quản lý Sungrow Center trên bản sửa hồ sơ mới được thao tác.');
   var state=flState_(row),before=SungrowFanLotRules.parse(state),seen={},serials={};
   if(!Array.isArray(rows)||rows.length!==state.lines.length)throw publicError_('Giữ đầy đủ các dòng hồ sơ khi sửa.');
   var date=SungrowFanLotRules.day(payload.correctionDate||Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')),events=[];
@@ -329,7 +329,7 @@ function flCorrectionDeltas_(event){var data=event['Loại thao tác']==='correc
 
 // In-memory deployment check; no account, business data or Sheets mutations.
 function kiemTraQuyenSuaHoSo(){
-  if(!flAdminCorrectionReady_()||APP_VERSION!=='1.11.11-system-case-corrections')throw Error('Cần thay đủ 4 file của bản 1.11.11.');
-  if(!systemCaseManager_({roleCode:'service_manager'})||systemCaseManager_({roleCode:'center_manager',isGlobalManager:true})||systemCaseManager_({roleCode:'center_staff',isGlobalManager:true}))throw Error('Quyền sửa hồ sơ chưa đúng.');
-  return {ok:true,version:APP_VERSION,systemManagerOnly:true,allDeviceTypes:true,writtenToDatabase:false};
+  if(!flAdminCorrectionReady_()||APP_VERSION!=='1.11.12-sungrow-case-corrections')throw Error('Cần cập nhật Code.gs và FanLots.gs bản 1.11.12 trên bộ 1.11.11.');
+  if(!systemCaseManager_({roleCode:'service_manager'})||!systemCaseManager_({roleCode:'center_manager',homeCenter:SUNGROW_CENTER})||systemCaseManager_({roleCode:'center_manager',homeCenter:'DAT Center',isGlobalManager:true})||systemCaseManager_({roleCode:'center_staff',isGlobalManager:true}))throw Error('Quyền sửa hồ sơ chưa đúng.');
+  return {ok:true,version:APP_VERSION,systemAndSungrowManagers:true,allDeviceTypes:true,writtenToDatabase:false};
 }

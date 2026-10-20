@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Quản lý Sungrow Center được sửa hồ sơ — 20/10/2026, Code1.11.12 / liveJS158 / entry139
+
+Quyền sửa thông tin gốc gồm service_manager và center_manager có homeCenter chính xác Sungrow Service Center. Không suy từ centers chứa Sungrow hoặc riêng cờ isGlobalManager. resolveRole_ hiện đã quy đổi quản lý Sungrow thành service_manager; helper nay chấp nhận rõ cả dạng center_manager để tránh phụ thuộc cách biểu diễn. publicActor thêm canCorrectCaseSources; frontend áp dụng cùng quyền cho mở form và bảng sửa SN/SL/tiến độ Fan. Mọi loại thiết bị/mọi center/closed được sửa như 1.11.11, các center manager khác và toàn bộ center_staff (kể cả Sungrow) bị chặn. Không đổi quyền nghiệp vụ khác hoặc dữ liệu.
+
+Backend chỉ Code.gs và FanLots.gs thay so với bộ1.11.11. LegacyDashboardApi.gs/FanLotRules.gs giữ nguyên1.11.11. Gói triển khai mới gồm đủ4file để người chưa cài bản trước có thể dùng; nếu đã cài1.11.11 chỉ thay2file, Save/New version giữ URL. Tests actual correction bởi quản lý Sungrow, raw/normalized role aliases, deny DAT/Sungrow staff và Edge form+payload. Tài liệu DEPLOY-1.11.12-SUNGROW-CORRECTIONS.md thay hướng dẫn quyền ở mục1.11.11 bên dưới.
+
 ## Quyền sửa thông tin gốc — 20/10/2026, backend1.11.11 / liveJS157 / entry138
 
 Chỉ roleCode service_manager được correctCase, lấy correctionRevision và mở form; center_manager/center_staff bị chặn cả UI/API kể cả isGlobalManager=true của quản lý center Sungrow. Quyền cập nhật công việc thường ngày giữ nguyên. Sửa thông tin gốc mọi loại thiết bị, mọi center, kể cả hồ sơ đã hoàn tất; sửa SN/Model/SL/ngày và thông tin khách/giao nhận/GSP/MA/dự án. Không chặn do trùng SN hay có công việc/luân chuyển trước đó. Giữ caseId, lịch sử cũ và liên kết. Các ràng buộc định dạng, ngày hợp lệ, CAS/lý do/audit vẫn áp dụng. Hồ sơ hủy chỉ xem trực tiếp theo ID bởi hệ thống, vẫn ẩn khỏi danh sách thường.
