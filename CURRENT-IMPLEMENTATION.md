@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Bộ lọc Kết quả gần nhất — 20/10/2026, Code1.11.10 / liveJS154 / entry135
+
+Danh sách hồ sơ thêm dropdown Tất cả kết quả, options từ các dòng chỉ mục được phép xem và các bộ lọc khác. latestResult khớp đúng nội dung cột: kết quả xử lý ưu tiên, nếu trống dùng trạng thái công việc, không có công việc/không được xem chặng gần nhất → Chưa cập nhật. Không lộ kết quả chặng ngoài quyền, bỏ hồ sơ hủy. Lọc toàn chỉ mục trước sort/phân trang, serialize mỗi trang; vẫn một shared-index read, không đọc chi tiết/lịch sử. Cache seed có filters/revision/APP_VERSION nên tách giá trị lọc. Đổi lựa chọn về trang1, giữ kết hợp query/status/warranty/center/sort. Dropdown disabled khi backend cũ chưa có capability; tránh lọc giả20dòng.
+
+Chỉ backend Code.gs thay thành1.11.10-case-result-filter; Legacy/FanRules/FanLots giữ bản đang chạy1.11.9 và bản vá Model inverter. Pages cập nhật riêng; Save/New version deployment hiện tại sau copyCode. Tests case-result-filter kiểm tra >3trang, ưu tiên outcome, bộ lọc kết hợp, quyền/options, chỉ serialize trang; Edge kiểm tra gửi filter/giữ giá trị/reset trang. Không mutation/schema/KPI.
+
 ## Model inverter cho hồ sơ lô cũ — 20/10/2026, liveJS153 / entry134
 
 Sửa thông tin hồ sơ lô thêm cột Model inverter tự tra và nút tra lại, dùng lookup cache/batch hiện có cho S/N thiếu Model. Không chép Model inverter vào Model Fan, không auto save/duyệt bảo hành. Lưu chỉnh sửa qua correctCase hiện có nhận inverterModel tùy chọn cùng fanModel theo lineId; giữ CAS/quyền/audit/index/revision, không đổi SN/số lượng/tiến độ. Kết quả tra lỗi/không thấy giữ Model cũ; không gửi blank xóa dữ liệu. Không tra khi chỉ mở tab hồ sơ.

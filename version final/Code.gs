@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.9-fan-line-models';
+const APP_VERSION = '1.11.10-case-result-filter';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -125,6 +125,7 @@ function getBootstrap(idToken, options) {
     version: APP_VERSION,
     entrySuggestions: typeof getEntrySuggestions === 'function',
     warrantyBatchLookup: true,
+    caseLatestResultFilter: true,
     fanLotModels: typeof flModelsReady_==='function'&&flModelsReady_(),
     notifications: typeof listNotifications === 'function',
     portalSessions: typeof createPortalSession === 'function',
@@ -291,6 +292,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const query = clean_(filters.query).toLowerCase();
   const status = clean_(filters.status);
   const warrantyStatus = clean_(filters.warrantyStatus);
+  const latestResult = clean_(filters.latestResult);
   const center = clean_(filters.center);
   if (center && CENTERS.indexOf(center) === -1) throw publicError_('Trung tâm lọc không hợp lệ.');
   if (center && !actor.isGlobalManager) assertCenterAllowed_(actor, center);
@@ -301,6 +303,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const cases = readPortalCaseIndex_(revision);
   const filterStarted = Date.now();
 
+  const resultOptions = new Set();
   const filtered = cases.filter(function (item) {
     if (clean_(item['Trạng thái hồ sơ']) === 'Đã hủy') return false;
     if (!canSeeIndexedCase_(actor, item)) return false;
@@ -311,6 +314,9 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
     if (status && item['Trạng thái hồ sơ'] !== status) return false;
     if (warrantyStatus && item['Tình trạng bảo hành'] !== warrantyStatus) return false;
     if (center && item['Trung tâm đang giữ hàng'] !== center) return false;
+    const canSeeLatest=clean_(item['Mã công việc gần nhất'])&&(actor.isGlobalManager||(actor.centers||[]).indexOf(clean_(item['Trung tâm xử lý gần nhất']))!==-1);
+    const displayedResult=canSeeLatest?(clean_(item['Kết quả gần nhất'])||clean_(item['Trạng thái xử lý gần nhất'])||'Chưa cập nhật'):'Chưa cập nhật';resultOptions.add(displayedResult);
+    if(latestResult&&displayedResult!==latestResult)return false;
     return true;
   });
   const sortStarted = Date.now();
@@ -327,7 +333,7 @@ function listCasesUncached_(idToken, filters, authenticatedActor, dataRevision) 
   const page = Math.min(requestedPage, totalPages);
   const start = (page - 1) * pageSize;
   const items = ordered.slice(start, start + pageSize).map(function (entry) { return publicIndexedCase_(actor, entry.item); });
-  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, stale: Boolean(cases.__cacheStale), phasesMs: { index: filterStarted - readStarted, filter: sortStarted - filterStarted, sort: publicStarted - sortStarted, serialize: Date.now() - publicStarted } };
+  return { items: items, total: total, page: page, pageSize: pageSize, totalPages: totalPages, latestResultFilter:true, latestResultOptions:Array.from(resultOptions).sort(function(a,b){return a.localeCompare(b,'vi');}), stale: Boolean(cases.__cacheStale), phasesMs: { index: filterStarted - readStarted, filter: sortStarted - filterStarted, sort: publicStarted - sortStarted, serialize: Date.now() - publicStarted } };
 }
 
 function portalReceiptSortKey_(value, timezone) {
