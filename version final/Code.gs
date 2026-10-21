@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.12-sungrow-case-corrections';
+const APP_VERSION = '1.11.14-system-case-delete';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
@@ -658,8 +658,15 @@ function cancelCase(idToken, payload) {
   }
 }
 
+function canDeleteAnyCase_(actor){return !!actor&&actor.canDeleteAnyCase===true;}
+function canDeleteCaseRecord_(actor,record,hasTransfer){
+  if(clean_(record['Trạng thái hồ sơ'])==='Đã hủy')return false;
+  if(canDeleteAnyCase_(actor))return true;
+  return clean_(record['Trạng thái hồ sơ'])!=='Đã hoàn tất'&&clean_(record['Tình trạng bảo hành'])==='Chờ xác nhận'&&!hasTransfer&&clean_(record['Trung tâm đang giữ hàng'])===clean_(record['Trung tâm tiếp nhận khách'])&&(actor.isGlobalManager||(actor.centers||[]).indexOf(clean_(record['Trung tâm tiếp nhận khách']))!==-1);
+}
 function cancelCaseUnlocked_(idToken, payload) {
   const actor = authenticate_(idToken);
+  const unrestrictedDelete=canDeleteAnyCase_(actor);
   assertCapability_(actor, 'createCase');
   payload = payload || {};
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
@@ -674,7 +681,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     const table = readTableWithRows_(SHEETS.cases);
     const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (!record) throw publicError_('Không tìm thấy hồ sơ cần xóa.');
-    if (!actor.isGlobalManager && actor.centers.indexOf(clean_(record['Trung tâm tiếp nhận khách'])) === -1) {
+    if (!unrestrictedDelete && !actor.isGlobalManager && actor.centers.indexOf(clean_(record['Trung tâm tiếp nhận khách'])) === -1) {
       throw publicError_('Chỉ nhân viên của center tiếp nhận mới được xóa hồ sơ này.');
     }
     if (clean_(record['Trạng thái hồ sơ']) === 'Đã hủy') {
@@ -684,11 +691,14 @@ function cancelCaseUnlocked_(idToken, payload) {
       bumpPortalDatabaseRevision_();
       return { caseId: caseId, cancelled: true };
     }
+    if(typeof flIsLot_==='function'&&flIsLot_(record)&&PropertiesService.getScriptProperties().getProperty('FAN_PENDING_'+caseId))throw publicError_('Lô Fan đang chờ đối soát giao dịch. Hoàn tất đối soát trước khi xóa.');
+    const intakeCenter = clean_(record['Trung tâm tiếp nhận khách']);
+    if(!unrestrictedDelete){
+    if(clean_(record['Trạng thái hồ sơ'])==='Đã hoàn tất')throw publicError_('Chỉ quản lý hệ thống được xóa hồ sơ đã hoàn tất.');
     if(typeof flIsLot_==='function'&&flIsLot_(record)&&findTableRowsByField_(FL_EVENT_SHEET_,'Mã hồ sơ',[caseId]).length)throw publicError_('Lô đã có nghiệp vụ; không hủy bằng thao tác tiếp nhận.');
     if (clean_(record['Tình trạng bảo hành']) !== 'Chờ xác nhận') {
       throw publicError_('Không thể xóa hồ sơ sau khi đã xác nhận tình trạng bảo hành.');
     }
-    const intakeCenter = clean_(record['Trung tâm tiếp nhận khách']);
     const currentCenter = clean_(record['Trung tâm đang giữ hàng']);
     if (!actor.isGlobalManager && actor.centers.indexOf(intakeCenter) === -1) {
       throw publicError_('Chỉ nhân viên của center tiếp nhận mới được xóa hồ sơ này.');
@@ -696,6 +706,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     if (currentCenter !== intakeCenter) throw publicError_('Không thể xóa hồ sơ đã rời center tiếp nhận.');
     const hasTransfer = readTable_(SHEETS.transfers).some(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (hasTransfer) throw publicError_('Không thể xóa hồ sơ đã phát sinh luân chuyển center.');
+    }
     const now = new Date();
     const changes = {
       'Trạng thái hồ sơ': 'Đã hủy',
@@ -711,7 +722,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     SpreadsheetApp.flush();
     const saved = readTable_(SHEETS.cases).find(function (row) { return clean_(row['Mã hồ sơ']) === caseId; });
     if (!saved || clean_(saved['Trạng thái hồ sơ']) !== 'Đã hủy') throw publicError_('Chưa xác nhận được việc xóa hồ sơ trong database. Vui lòng thử lại.');
-    try { audit_(actor, 'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes); }
+    try { audit_(actor, unrestrictedDelete?'Quản lý hệ thống xóa hồ sơ':'Xóa hồ sơ trước xác nhận bảo hành', 'Hồ sơ', caseId, intakeCenter, record, changes); }
     catch (auditError) { console.error('Hồ sơ đã hủy nhưng chưa ghi được audit ' + caseId + ': ' + String(auditError && auditError.message || auditError)); }
     try { removeDashboardProjectionCase_(caseId, record); }
     catch (projectionError) { console.error('Hồ sơ đã hủy nhưng không thể xóa projection ' + caseId + ': ' + String(projectionError && projectionError.message || projectionError)); }
@@ -1178,7 +1189,7 @@ function authenticate_(idToken) {
     Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(idToken || ''))
   ).replace(/=+$/g, '');
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'portal-actor-v1-' + tokenDigest;
+  const cacheKey = 'portal-actor-v1-' + tokenDigest + '-' + APP_VERSION;
   const cached = cache.get(cacheKey);
   const claims = parseJson_(cache.get('entry-token:' + digest_(String(idToken || ''))));
   if (cached && claims && Number(claims.exp || 0) * 1000 > Date.now()) {
@@ -1267,6 +1278,7 @@ function portalActorFromIdentity_(claims, allowBinding) {
     homeCenter: homeCenter,
     centers: roleDefinition.isGlobalManager ? CENTERS.slice() : [homeCenter],
     isGlobalManager: roleDefinition.isGlobalManager,
+    canDeleteAnyCase: roleDefinition.canDeleteAnyCase===true,
     capabilities: Object.assign({}, roleDefinition.capabilities)
   };
 }
@@ -1593,9 +1605,7 @@ function publicIndexedCase_(actor, item) {
   const intakeCenter = clean_(item['Trung tâm tiếp nhận khách']);
   const currentCenter = clean_(item['Trung tâm đang giữ hàng']);
   const isIntake = isManager || actor.centers.indexOf(intakeCenter) !== -1;
-  const canDelete = clean_(item['Tình trạng bảo hành']) === 'Chờ xác nhận' &&
-    clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy' && !bool_(item['Có luân chuyển']) &&
-    currentCenter === intakeCenter && isIntake;
+  const canDelete = canDeleteCaseRecord_(actor,item,bool_(item['Có luân chuyển']));
   const latestWork = clean_(item['Mã công việc gần nhất']) && (isManager || actor.centers.indexOf(clean_(item['Trung tâm xử lý gần nhất'])) !== -1) ? [{
     workOrderId: clean_(item['Mã công việc gần nhất']),
     center: clean_(item['Trung tâm xử lý gần nhất']),
@@ -1688,10 +1698,7 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
   const ownWorks = isManager ? workOrders : workOrders.filter(function (work) { return actor.centers.indexOf(work['Trung tâm xử lý']) !== -1; });
   const hasEditableWork = ownWorks.some(function (work) { return ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1; });
   const canEditCase = (isManager || !isClosed) && (isManager || (hasCapability_(actor, 'updateWorkOrder') && hasEditableWork));
-  const canDeleteCase = clean_(item['Tình trạng bảo hành']) === 'Chờ xác nhận' &&
-    clean_(item['Trạng thái hồ sơ']) !== 'Đã hủy' && transfers.length === 0 &&
-    clean_(item['Trung tâm đang giữ hàng']) === clean_(item['Trung tâm tiếp nhận khách']) &&
-    (isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1);
+  const canDeleteCase = canDeleteCaseRecord_(actor,item,transfers.length>0);
   const relevantTransfers = transfers.filter(function (transfer) {
     return isManager || actor.centers.indexOf(transfer['Trung tâm gửi']) !== -1 || actor.centers.indexOf(transfer['Trung tâm nhận']) !== -1;
   }).map(function (transfer) {
@@ -1875,6 +1882,7 @@ function resolveRole_(rawRole, homeCenter) {
   ['center_staff', 'center_editor', 'nhân viên trung tâm', 'nhan vien trung tam', 'nhân viên', 'nhan vien'].forEach(function (value) { aliases[value] = ROLE_CODES.centerStaff; });
   let code = aliases[raw];
   if (!code) throw publicError_('Vai trò trong tab Người dùng không hợp lệ: ' + clean_(rawRole) + '.');
+  const canDeleteAnyCase = code === ROLE_CODES.serviceManager;
   const sungrowGlobalManager = code === ROLE_CODES.centerManager && homeCenter === SUNGROW_CENTER;
   const isGlobalManager = code === ROLE_CODES.serviceManager || sungrowGlobalManager;
   if (sungrowGlobalManager) code = ROLE_CODES.serviceManager;
@@ -1882,7 +1890,7 @@ function resolveRole_(rawRole, homeCenter) {
   labels[ROLE_CODES.serviceManager] = 'Quản lý dịch vụ';
   labels[ROLE_CODES.centerManager] = 'Quản lý trung tâm';
   labels[ROLE_CODES.centerStaff] = 'Nhân viên trung tâm';
-  return { code: code, label: labels[code], isGlobalManager: isGlobalManager, capabilities: ROLE_CAPABILITIES[code] };
+  return { code: code, label: labels[code], isGlobalManager: isGlobalManager, canDeleteAnyCase: canDeleteAnyCase, capabilities: ROLE_CAPABILITIES[code] };
 }
 
 function hasCapability_(actor, capability) {
@@ -2262,7 +2270,7 @@ function removeDashboardProjectionCase_(caseId, caseRecord) {
   for (let index = values.length - 1; index >= 0; index--) {
     const row = values[index];
     const matchesCaseId = caseIdColumn && clean_(row[caseIdColumn - 1]) === clean_(caseId);
-    const matchesLegacyProjection = serial && received && normalizeProjectionKey_(row[2]) === serial && iso_(row[4]) === received;
+    const matchesLegacyProjection = (!caseIdColumn||!clean_(row[caseIdColumn-1])) && serial && received && normalizeProjectionKey_(row[2]) === serial && iso_(row[4]) === received;
     if (!matchesCaseId && !matchesLegacyProjection) continue;
     sheet.deleteRow(index + 2);
     removed++;
@@ -2476,7 +2484,7 @@ function safeDriveLink_(value) {
 function validateDriveLink_(value) {
   if (!safeDriveLink_(value)) throw publicError_('Liên kết hồ sơ phải là link Google Drive hợp lệ.');
 }
-function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, roleCode: actor.roleCode, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, canCorrectCaseSources: systemCaseManager_(actor), capabilities: Object.assign({}, actor.capabilities), canApproveWarranty: canApproveWarranty_(actor) }; }
+function publicActor_(actor) { return { email: actor.email, name: actor.name, role: actor.role, roleCode: actor.roleCode, homeCenter: actor.homeCenter, centers: actor.centers.slice(), isGlobalManager: actor.isGlobalManager, canDeleteAnyCase: canDeleteAnyCase_(actor), canCorrectCaseSources: systemCaseManager_(actor), capabilities: Object.assign({}, actor.capabilities), canApproveWarranty: canApproveWarranty_(actor) }; }
 function groupBy_(rows, field) { return rows.reduce(function (out, row) { const key = row[field]; if (!out[key]) out[key] = []; out[key].push(row); return out; }, {}); }
 function stripInternal_(value) { const copy = Object.assign({}, value); delete copy.__rowNumber; return copy; }
 function required_(value, label) { const result = clean_(value); if (!result) throw publicError_('Thiếu ' + label + '.'); return result; }

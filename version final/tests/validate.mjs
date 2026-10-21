@@ -1,3 +1,4 @@
+import './system-case-delete.mjs';
 import './portal-header-status.mjs';
 import './warranty-batch.mjs';
 import './fan-model-quantity.mjs';
@@ -161,7 +162,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.11\.12-sungrow-case-corrections/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.11\.14-system-case-delete/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
 assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
@@ -228,9 +229,9 @@ assert.equal(contentionSleeps,0,'Khi builder khác đang làm việc phải tr�
 assert.equal(sharedSheetReads,2,'Request đồng thời phải dùng snapshot cũ, không đọc Sheet lần nữa.');
 assert.match(codeSource, /cancelCase: cancelCase/, 'API phải cho phép thao tác hủy hồ sơ có kiểm soát.');
 const cancelSource = extractFunction(codeSource, 'cancelCaseUnlocked_');
-assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Chỉ hồ sơ chờ xác nhận bảo hành mới được hủy.');
+assert.match(cancelSource, /Tình trạng bảo hành.*Chờ xác nhận/s, 'Quyền xóa thường vẫn giới hạn hồ sơ chờ xác nhận bảo hành.');
 assert.match(cancelSource, /Trung tâm tiếp nhận khách/, 'Backend phải giới hạn quyền hủy theo center tiếp nhận.');
-assert.match(cancelSource, /readTable_\(SHEETS\.transfers\)/, 'Hồ sơ đã luân chuyển không được phép hủy.');
+assert.match(cancelSource, /readTable_\(SHEETS\.transfers\)/, 'Quyền xóa thường vẫn chặn hồ sơ đã luân chuyển.');
 assert.match(cancelSource, /Trạng thái hồ sơ': 'Đã hủy'/, 'Xóa hồ sơ phải là soft-delete có kiểm toán.');
 assert.doesNotMatch(extractFunction(codeSource,'getPortalDatabaseRevision_'), /DriveApp/, 'Revision hot path không được yêu cầu thêm OAuth scope Google Drive.');
 assert.match(codeSource, /function handlePortalApi_\(request\)/, 'Backend phải có cổng API allowlist cho GitHub Pages.');
@@ -490,11 +491,11 @@ assert.match(entryHtml, /class="loading-spinner"/, 'Danh sách hồ sơ phải h
 assert.match(entryHtml, /installLoadingIndicators/, 'Các trạng thái tải động phải tự động được gắn vòng xoay.');
 assert.match(entryHtml, /querySelectorAll\('\.empty-row td,\.empty,button,\[role="status"\]'\)/, 'Vòng xoay chỉ được gắn vào trạng thái tải thực sự.');
 assert.doesNotMatch(entryHtml, /querySelectorAll\('td,\.empty,button/, 'Không được hiểu nhầm trạng thái nghiệp vụ trong ô bảng là trạng thái tải.');
-assert.match(liveDataSource, /v=139#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=140#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=158/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=159/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');

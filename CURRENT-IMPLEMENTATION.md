@@ -1,5 +1,13 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Quản lý hệ thống xóa hồ sơ mọi trạng thái — 21/10/2026, Code1.11.14 / liveJS159 / entry140
+
+canDeleteAnyCase tạo từ vai trò gốc service_manager/Quản lý hệ thống/Quản lý dịch vụ trước khi nâng quản lý Sungrow thành service_manager. Không suy từ isGlobalManager hoặc roleCode đã chuẩn hóa. Auth/publicActor truyền capability và cache actor theo APP_VERSION. Quản lý Sungrow giữ quyền sửa của1.11.12; không tự nhận quyền xóa mở rộng. Quản lý center/nhân viên vẫn chỉ hủy tiếp nhận chưa xác nhận, chưa hoàn tất, chưa luân chuyển, còn tại center tiếp nhận; lô có nghiệp vụ không dùng quyền hủy tiếp nhận.
+
+canDeleteCaseRecord_ dùng chung cho list/detail. cancelCase bỏ giới hạn bảo hành/hoàn tất/luân chuyển/lịch sử Fan chỉ cho capability thật. Mọi loại thiết bị được hỗ trợ. Vẫn chặn FAN_PENDING chưa đối soát, giữ khóa ghi và guard migration. Bắt buộc lý do, trạng thái Đã hủy và người/ngày/lý do/audit, xóa projection dẫn xuất, sync index/revision. Không xóa lịch sử công việc/linh kiện/luân chuyển/tài liệu hay sheet nguồn2024/25/26. Retry idempotent. Projection ưu tiên caseId; fallback SN/ngày chỉ trên dòng không có caseId, giữ hồ sơ khác cùng SN/ngày.
+
+Frontend nút X theo canDelete backend; tooltip/xác nhận rõ xóa mềm, giữ lịch sử. Chỉ Code.gs cần thay trên bộ1.11.12, Save/New version giữ URL: DEPLOY-1.11.14-SYSTEM-DELETE.md. Tests actual cancel bao gồm quyền, mọi loại/closed/warranty/transfer/Fan history, pending/reason, retry/audit/index/revision và projection trùng SN; Edge renderer/dialog. Không xóa thử production. Checkout riêng bảo toàn thay đổi tốc độ1.11.13 đang local ở checkout khác.
+
 ## Quản lý Sungrow Center được sửa hồ sơ — 20/10/2026, Code1.11.12 / liveJS158 / entry139
 
 Quyền sửa thông tin gốc gồm service_manager và center_manager có homeCenter chính xác Sungrow Service Center. Không suy từ centers chứa Sungrow hoặc riêng cờ isGlobalManager. resolveRole_ hiện đã quy đổi quản lý Sungrow thành service_manager; helper nay chấp nhận rõ cả dạng center_manager để tránh phụ thuộc cách biểu diễn. publicActor thêm canCorrectCaseSources; frontend áp dụng cùng quyền cho mở form và bảng sửa SN/SL/tiến độ Fan. Mọi loại thiết bị/mọi center/closed được sửa như 1.11.11, các center manager khác và toàn bộ center_staff (kể cả Sungrow) bị chặn. Không đổi quyền nghiệp vụ khác hoặc dữ liệu.
