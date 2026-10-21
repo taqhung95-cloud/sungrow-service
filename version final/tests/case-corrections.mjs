@@ -24,7 +24,7 @@ reset();ctx.syncDashboardProjectionCase_=()=>({ok:false});assert.throws(()=>run(
 let keptValues,deletedParts=[];
 Object.assign(ctx,{readTableWithRows_:name=>({headers:[],rows:name==='Linh kiện sử dụng'?[{'Mã sử dụng linh kiện':'PART1','Mã công việc':'WORK1','Tên linh kiện':'AC Relay','Mã linh kiện (Part Number)':'',__rowNumber:2}]:[]}),updateObjectRow_:(name,headers,row,values)=>{keptValues=values},deleteRowsDescending_:(name,rows)=>{if(name==='Linh kiện sử dụng')deletedParts=rows},appendObject_:()=>{throw Error('Không được tạo dòng thay thế')},parseDateOptional_:v=>v||''});
 ctx.replaceWorkOrderChildren_({email:'manager@example.com'},'WORK1',[],[{partUsageId:'PART1',partNumber:'',name:'AC Relay',quantity:2}]);
-assert.equal(keptValues['Tên linh kiện'],'AC Relay');assert.equal(keptValues['Mã linh kiện (Part Number)'],'');assert.equal(keptValues['Số lượng'],2);assert.equal(deletedParts.length,0);
+assert.equal(keptValues['Tên linh kiện'],undefined,'Unchanged name must remain in its cell without another write');assert.equal(keptValues['Mã linh kiện (Part Number)'],undefined);assert.equal(keptValues['Số lượng'],2);assert.equal(deletedParts.length,0);
 console.log('Case corrections: authorization, stale writes, identity, dates, audit, sync and name-only parts preservation checks passed.');
 
 // Line-model correction uses the same manager/CAS/audit/projection path.

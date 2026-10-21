@@ -1,4 +1,7 @@
 import './system-case-delete.mjs';
+import './scoped-save-reads.mjs';
+import './save-pipeline-performance.mjs';
+import './fast-case-reads.mjs';
 import './portal-header-status.mjs';
 import './warranty-batch.mjs';
 import './fan-model-quantity.mjs';
@@ -162,7 +165,7 @@ assert.equal(staffRole.capabilities.returnToCustomer,true,'Nhân viên center ph
 assert.equal(staffRole.capabilities.approveWarranty,false,'Nhân viên center không được xác nhận bảo hành.');
 assert.throws(() => roleSandbox.resolveRole_('admin tùy ý','DAT Center'),/không hợp lệ/i,'Role không nhận diện phải bị từ chối.');
 assert.match(codeSource, /1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI/, 'Code phải trỏ tới database production.');
-assert.match(codeSource, /1\.11\.14-system-case-delete/, 'Code phải khai báo đúng version triển khai mới.');
+assert.match(codeSource, /1\.11\.16-batched-case-reads/, 'Code phải khai báo đúng version triển khai mới.');
 assert.match(extractFunction(codeSource,'authenticate_'), /cache\.put\(cacheKey, JSON\.stringify\(actor\), 300\)/, 'Xác thực người dùng phải được cache 5 phút để không đọc tab Người dùng liên tục.');
 const listCasesUncachedSource = extractFunction(codeSource,'listCasesUncached_');
 assert.match(listCasesUncachedSource, /readPortalCaseIndex_\(revision\)/, 'Danh sách hồ sơ phải chỉ đọc chỉ mục nhẹ theo revision.');
@@ -247,9 +250,10 @@ assert.match(codeSource, /function reconcileDashboardProjection\(\)/, 'Phải c�
 assert.match(codeSource, /function removeOrphanDashboardProjections_\(/, 'Đối soát phải dọn các dòng dashboard mồ côi của hồ sơ đã xóa.');
 assert.match(extractFunction(codeSource, 'reconcileDashboardProjection'), /removedOrphans/, 'Kết quả đối soát phải báo số dòng dashboard mồ côi đã xóa.');
 for (const mutation of ['createCase','confirmWarrantyUnlocked_','updateWorkOrderUnlocked_','createTransferUnlocked_','acceptTransferUnlocked_','returnToCustomerUnlocked_']) {
-  assert.match(extractFunction(codeSource, mutation), /syncDashboardProjectionCase_\(/, `${mutation} phải đồng bộ case sang Dữ liệu dashboard.`);
-  assert.match(extractFunction(codeSource, mutation), /syncPortalCaseIndexCase_\(/, `${mutation} phải cập nhật chỉ mục hồ sơ.`);
+  assert.match(extractFunction(codeSource, mutation), /syncCaseDerived_\(/, `${mutation} phải đồng bộ dashboard và index cùng nguồn sau lưu.`);
 }
+assert.match(extractFunction(codeSource,'syncCaseDerived_'), /syncDashboardProjectionCase_\(/);
+assert.match(extractFunction(codeSource,'syncCaseDerived_'), /syncPortalCaseIndexCase_\(/);
 assert.match(extractFunction(codeSource,'cancelCaseUnlocked_'), /syncPortalCaseIndexCase_\(/, 'Xóa hồ sơ phải cập nhật trạng thái Đã hủy vào chỉ mục.');
 assert.match(codeSource, /getCaseDetail: getCaseDetail/, 'API phải cho phép tải chi tiết một hồ sơ theo yêu cầu.');
 assert.match(entryHtml, /call\('getCaseDetail'/, 'Ngăn chi tiết phải tải dữ liệu đầy đủ khi người dùng bấm mở.');
@@ -491,11 +495,11 @@ assert.match(entryHtml, /class="loading-spinner"/, 'Danh sách hồ sơ phải h
 assert.match(entryHtml, /installLoadingIndicators/, 'Các trạng thái tải động phải tự động được gắn vòng xoay.');
 assert.match(entryHtml, /querySelectorAll\('\.empty-row td,\.empty,button,\[role="status"\]'\)/, 'Vòng xoay chỉ được gắn vào trạng thái tải thực sự.');
 assert.doesNotMatch(entryHtml, /querySelectorAll\('td,\.empty,button/, 'Không được hiểu nhầm trạng thái nghiệp vụ trong ô bảng là trạng thái tải.');
-assert.match(liveDataSource, /v=140#/, 'Iframe nhập liệu phải dùng cache key mới.');
+assert.match(liveDataSource, /v=141#/, 'Iframe nhập liệu phải dùng cache key mới.');
 assert.match(liveDataSource, /function syncCenterOptions\(data\)/, 'Bộ lọc center phải lấy center từ phản hồi dashboard.');
 assert.match(liveDataSource, /syncCenterOptions\(live\)/, 'Bộ lọc center phải cập nhật sau khi tải dashboard.');
 assert.match(liveDataSource, /Chưa có lỗi xác nhận trong kỳ/, 'Thẻ lỗi phải phân biệt lỗi xác nhận với hiện tượng tiếp nhận.');
-assert.match(readDocs('index.html'), /live-data\.js\?v=159/, 'GitHub Pages phải nạp bản giao diện mới.');
+assert.match(readDocs('index.html'), /live-data\.js\?v=160/, 'GitHub Pages phải nạp bản giao diện mới.');
 assert.match(liveDataSource, /delta === 0 \? '--'/, 'KPI bằng kỳ trước phải hiển thị ký hiệu -- gọn trên cùng một dòng.');
 assert.match(liveDataSource, /\.sg-live-text\{display:flex;align-items:center;gap:6px/, 'Trạng thái đồng bộ và thời gian phải có khoảng cách rõ ràng.');
 assert.match(entryHtml, /function cancelCaseUI\(/, 'Giao diện phải có thao tác xóa hồ sơ trước xác nhận bảo hành.');
@@ -569,7 +573,7 @@ const creationSandbox = {
   uploadCaseEvidence_:()=>{assert.equal(locked,false,'Drive upload must run outside database lock');uploadCount++;return 'https://drive.google.com/test'}
 };
 vm.createContext(creationSandbox);
-vm.runInContext(extractFunction(codeSource,'getCreationStatus')+'\n'+extractFunction(codeSource,'createCase'),creationSandbox);
+vm.runInContext(extractFunction(codeSource,'syncCaseDerived_')+'\n'+extractFunction(codeSource,'getCreationStatus')+'\n'+extractFunction(codeSource,'createCase'),creationSandbox);
 const draft={requestId:'12345678-abcd-1234-abcd-123456789abc',intakeCenter:'Center',receivedAt:'2026-09-29',deviceType:'Inverter',model:'Model',serialNumber:'SN',customerName:'Test',customerAddress:'Test',customerPhone:'123',initialIssue:'Test'};
 const created=creationSandbox.createCase('owner',draft);
 const recovered=creationSandbox.createCase('owner',draft);

@@ -13,7 +13,7 @@ try{
  ctx.LEGACY_DASHBOARD_API={...(ctx.LEGACY_DASHBOARD_API||{}),fanSharedFormsReady:true};ctx.readTableWithRows_=n=>({headers:headers[n],rows:(data[n]||[]).map((r,i)=>({...r,__rowNumber:i+2}))});ctx.emailOptional_=v=>String(v||'');ctx.parseDateOptional_=v=>v?new Date(v+'T00:00:00Z'):'';
  vm.runInContext(read('WorkOrderRules.gs'),ctx);vm.runInContext(read('FanWorkOrders.gs'),ctx);
  const code=read('Code.gs'),extract=name=>{const a=code.indexOf('function '+name+'('),b=code.indexOf('\nfunction ',a+1);return code.slice(a,b<0?undefined:b);};
- for(const name of ['updateWorkOrder','updateWorkOrderUnlocked_','confirmWarrantyUnlocked_','returnToCustomerUnlocked_'])vm.runInContext(extract(name),ctx);
+ for(const name of ['readScopedTable_','updateWorkOrder','updateWorkOrderUnlocked_','confirmWarrantyUnlocked_','returnToCustomerUnlocked_'])vm.runInContext(extract(name),ctx);
  const state=R.create([{serialNumber:'DUP-SN',quantity:2},{serialNumber:'SECOND-SN',quantity:1},{serialNumber:'THIRD-SN',quantity:1}]);
  data.cases.push({'Mã hồ sơ':'UNIFIED','Loại thiết bị':'Fan','Kiểu hồ sơ':'Fan theo lô','Chi tiết lô Fan':R.pack(state),'Model':'FAN-X','Số lượng':4,'Trung tâm tiếp nhận khách':center,'Trung tâm đang giữ hàng':center,'Ngày nhận từ khách':'2026-10-15','Trạng thái hồ sơ':'Mới tiếp nhận','Tình trạng bảo hành':'Chờ xác nhận'});
  data.works.push({'Mã hồ sơ':'UNIFIED','Mã công việc':'W-UNIFIED','Trung tâm xử lý':center,'Ngày trung tâm nhận hàng':'2026-10-15','Trạng thái xử lý':'Đã nhận hàng'});

@@ -1,6 +1,8 @@
-const APP_VERSION = '1.11.14-system-case-delete';
+const APP_VERSION = '1.11.16-batched-case-reads';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
+var PORTAL_WRITE_TIMING_ = null;
+var PORTAL_WRITE_HEADERS_ = null;
 const DATABASE_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const GOOGLE_WEB_CLIENT_ID = '1057611730150-6ds8o36jv1haln4h6tcl1gilh31o7hqn.apps.googleusercontent.com';
 const AUTH_BROKER_URL = 'https://taqhung95-cloud.github.io/sungrow-service/data-entry-login.html';
@@ -192,7 +194,16 @@ function handlePortalApi_(request) {
   if (!Object.prototype.hasOwnProperty.call(allowed, functionName)) {
     throw publicError_('Thao tác không được phép.');
   }
-  return allowed[functionName].apply(null, args);
+  const data = allowed[functionName].apply(null, args);
+  const snapshotActions = ['updateWorkOrder','correctCase','confirmWarranty','createTransfer','acceptTransfer','returnToCustomer','updateFanLot','reconcileFanLot','commitCaseAttachments'];
+  if (request.returnCaseDetail && snapshotActions.indexOf(functionName) >= 0 && data && typeof data === 'object') {
+    const caseId=clean_(request.returnCaseDetail);
+    if(caseId.length<=150){
+      try { data.caseDetail = getCaseDetail(args[0],caseId); }
+      catch (error) { data.caseDetailUnavailable = true; }
+    }
+  }
+  return data;
 }
 
 function listCases(idToken, filters) {
@@ -368,10 +379,13 @@ function searchCases(idToken, rawQuery, options) {
   return matches.map(function (item) { return getCaseDetailForActor_(actor, item.caseId); });
 }
 
-function getCaseDetail(idToken, caseId) {
+function getCaseDetail(idToken, caseId, options) {
+  const started=Date.now();
   const actor = authenticate_(idToken);
   assertCapability_(actor, 'viewCases');
-  return getCaseDetailForActor_(actor, required_(caseId, 'mã hồ sơ'));
+  const result=getCaseDetailForActor_(actor, required_(caseId, 'mã hồ sơ'), {refresh:!!(options&&options.refresh)});
+  result.readTiming=Object.assign({path:'legacy',cacheHit:false},result.readTiming||{},{serverMs:Date.now()-started});
+  return result;
 }
 
 function warrantyLookupSource_() {
@@ -634,7 +648,7 @@ function createCase(idToken, payload) {
     try { audit_(actor, 'Tạo hồ sơ', 'Hồ sơ', caseId, center, null, { workOrderId: workOrderId }); }
     catch (error) { console.error('Hồ sơ đã tạo, lỗi ghi nhật ký: ' + String(error)); }
     if(fanState)flFinishSync_(caseId);
-    else{syncDashboardProjectionCase_(caseId);syncPortalCaseIndexCase_(caseId);bumpPortalDatabaseRevision_();}
+    else{syncCaseDerived_(caseId);bumpPortalDatabaseRevision_();}
     return { caseId: caseId, workOrderId: workOrderId };
   } finally {
     lock.releaseLock();
@@ -678,7 +692,7 @@ function cancelCaseUnlocked_(idToken, payload) {
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
     ensureSheetColumns_(SHEETS.cases, ['Người hủy', 'Ngày hủy', 'Lý do hủy']);
-    const table = readTableWithRows_(SHEETS.cases);
+    const table = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
     const record = table.rows.find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
     if (!record) throw publicError_('Không tìm thấy hồ sơ cần xóa.');
     if (!unrestrictedDelete && !actor.isGlobalManager && actor.centers.indexOf(clean_(record['Trung tâm tiếp nhận khách'])) === -1) {
@@ -772,7 +786,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   const caseId = required_(payload.caseId, 'Mã hồ sơ');
   const warrantyStatus = required_(payload.warrantyStatus, 'Tình trạng bảo hành');
   if (WARRANTY_STATUSES.indexOf(warrantyStatus) === -1) throw publicError_('Tình trạng bảo hành không hợp lệ.');
-  const table = readTableWithRows_(SHEETS.cases);
+  const table = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
   if(typeof flIsLot_==='function'&&flIsLot_(record)&&typeof fwConfirmWarranty_==='function'&&payload.fanSelections)return fwConfirmWarranty_(actor,record,payload);
@@ -794,7 +808,7 @@ function confirmWarrantyUnlocked_(idToken, payload) {
   allowHistoricalWarrantyStatus_(table.headers, record.__rowNumber, warrantyStatus);
   if(typeof flIsLot_==='function'&&flIsLot_(record)){PropertiesService.getScriptProperties().setProperty('FAN_PENDING_'+caseId,'warranty');try{flBatch_(flUpdateRequest_(SHEETS.cases,record.__rowNumber,changes));}catch(error){if(error.fanNoWrite)PropertiesService.getScriptProperties().deleteProperty('FAN_PENDING_'+caseId);throw error;}}else updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Xác nhận bảo hành', 'Hồ sơ', caseId, record['Trung tâm đang giữ hàng'], record, changes);
-  if(typeof flIsLot_==='function'&&flIsLot_(record))flFinishSync_(caseId);else{syncDashboardProjectionCase_(caseId);syncPortalCaseIndexCase_(caseId);bumpPortalDatabaseRevision_();}
+  if(typeof flIsLot_==='function'&&flIsLot_(record))flFinishSync_(caseId);else{syncCaseDerived_(caseId);bumpPortalDatabaseRevision_();}
   SpreadsheetApp.flush();
   return { ok: true, warrantyStatus: warrantyStatus };
 }
@@ -840,12 +854,25 @@ function withSerializedWrite_(operationName, callback) {
     );
   }
 
+  var previousTiming = PORTAL_WRITE_TIMING_;
+  var previousHeaders = PORTAL_WRITE_HEADERS_;
+  var timing = { event: 'portal-save-timing', version: APP_VERSION, operation: operationName, projectionMs: 0, indexMs: 0, ok: false };
+  var startedAt = Date.now();
+  PORTAL_WRITE_TIMING_ = timing;
+  PORTAL_WRITE_HEADERS_ = Object.create(null);
   try {
     if (typeof xbmAssertPortalWrites_ === 'function') xbmAssertPortalWrites_();
     if (typeof cmsAssertPortalWrites_ === 'function') cmsAssertPortalWrites_();
-    return callback();
+    var result = callback();
+    timing.ok = true;
+    return result;
   } finally {
+    timing.serverMs = Date.now() - startedAt;
+    PORTAL_WRITE_TIMING_ = previousTiming;
+    PORTAL_WRITE_HEADERS_ = previousHeaders;
     lock.releaseLock();
+    // Only timings and operation labels; no identifiers, payloads or tokens.
+    try { console.log(JSON.stringify(timing)); } catch (_) {}
   }
 }
 
@@ -860,7 +887,7 @@ function correctCase(idToken, payload) {
     const reason = required_(payload.reason, 'Lý do sửa');
     if (reason.length > 500) throw publicError_('Lý do sửa tối đa 500 ký tự.');
     if (!payload.expectedRevision || String(payload.expectedRevision) !== getPortalDatabaseRevision_()) throw publicError_('Dữ liệu đã thay đổi. Tải lại hồ sơ trước khi sửa.');
-    const table = readTableWithRows_(SHEETS.cases);
+    const table = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
     const matches = table.rows.filter(function (c) { return clean_(c['Mã hồ sơ']) === caseId; });
     if (matches.length !== 1) throw publicError_('Không tìm thấy đúng một hồ sơ để sửa.');
     const record = matches[0];
@@ -911,7 +938,7 @@ function correctCase(idToken, payload) {
     else updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
     audit_(actor, 'Sửa thông tin hồ sơ', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, {reason:reason,changes:changes});
     if(adminFanPlan){flFinishSync_(caseId);return {ok:true,caseId:caseId,revision:getPortalDatabaseRevision_()};}
-    const projection = syncDashboardProjectionCase_(caseId), index = syncPortalCaseIndexCase_(caseId);
+    const synced = syncCaseDerived_(caseId), projection = synced.projection, index = synced.index;
     const revision = bumpPortalDatabaseRevision_();
     if (!projection || !projection.ok || !index || !index.ok) throw publicError_('Thông tin đã lưu nhưng đồng bộ dashboard/chỉ mục chưa hoàn tất. Tải lại hồ sơ và kiểm tra trước khi tiếp tục.');
     return {ok:true,caseId:caseId,revision:revision};
@@ -930,12 +957,12 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   assertCapability_(actor, 'updateWorkOrder');
   payload = payload || {};
   const workOrderId = required_(payload.workOrderId, 'Mã công việc');
-  const table = readTableWithRows_(SHEETS.workOrders);
+  const table = readScopedTable_(SHEETS.workOrders, 'Mã công việc', [workOrderId]);
   const record = table.rows.find(function (row) { return row['Mã công việc'] === workOrderId; });
   if (!record) throw publicError_('Không tìm thấy công việc.');
   assertCenterAllowed_(actor, record['Trung tâm xử lý']);
 
-  const caseTable = readTableWithRows_(SHEETS.cases);
+  const caseTable = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [record['Mã hồ sơ']]);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của công việc.');
   if(typeof flIsLot_==='function'&&flIsLot_(caseRecord)&&typeof fwUpdateWorkOrder_==='function')return fwUpdateWorkOrder_(actor,caseRecord,record,payload);
@@ -976,23 +1003,20 @@ function updateWorkOrderUnlocked_(idToken, payload) {
     throw publicError_('Vui lòng chọn loại thiết bị đổi.');
   }
   validateTechnicalDates_(record, changes);
-  ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
-  caseTable.headers=tableHeaders_(SHEETS.cases);
+  if (['GSP', 'MA'].some(function (name) { return caseTable.headers.indexOf(name) < 0; })) {
+    ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
+    caseTable.headers = tableHeaders_(SHEETS.cases);
+  }
   if(changes['Loại thiết bị đổi']==='Fan'&&typeof allowListValidationValue_==='function')allowListValidationValue_(SHEETS.workOrders,table.headers,record.__rowNumber,'Loại thiết bị đổi','Fan','Quy tắc loại thiết bị đổi cần quản lý đối soát.');
-  updateObjectRow_(SHEETS.workOrders, table.headers, record.__rowNumber, changes);
-  updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
-    'GSP': gsp,
-    'MA': ma,
-    'Người cập nhật gần nhất': actor.email,
-    'Ngày cập nhật gần nhất': new Date()
-  });
-  updateCaseAfterWork_(record['Mã hồ sơ'], actor, changes);
+  updateObjectRow_(SHEETS.workOrders, table.headers, record.__rowNumber, changedRowValues_(record, changes));
+  updateCaseAfterWork_(record['Mã hồ sơ'], actor, changes, caseTable, { 'GSP': gsp, 'MA': ma });
   replaceWorkOrderChildren_(actor, workOrderId, payload.issues || [], payload.parts || []);
-  if (changes['Ngày hoàn tất kỹ thuật']) fillMissingPartUsageDates_(workOrderId, changes['Ngày hoàn tất kỹ thuật']);
+  if (changes['Ngày hoàn tất kỹ thuật'] && (payload.parts || []).some(function (part) {
+    return (clean_(part.partNumber) || clean_(part.name)) && !parseDateOptional_(part.usedAt);
+  })) fillMissingPartUsageDates_(workOrderId, changes['Ngày hoàn tất kỹ thuật']);
   appendWorkOrderHolds_(actor, workOrderId, payload.holds || []);
   audit_(actor, 'Cập nhật xử lý', 'Công việc', workOrderId, record['Trung tâm xử lý'], record, changes);
-  syncDashboardProjectionCase_(record['Mã hồ sơ']);
-  syncPortalCaseIndexCase_(record['Mã hồ sơ']);
+  syncCaseDerived_(record['Mã hồ sơ']);
   bumpPortalDatabaseRevision_();
   return { ok: true };
 }
@@ -1013,7 +1037,7 @@ function createTransferUnlocked_(idToken, payload) {
   const sentAt = parseDateRequired_(payload.dispatchedAt, 'Ngày gửi');
   if (CENTERS.indexOf(destination) === -1) throw publicError_('Trung tâm nhận không hợp lệ.');
 
-  const caseTable = readTableWithRows_(SHEETS.cases);
+  const caseTable = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ.');
   assertCaseEditable_(actor, caseRecord);
@@ -1067,8 +1091,7 @@ function createTransferUnlocked_(idToken, payload) {
       'Ngày cập nhật gần nhất': now
     });
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
-  syncDashboardProjectionCase_(caseId);
-  syncPortalCaseIndexCase_(caseId);
+  syncCaseDerived_(caseId);
   bumpPortalDatabaseRevision_();
   return { transferId: transferId, destinationWorkOrderId: destinationWorkId };
 }
@@ -1086,7 +1109,7 @@ function acceptTransferUnlocked_(idToken, payload) {
   payload = payload || {};
   const transferId = required_(payload.transferId, 'Mã luân chuyển');
   const receivedAt = parseDateRequired_(payload.receivedAt, 'Ngày nhận');
-  const transferTable = readTableWithRows_(SHEETS.transfers);
+  const transferTable = readScopedTable_(SHEETS.transfers, 'Mã luân chuyển', [transferId]);
   const transfer = transferTable.rows.find(function (row) { return row['Mã luân chuyển'] === transferId; });
   if (!transfer) throw publicError_('Không tìm thấy lần luân chuyển.');
   assertCenterAllowed_(actor, transfer['Trung tâm nhận']);
@@ -1094,9 +1117,9 @@ function acceptTransferUnlocked_(idToken, payload) {
   const sentAt = asDate_(transfer['Ngày gửi']);
   if (sentAt && receivedAt < sentAt) throw publicError_('Ngày nhận không được trước ngày gửi.');
 
-  const workTable = readTableWithRows_(SHEETS.workOrders);
+  const workTable = readScopedTable_(SHEETS.workOrders, 'Mã công việc', [transfer['Mã công việc nhận']]);
   const work = workTable.rows.find(function (row) { return row['Mã công việc'] === transfer['Mã công việc nhận']; });
-  const caseTable = readTableWithRows_(SHEETS.cases);
+  const caseTable = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [transfer['Mã hồ sơ']]);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === transfer['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của lần luân chuyển.');
   assertCaseEditable_(actor, caseRecord);
@@ -1119,8 +1142,7 @@ function acceptTransferUnlocked_(idToken, payload) {
     'Ngày cập nhật gần nhất': now
   });
   audit_(actor, 'Xác nhận nhận luân chuyển', 'Luân chuyển', transferId, transfer['Trung tâm nhận'], transfer, { receivedAt: receivedAt });
-  syncDashboardProjectionCase_(transfer['Mã hồ sơ']);
-  syncPortalCaseIndexCase_(transfer['Mã hồ sơ']);
+  syncCaseDerived_(transfer['Mã hồ sơ']);
   bumpPortalDatabaseRevision_();
   return { ok: true };
 }
@@ -1146,7 +1168,7 @@ function returnToCustomerUnlocked_(idToken, payload) {
   const returnEmail = emailOptional_(payload.returnEmail, 'Email người nhận');
   const returnCarrier = required_(payload.returnCarrier, 'Đơn vị vận chuyển');
   const returnTrackingCode = required_(payload.returnTrackingCode, 'Mã vận đơn');
-  const table = readTableWithRows_(SHEETS.cases);
+  const table = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) throw publicError_('Không tìm thấy hồ sơ.');
   if(typeof flIsLot_==='function'&&flIsLot_(record)&&typeof fwReturn_==='function')return fwReturn_(actor,record,payload);
@@ -1174,8 +1196,7 @@ function returnToCustomerUnlocked_(idToken, payload) {
   };
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changes);
   audit_(actor, 'Trả khách hàng', 'Hồ sơ', caseId, record['Trung tâm tiếp nhận khách'], record, changes);
-  syncDashboardProjectionCase_(caseId);
-  syncPortalCaseIndexCase_(caseId);
+  syncCaseDerived_(caseId);
   bumpPortalDatabaseRevision_();
   return { ok: true };
 }
@@ -1558,14 +1579,31 @@ function historicalProjectionComparable_(value, isDate) {
   return date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
 }
 
-function syncPortalCaseIndexCase_(caseId) {
+function syncCaseDerived_(caseId) {
+  let source;
+  try {
+    SpreadsheetApp.flush();
+    source = {
+      record: findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0],
+      works: findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]),
+      transfers: findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId])
+    };
+  } catch (error) {
+    // Keep the independent synchronizers' existing error handling on read failure.
+    return { projection: syncDashboardProjectionCase_(caseId), index: syncPortalCaseIndexCase_(caseId) };
+  }
+  return { projection: syncDashboardProjectionCase_(caseId, source), index: syncPortalCaseIndexCase_(caseId, source) };
+}
+
+function syncPortalCaseIndexCase_(caseId, source) {
+  const timingStarted = Date.now();
   caseId = clean_(caseId);
   if (!caseId) return { ok: false, reason: 'missing_case_id' };
   try {
-    const record = findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0] || null;
+    const record = source ? source.record : findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0] || null;
     if (!record) return { ok: false, reason: 'missing_case' };
-    const works = findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
-    const transfers = findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId]);
+    const works = source ? source.works : findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
+    const transfers = source ? source.transfers : findTableRowsByField_(SHEETS.transfers, 'Mã hồ sơ', [caseId]);
     const sheet = ensurePortalCaseIndexSheet_();
     let targetRow = 0;
     if (sheet.getLastRow() >= 2) {
@@ -1579,6 +1617,8 @@ function syncPortalCaseIndexCase_(caseId) {
   } catch (error) {
     console.error('Không thể cập nhật chỉ mục hồ sơ ' + caseId + ': ' + String(error && error.message || error));
     return { ok: false, reason: String(error && error.message || error) };
+  } finally {
+    if (PORTAL_WRITE_TIMING_) PORTAL_WRITE_TIMING_.indexMs += Date.now() - timingStarted;
   }
 }
 
@@ -1635,23 +1675,43 @@ function objectFromSheetRow_(sheetName, rowNumber) {
   return object;
 }
 
-function findTableRowsByField_(sheetName, field, wantedValues) {
+function readScopedTable_(sheetName, field, wantedValues) {
+  return readTableWithRows_(sheetName, { field: field, values: wantedValues });
+}
+
+function findTableRowsByField_(sheetName, field, wantedValues, suppliedHeaders) {
   const sheet = spreadsheet_().getSheetByName(sheetName);
   if (!sheet || sheet.getLastRow() < 2 || !wantedValues.length) return [];
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(clean_);
+  const headers = suppliedHeaders || tableHeaders_(sheetName);
   const column = headers.indexOf(field) + 1;
   if (!column) return [];
-  const wanted = wantedValues.reduce(function (map, value) { map[clean_(value)] = true; return map; }, {});
-  const keys = sheet.getRange(2, column, sheet.getLastRow() - 1, 1).getDisplayValues();
-  const rowNumbers = [];
-  keys.forEach(function (row, index) { if (wanted[clean_(row[0])]) rowNumbers.push(index + 2); });
+  const wanted = wantedValues.reduce(function (map, value) { map[clean_(value)] = true; return map; }, Object.create(null));
+  const keyRange = sheet.getRange(2, column, sheet.getLastRow() - 1, 1);
+  const terms = Object.keys(wanted);
+  const pattern = '^\\s*(?:' + terms.map(function (term) { return term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')\\s*$';
+  let rowNumbers;
+  if (terms.length <= 20 && !wanted[''] && pattern.length <= 4000) {
+    // Search the key column inside Sheets instead of transferring every key.
+    rowNumbers = keyRange.createTextFinder(pattern).useRegularExpression(true).matchCase(true).matchEntireCell(true).matchFormulaText(false).findAll().map(function (range) { return range.getRow(); }).sort(function (a,b) { return a-b; });
+  } else {
+    rowNumbers = [];
+    keyRange.getDisplayValues().forEach(function (row, index) { if (wanted[clean_(row[0])]) rowNumbers.push(index + 2); });
+  }
   if (!rowNumbers.length) return [];
-  return sheet.getRangeList(rowNumbers.map(function (row) { return 'A' + row + ':' + columnLetter_(headers.length) + row; })).getRanges().map(function (range, rangeIndex) {
-    const values = range.getValues()[0];
-    const object = { __rowNumber: rowNumbers[rangeIndex] };
-    headers.forEach(function (header, index) { object[header] = values[index]; });
-    return object;
-  });
+  // Keep source order and row identity, but read adjacent matches together.
+  // Do not include gaps: they may contain another case's private data.
+  const objects = [];
+  for (let cursor = 0; cursor < rowNumbers.length;) {
+    const first = rowNumbers[cursor++];
+    let last = first;
+    while (cursor < rowNumbers.length && rowNumbers[cursor] === last + 1) last = rowNumbers[cursor++];
+    sheet.getRange(first, 1, last - first + 1, headers.length).getValues().forEach(function (values, offset) {
+      const object = { __rowNumber: first + offset };
+      headers.forEach(function (header, index) { object[header] = values[index]; });
+      objects.push(object);
+    });
+  }
+  return objects;
 }
 
 function columnLetter_(column) {
@@ -1660,7 +1720,26 @@ function columnLetter_(column) {
   return result;
 }
 
-function getCaseDetailForActor_(actor, caseId) {
+function getCaseDetailForActor_(actor, caseId, options) {
+  options=options||{};
+  if(typeof readFastCaseBundle_==='function'){
+    const started=Date.now();let read;
+    try{read=readFastCaseBundle_(caseId,getPortalDatabaseRevision_(),0,options.refresh);}
+    catch(error){console.warn('Batched case reader fallback: '+(/^FAST_[A-Z_0-9]+$/.test(error.message||'')?error.message:'FAST_READ_FAILED'));}
+    if(read){
+      const b=read.bundle,record=b.record;
+      if(!record||(clean_(record['Trạng thái hồ sơ'])==='Đã hủy'&&!systemCaseManager_(actor)))throw publicError_('Không tìm thấy hồ sơ hoặc hồ sơ đã bị hủy.');
+      if(clean_(record['Kiểu hồ sơ'])==='Fan nguồn đã nhập lô'){
+        const link=parseJson_(record['Chi tiết lô Fan']),visited=options.visited||[];
+        if(link&&link.parentCaseId&&link.parentCaseId!==caseId){if(visited.length>=8||visited.indexOf(link.parentCaseId)>=0)throw publicError_('Liên kết hồ sơ lô không hợp lệ.');return getCaseDetailForActor_(actor,link.parentCaseId,{refresh:options.refresh,visited:visited.concat(caseId)});}
+      }
+      if(!canSeeCase_(actor,record,b.works))throw publicError_('Bạn không có quyền xem hồ sơ này.');
+      const result=publicCase_(actor,record,b.works,b.transfers,groupBy_(b.issues,'Mã công việc'),groupBy_(b.parts,'Mã công việc'),groupBy_(b.holds,'Mã công việc'));
+      if(typeof notificationRequestState_==='function'&&clean_(record['Tình trạng bảo hành'])==='Chờ xác nhận')result.warrantyRequest=fastWarrantyRequest_(b.audit,canApproveWarranty_(actor));
+      result.dataRevision=read.revision;result.readTiming={serverMs:Date.now()-started,cacheHit:read.cacheHit,path:'batch'};
+      return result;
+    }
+  }
   const revision = getPortalDatabaseRevision_();
   const indexed = readPortalCaseIndex_(revision).find(function (item) { return clean_(item['Mã hồ sơ']) === clean_(caseId); });
   if(indexed&&clean_(indexed['Kiểu hồ sơ'])==='Fan nguồn đã nhập lô'){const archived=objectFromSheetRow_(SHEETS.cases,Number(indexed['Dòng nguồn'])),link=archived&&parseJson_(archived['Chi tiết lô Fan']);if(link&&link.parentCaseId&&link.parentCaseId!==caseId)return getCaseDetailForActor_(actor,link.parentCaseId);}
@@ -1755,10 +1834,11 @@ function publicWorkOrder_(work, issues, parts, holds) {
 }
 
 function replaceWorkOrderChildren_(actor, workOrderId, issues, parts) {
-  const issueTable = readTableWithRows_(SHEETS.issues);
+  const issueTable = readScopedTable_(SHEETS.issues, 'Mã công việc', [workOrderId]);
   const currentIssues = issueTable.rows.filter(function (row) { return row['Mã công việc'] === workOrderId && clean_(row['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
   const currentIssueById = currentIssues.reduce(function (map, row) { map[clean_(row['Mã ghi nhận lỗi'])] = row; return map; }, {});
   const keptIssueIds = {};
+  const newIssues = [];
   (issues || []).filter(function (item) { return clean_(item.name); }).forEach(function (item) {
     const issueId = clean_(item.issueId);
     const values = {
@@ -1766,19 +1846,21 @@ function replaceWorkOrderChildren_(actor, workOrderId, issues, parts) {
       'Mã lỗi': clean_(item.code), 'Tên lỗi': clean_(item.name), 'Ngày xác nhận lỗi': parseDateOptional_(item.confirmedAt) || new Date(), 'Ghi chú lỗi': clean_(item.note)
     };
     if (issueId && currentIssueById[issueId]) {
-      updateObjectRow_(SHEETS.issues, issueTable.headers, currentIssueById[issueId].__rowNumber, values);
+      updateObjectRow_(SHEETS.issues, issueTable.headers, currentIssueById[issueId].__rowNumber, changedRowValues_(currentIssueById[issueId], values));
       keptIssueIds[issueId] = true;
     } else {
       values['Mã ghi nhận lỗi'] = makeId_('LOI');
-      appendObject_(SHEETS.issues, values);
+      newIssues.push(values);
     }
   });
+  appendObjects_(SHEETS.issues, newIssues, issueTable.headers);
   deleteRowsDescending_(SHEETS.issues, currentIssues.filter(function (row) { return !keptIssueIds[clean_(row['Mã ghi nhận lỗi'])]; }).map(function (row) { return row.__rowNumber; }));
 
-  const partTable = readTableWithRows_(SHEETS.parts);
+  const partTable = readScopedTable_(SHEETS.parts, 'Mã công việc', [workOrderId]);
   const currentParts = partTable.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
   const currentPartById = currentParts.reduce(function (map, row) { map[clean_(row['Mã sử dụng linh kiện'])] = row; return map; }, {});
   const keptPartIds = {};
+  const newParts = [];
   (parts || []).filter(function (item) { return clean_(item.partNumber) || clean_(item.name); }).forEach(function (item) {
     const partNumber = clean_(item.partNumber);
     const partName = required_(item.name, 'Tên linh kiện');
@@ -1791,28 +1873,30 @@ function replaceWorkOrderChildren_(actor, workOrderId, issues, parts) {
       'Ngày sử dụng': parseDateOptional_(item.usedAt), 'Ghi chú': clean_(item.note)
     };
     if (partUsageId && currentPartById[partUsageId]) {
-      updateObjectRow_(SHEETS.parts, partTable.headers, currentPartById[partUsageId].__rowNumber, values);
+      updateObjectRow_(SHEETS.parts, partTable.headers, currentPartById[partUsageId].__rowNumber, changedRowValues_(currentPartById[partUsageId], values));
       keptPartIds[partUsageId] = true;
     } else {
       values['Mã sử dụng linh kiện'] = makeId_('LK');
-      appendObject_(SHEETS.parts, values);
+      newParts.push(values);
     }
   });
+  appendObjects_(SHEETS.parts, newParts, partTable.headers);
   deleteRowsDescending_(SHEETS.parts, currentParts.filter(function (row) { return !keptPartIds[clean_(row['Mã sử dụng linh kiện'])]; }).map(function (row) { return row.__rowNumber; }));
 }
 
 function fillMissingPartUsageDates_(workOrderId, usedAt) {
-  const table = readTableWithRows_(SHEETS.parts);
+  const table = readScopedTable_(SHEETS.parts, 'Mã công việc', [workOrderId]);
   table.rows.filter(function (row) { return row['Mã công việc'] === workOrderId && !row['Ngày sử dụng']; }).forEach(function (row) {
     updateObjectRow_(SHEETS.parts, table.headers, row.__rowNumber, { 'Ngày sử dụng': usedAt });
   });
 }
 
 function appendWorkOrderHolds_(actor, workOrderId, holds) {
-  const table = readTableWithRows_(SHEETS.holds);
+  const table = readScopedTable_(SHEETS.holds, 'Mã công việc', [workOrderId]);
   const current = table.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
   const currentById = current.reduce(function (map, row) { map[clean_(row['Mã tạm dừng'])] = row; return map; }, {});
   const keptIds = {};
+  const newHolds = [];
   (holds || []).filter(function (item) { return clean_(item.reason) && item.startAt; }).forEach(function (item) {
     const startAt = parseDateRequired_(item.startAt, 'Ngày bắt đầu tạm dừng');
     const endAt = parseDateOptional_(item.endAt);
@@ -1823,37 +1907,67 @@ function appendWorkOrderHolds_(actor, workOrderId, holds) {
       'Ngày bắt đầu': startAt, 'Ngày kết thúc': endAt, 'Ghi chú/Xác nhận': clean_(item.note), 'Người cập nhật': actor.email
     };
     if (holdId && currentById[holdId]) {
-      updateObjectRow_(SHEETS.holds, table.headers, currentById[holdId].__rowNumber, values);
+      updateObjectRow_(SHEETS.holds, table.headers, currentById[holdId].__rowNumber, changedRowValues_(currentById[holdId], values));
       keptIds[holdId] = true;
     } else {
       values['Mã tạm dừng'] = makeId_('TD');
-      appendObject_(SHEETS.holds, values);
+      newHolds.push(values);
     }
   });
+  appendObjects_(SHEETS.holds, newHolds, table.headers);
   deleteRowsDescending_(SHEETS.holds, current.filter(function (row) { return !keptIds[clean_(row['Mã tạm dừng'])]; }).map(function (row) { return row.__rowNumber; }));
+}
+
+function appendObjects_(sheetName, objects, headers) {
+  if (!objects.length) return;
+  const sheet = spreadsheet_().getSheetByName(sheetName);
+  const start = sheet.getLastRow() + 1;
+  const end = start + objects.length - 1;
+  if (end > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), end - sheet.getMaxRows());
+  sheet.getRange(start, 1, objects.length, headers.length).setValues(objects.map(function (object) {
+    return headers.map(function (header) { return object[header] == null ? '' : object[header]; });
+  }));
 }
 
 function deleteRowsDescending_(sheetName, rowNumbers) {
   if (!rowNumbers || !rowNumbers.length) return;
   const sheet = spreadsheet_().getSheetByName(sheetName);
   if (!sheet) throw new Error('Không tìm thấy sheet ' + sheetName);
-  rowNumbers.slice().sort(function (a, b) { return b - a; }).forEach(function (rowNumber) {
-    if (rowNumber > 1 && rowNumber <= sheet.getLastRow()) sheet.deleteRow(rowNumber);
-  });
+  const lastRow = sheet.getLastRow();
+  const ordered = Array.from(new Set(rowNumbers)).filter(function (row) { return row > 1 && row <= lastRow; }).sort(function (a, b) { return b - a; });
+  for (let cursor = 0; cursor < ordered.length;) {
+    const last = ordered[cursor++];
+    let first = last;
+    while (cursor < ordered.length && ordered[cursor] === first - 1) first = ordered[cursor++];
+    if (last === first) sheet.deleteRow(first);
+    else sheet.deleteRows(first, last - first + 1);
+  }
 }
-function updateCaseAfterWork_(caseId, actor, changes) {
-  const table = readTableWithRows_(SHEETS.cases);
+function updateCaseAfterWork_(caseId, actor, changes, suppliedTable, extraChanges) {
+  const table = suppliedTable || readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [caseId]);
   const record = table.rows.find(function (row) { return row['Mã hồ sơ'] === caseId; });
   if (!record) return;
   const terminal = ['Hoàn tất kỹ thuật','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(changes['Trạng thái xử lý'])>=0&&!!changes['Kết quả xử lý']&&!!changes['Ngày hoàn tất kỹ thuật'];
   const closed=clean_(record['Trạng thái hồ sơ'])==='Đã hoàn tất';
   const atIntakeCenter = record['Trung tâm đang giữ hàng'] === record['Trung tâm tiếp nhận khách'];
-  updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, {
+  updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changedRowValues_(record, Object.assign({}, extraChanges || {}, {
     'Trạng thái hồ sơ': closed?'Đã hoàn tất':terminal && atIntakeCenter ? 'Sẵn sàng trả khách' : 'Đang xử lý',
     'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal && atIntakeCenter ? changes['Ngày hoàn tất kỹ thuật'] : '',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
+  })));
+}
+
+function changedRowValues_(record, values) {
+  const changes = {};
+  Object.keys(values).forEach(function (key) {
+    const before = record[key], after = values[key];
+    const same = before instanceof Date && after instanceof Date
+      ? before.getTime() === after.getTime()
+      : (before == null || before === '') && (after == null || after === '') || before === after;
+    if (!same) changes[key] = after;
   });
+  return changes;
 }
 
 function validateTechnicalDates_(record, changes) {
@@ -1866,7 +1980,7 @@ function validateTechnicalDates_(record, changes) {
 }
 
 function latestWorkOrder_(caseId, center) {
-  const rows = readTableWithRows_(SHEETS.workOrders).rows.filter(function (row) { return row['Mã hồ sơ'] === caseId && row['Trung tâm xử lý'] === center; });
+  const rows = readScopedTable_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]).rows.filter(function (row) { return row['Mã hồ sơ'] === caseId && row['Trung tâm xử lý'] === center; });
   return rows.length ? rows[rows.length - 1] : null;
 }
 
@@ -2053,7 +2167,11 @@ function writePortalChunkedCache_(cache, baseKey, value, ttl) {
   }
 }
 
-function readTableWithRows_(sheetName) {
+function readTableWithRows_(sheetName, selector) {
+  if (selector) {
+    const headers = tableHeaders_(sheetName);
+    return { headers: headers, rows: findTableRowsByField_(sheetName, selector.field, selector.values, headers) };
+  }
   const sheet = spreadsheet_().getSheetByName(sheetName);
   if (!sheet) throw new Error('Thiếu tab ' + sheetName);
   const values = sheet.getDataRange().getValues();
@@ -2091,6 +2209,7 @@ function setDeviceTypeCellValidation_(sheet, headers, row, current) {
 }
 
 function updateObjectRow_(sheetName, headers, rowNumber, changes) {
+  if (!Object.keys(changes).length) return;
   const sheet = spreadsheet_().getSheetByName(sheetName);
   if (sheetName === SHEETS.cases && Object.prototype.hasOwnProperty.call(changes,'Loại thiết bị')) setDeviceTypeCellValidation_(sheet,headers,rowNumber,changes['Loại thiết bị']);
   const indexes = headers.map(function (header, index) { return Object.prototype.hasOwnProperty.call(changes, header) ? index : -1; }).filter(function (index) { return index >= 0; });
@@ -2109,8 +2228,11 @@ function updateObjectRow_(sheetName, headers, rowNumber, changes) {
 }
 
 function tableHeaders_(sheetName) {
+  if (PORTAL_WRITE_HEADERS_ && Object.prototype.hasOwnProperty.call(PORTAL_WRITE_HEADERS_, sheetName)) return PORTAL_WRITE_HEADERS_[sheetName].slice();
   const sheet = spreadsheet_().getSheetByName(sheetName);
-  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(clean_);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(clean_);
+  if (PORTAL_WRITE_HEADERS_) PORTAL_WRITE_HEADERS_[sheetName] = headers.slice();
+  return headers;
 }
 
 function audit_(actor, action, type, id, center, before, after) {
@@ -2133,6 +2255,8 @@ function ensureSheetColumns_(sheetName, names) {
     const column = headers.length + 1;
     sheet.getRange(1, column).setValue(name);
     headers.push(name);
+    if (PORTAL_WRITE_HEADERS_) delete PORTAL_WRITE_HEADERS_[sheetName];
+    if(typeof fastReadCacheKey_==='function'){try{const cache=CacheService.getScriptCache(),key=fastReadCacheKey_('schema');cache.remove(key+':count');}catch(_){} }
   });
 }
 
@@ -2164,25 +2288,26 @@ function uploadCaseEvidence_(center, receivedAt, serial, model, customerName, at
  * A stable case-id column prevents duplicate projection rows; older projected
  * rows are adopted once by their unique S/N + received-date key.
  */
-function syncDashboardProjectionCase_(caseId) {
+function syncDashboardProjectionCase_(caseId, source) {
+  const timingStarted = Date.now();
   try {
     caseId = clean_(caseId);
     if (!caseId) return { ok: false, reason: 'missing_case_id' };
-    SpreadsheetApp.flush();
+    if (!source) SpreadsheetApp.flush();
     const spreadsheet = spreadsheet_();
     const sheet = spreadsheet.getSheetByName(SHEETS.dashboard);
     if (!sheet) return { ok: false, reason: 'missing_dashboard_sheet' };
-    const caseRecord = readTable_(SHEETS.cases).find(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    const caseRecord = source ? source.record : findTableRowsByField_(SHEETS.cases, 'Mã hồ sơ', [caseId])[0];
     if (!caseRecord) return { ok: false, reason: 'missing_case' };
     if (clean_(caseRecord['Trạng thái hồ sơ']) === 'Đã hủy') return removeDashboardProjectionCase_(caseId, caseRecord);
 
-    const works = readTable_(SHEETS.workOrders).filter(function (item) { return clean_(item['Mã hồ sơ']) === caseId; });
+    const works = source ? source.works : findTableRowsByField_(SHEETS.workOrders, 'Mã hồ sơ', [caseId]);
     const latest = works.length ? works[works.length - 1] : {};
-    const workIds = works.reduce(function (map, item) { map[clean_(item['Mã công việc'])] = true; return map; }, {});
-    const issues = readTable_(SHEETS.issues).filter(function (item) {
-      return workIds[clean_(item['Mã công việc'])] && clean_(item['Loại ghi nhận']) !== 'Hiện tượng ban đầu';
+    const workIds = works.map(function (item) { return clean_(item['Mã công việc']); }).filter(Boolean);
+    const issues = findTableRowsByField_(SHEETS.issues, 'Mã công việc', workIds).filter(function (item) {
+      return clean_(item['Loại ghi nhận']) !== 'Hiện tượng ban đầu';
     });
-    const parts = readTable_(SHEETS.parts).filter(function (item) { return workIds[clean_(item['Mã công việc'])]; });
+    const parts = findTableRowsByField_(SHEETS.parts, 'Mã công việc', workIds);
     const issueNames = issues.map(function (item) { return clean_(item['Tên lỗi']); }).filter(Boolean);
     const errorCode = issues.map(function (item) { return clean_(item['Mã lỗi']); }).filter(Boolean)[0] || '';
     const caseStatus = clean_(caseRecord['Trạng thái hồ sơ']);
@@ -2255,6 +2380,8 @@ function syncDashboardProjectionCase_(caseId) {
   } catch (error) {
     console.error('Không thể đồng bộ hồ sơ ' + clean_(caseId) + ' sang Dữ liệu dashboard: ' + String(error && error.message || error));
     return { ok: false, reason: String(error && error.message || error) };
+  } finally {
+    if (PORTAL_WRITE_TIMING_) PORTAL_WRITE_TIMING_.projectionMs += Date.now() - timingStarted;
   }
 }
 

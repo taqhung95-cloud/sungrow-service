@@ -9,6 +9,8 @@
   const shortCenter = value => String(value || 'Chưa xác định').replace(/\s+Service\s+Center$/i,'').replace(/\s+Center$/i,'').trim();
   const statusTone = value => { const s=String(value||'').toLowerCase(); return /đã\s*(sửa|giao|trả)|chờ\s*giao/.test(s)?'done':/chờ\s*(linh kiện|part)|không\s*sửa/.test(s)?'wait':/(kiểm tra|test|đổi)/.test(s)?'test':'neutral'; };
   let token = '';
+  let entryBootstrap = null;
+  window.SungrowPortalBootstrap = credential => credential===token&&entryBootstrap?JSON.parse(JSON.stringify(entryBootstrap)):null;
   let authSequence = 0;
   let live = null;
   let previousLive = null;
@@ -147,7 +149,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=140#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=141#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -291,25 +293,27 @@
     const center = q('#sg-center').value;
     status('Đang đồng bộ…', lastSuccessfulSync ? new Date(lastSuccessfulSync).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Đang tải dữ liệu');
     try {
-      const currentData = await fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center, refresh:forceRefresh}, controller.signal);
+      const refreshComparison = options.comparison !== false || !previousLive;
+      const previousPeriod = window.SungrowPeriod ? window.SungrowPeriod.previous() : /^\d{4}$/.test(periodKey)
+        ? String(Number(periodKey) - 1)
+        : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
+      const currentRead=fetchDashboard({action:'dashboard.read', idToken:token, period:periodKey, center:center, refresh:forceRefresh}, controller.signal);
+      const comparisonRead=refreshComparison?fetchDashboard({action:'dashboard.read',idToken:token,period:previousPeriod,center:center,includeAnnual:false,includeTickets:false},controller.signal,3).then(value=>({value}),error=>({error})):null;
+      const currentData=await currentRead;
       if (periodKey.includes('..') && currentData.period?.key !== periodKey) throw new Error('Backend chưa hỗ trợ khoảng ngày. Cần triển khai Apps Script 1.10.15.');
       if (sequence !== loadSequence) return;
       live = currentData;
       root.dataset.liveData = 'true';
       renderIdentity(live.actor);
       syncCenterOptions(live);
-      const refreshComparison = options.comparison !== false || !previousLive;
       if (refreshComparison) previousLive = null;
       renderAll();
       if (!q('#sg-tickets').classList.contains('sg-hidden')) {
         const updated = await loadTicketPage(false, {signal:controller.signal,throwOnError:true});
         if (updated === false || controller.signal.aborted || sequence !== loadSequence) return false;
       }
-      const previousPeriod = window.SungrowPeriod ? window.SungrowPeriod.previous() : /^\d{4}$/.test(periodKey)
-        ? String(Number(periodKey) - 1)
-        : (function(){ const selected=periodKey.split('-').map(Number), previousDate=new Date(selected[0],selected[1]-2,1); return previousDate.getFullYear()+'-'+String(previousDate.getMonth()+1).padStart(2,'0'); })();
       try {
-        if (refreshComparison) previousLive = await fetchDashboard({action:'dashboard.read', idToken:token, period:previousPeriod, center:center, includeAnnual:false, includeTickets:false}, controller.signal, 3);
+        if (comparisonRead) {const result=await comparisonRead;if(result.error)throw result.error;previousLive=result.value;}
       } catch (comparisonError) {
         if (controller.signal.aborted) return;
         previousLive = null;
@@ -1024,7 +1028,7 @@
       if(bootstrap.portalSessions===true&&!window.SungrowSessionClient)throw new Error('Cần tải lại trang để dùng phiên đăng nhập 8 giờ.');
       const adopted=window.SungrowSessionClient?await window.SungrowSessionClient.adopt(credential,bootstrap,(name,args)=>fetchDashboard({action:'portal.call',functionName:name,args},new AbortController().signal,1)):credential;
       if(generation!==authSequence)return;
-      token=adopted;sessionStorage.setItem('sungrow_id_token',token);
+      token=adopted;entryBootstrap=bootstrap;sessionStorage.setItem('sungrow_id_token',token);
       window.SungrowPeriod?.activate(bootstrap.dashboardRanges===true);
       sessionStorage.setItem('sungrow_portal_actor', JSON.stringify(bootstrap.actor || {}));
       applyPortalCapabilities(bootstrap.actor);
@@ -1115,7 +1119,7 @@
   async function signOut() {
     const previous=token;authSequence++;
     window.SungrowWorkspace?.configure(null);
-    token = '';
+    token = '';entryBootstrap=null;
     activeController?.abort();ticketSearchController?.abort();
     window.SungrowReports?.configure(null);
     window.SungrowNotifications?.configure(null);

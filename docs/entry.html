@@ -210,7 +210,8 @@
       state.token=credential;
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
       sessionStorage.setItem('sungrow_id_token',state.token);
-      call('getBootstrap',[credential]).then(async data=>{
+      let inherited=null;try{if(EMBEDDED&&parent.location.origin===location.origin)inherited=parent.SungrowPortalBootstrap?.(credential);}catch(_){}
+      (inherited?Promise.resolve(inherited):call('getBootstrap',[credential])).then(async data=>{
         if(data.portalSessions===true&&!window.SungrowSessionClient)throw new Error('Cần tải lại trang để dùng phiên đăng nhập 8 giờ.');
         const adopted=window.SungrowSessionClient?await window.SungrowSessionClient.adopt(credential,data,(name,args)=>call(name,args)):credential;
         if(generation!==state.authSequence)return;
@@ -684,7 +685,8 @@
       if(mutation){const status=document.createElement('div');status.id='mutationProgress';status.className='mutation-progress';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.innerHTML='<span class="mutation-spinner" aria-hidden="true"></span><span>'+esc(name==='createCase'?'Đang tạo hồ sơ…':name==='cancelCase'?'Đang xóa hồ sơ…':'Đang cập nhật dữ liệu…')+'</span>';document.body.append(status);}
       try{
         if(!CONFIG.appsScriptUrl)throw new Error('Hệ thống chưa cấu hình Apps Script API.');
-        const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[]};
+        const snapshotCase=mutation?window.SungrowEntryWorkspace?.info().activeCase:'';
+        const payload={action:'portal.call',functionName:name,args:Array.isArray(args)?args:[],...(snapshotCase?{returnCaseDetail:snapshotCase}:{})};
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
         const controller=new AbortController();
         let timeout,abort;
@@ -693,7 +695,7 @@
         try{result=await Promise.race([(async()=>{const response=await (globalThis.SungrowTransport?.fetch || fetch)(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
         finally{clearTimeout(timeout);signal?.removeEventListener('abort',abort)}
         if(!result.ok){const error=new Error(result.error?.message||'Không thể xử lý yêu cầu.');error.code=result.error?.code||'';throw error}
-        if(!readOnly&&!uploadOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new Event('portal-data-changed'));}
+        if(!readOnly&&!uploadOnly){state.caseCache={};globalThis.portalDrafts?.clearMutation(name,args);window.dispatchEvent(new CustomEvent('portal-data-changed',{detail:{caseDetail:result.data?.caseDetail}}));}
         if(!readOnly&&!uploadOnly){if(EMBEDDED)parent.postMessage({type:'sungrow-portal-notifications-changed'},location.origin);else window.SungrowNotifications?.refresh();}
         return result.data;
       }catch(error){
@@ -772,7 +774,7 @@
     async function checkPortalRevision() {
       if (window.SungrowEntryWorkspace&&!SungrowEntryWorkspace.isVisible())return;
       if (window.SungrowEntryWorkspace?.busy())return;
-      if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token || state.caseLoading) return;
+      if (realtime.busy || document.hidden || typeof state === 'undefined' || !state.token || !state.actor || state.caseLoading || state.manualSyncBusy || document.getElementById('mutationProgress')) return;
       realtime.busy = true;
       const checkedToken = state.token;
       try {
@@ -820,9 +822,12 @@
       $('#portalSyncStatus').textContent='Đang đồng bộ…';
       const catalogToken=state.token;
       try{
-        const data=await call('getBootstrap',[catalogToken,{refreshCatalog:true}]);
-        if(state.token!==catalogToken)return;
-        applyDeviceTypes(data);
+        if(state.currentView==='receive'){
+          const data=await call('getBootstrap',[catalogToken,{refreshCatalog:true}]);
+          if(state.token!==catalogToken)return;
+          applyDeviceTypes(data);
+          $('#portalSyncStatus').textContent='Đã đồng bộ danh mục';return;
+        }
       state.caseCache = {};
       if (hasOpenCaseEditor()) {
         showRealtimeNotice();
@@ -836,7 +841,7 @@
       finally{state.manualSyncBusy=false;updateSyncActivity(0);if($('#portalSyncStatus').textContent.startsWith('Đang'))$('#portalSyncStatus').textContent='Chưa đồng bộ';}
     }
     globalThis.portalRealtime={sync:syncPortalNow,check:checkPortalRevision,revision:()=>realtime.revision,showNotice:showRealtimeNotice,clearNotice:clearRealtimeNotice};
-    window.addEventListener('portal-data-changed',()=>{state.caseDataRevision='';checkPortalRevision()});
+    window.addEventListener('portal-data-changed',event=>{const revision=event.detail?.caseDetail?.dataRevision;if(revision){realtime.revision=String(revision);state.caseDataRevision=String(revision);}else{state.caseDataRevision='';checkPortalRevision()}});
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) checkPortalRevision();
@@ -896,5 +901,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=4"></script><script src="work-order-rules.js?v=3"></script><script src="work-order-locks.js?v=4"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=6"></script><script src="fan-lots.js?v=9"></script><script src="fan-lot-native.js?v=8"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=7"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script><script src="entry-workspace.js?v=3"></script><script src="fan-warranty.js?v=3"></script><link rel="stylesheet" href="fan-warranty.css?v=9"></body>
+<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=4"></script><script src="work-order-rules.js?v=3"></script><script src="work-order-locks.js?v=4"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=6"></script><script src="fan-lots.js?v=9"></script><script src="fan-lot-native.js?v=8"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=7"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script><script src="entry-workspace.js?v=4"></script><script src="fan-warranty.js?v=3"></script><link rel="stylesheet" href="fan-warranty.css?v=9"></body>
 </html>
