@@ -61,7 +61,7 @@ function flAppendRequest_(name,object){var sheet=spreadsheet_().getSheetByName(n
 function flBatch_(requests){
   SpreadsheetApp.flush();
   var response=UrlFetchApp.fetch('https://sheets.googleapis.com/v4/spreadsheets/'+spreadsheet_().getId()+':batchUpdate',{method:'post',contentType:'application/json',headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()},payload:JSON.stringify({requests:requests}),muteHttpExceptions:true});
-  if(response.getResponseCode()<200||response.getResponseCode()>=300){var code=response.getResponseCode(),error=publicError_('Không ghi được giao dịch Fan. Giữ mã thao tác và tải lại để kiểm tra. HTTP '+code);error.fanNoWrite=code>=400&&code<500&&code!==408;throw error;}
+  if(response.getResponseCode()<200||response.getResponseCode()>=300){var code=response.getResponseCode(),error=publicError_('Không ghi được giao dịch dữ liệu. Giữ mã thao tác và tải lại để kiểm tra. HTTP '+code);error.fanNoWrite=code>=400&&code<500&&code!==408;throw error;}
 }
 function flVerifyPartLedger_(events, suppliedParts) {
   var expected=[];events.forEach(function(e){var d=parseJson_(e['Nội dung'])||{};(d.parts||[]).forEach(function(p){expected.push({part:p,event:e});});});
@@ -142,14 +142,14 @@ function updateFanLot(idToken,payload){
       if(lastDate&&date<lastDate)throw publicError_('Ngày thao tác không được trước lần xử lý/giao trả gần nhất của dòng này.');
       var totals=SungrowFanLotRules.totals(next);
       if(kind==='return'){
-        assertCapability_(actor,'returnToCustomer');assertCenterAllowed_(actor,row['Trung tâm tiếp nhận khách']);
-        if(row['Trung tâm đang giữ hàng']!==row['Trung tâm tiếp nhận khách'])throw publicError_('Chuyển lô về center tiếp nhận trước khi trả khách.');
+        assertCapability_(actor,'returnToCustomer');assertCenterAllowed_(actor,row['Trung tâm đang giữ hàng']);
+
         ['returnCustomer','returnAddress','returnPhone','returnCarrier','returnTrackingCode'].forEach(function(k){details[k]=required_(action[k],k);if(details[k].length>500)throw publicError_('Thông tin giao nhận quá dài.');});
         changes['Tên người gửi hàng']=details.returnCustomer;changes['Địa chỉ gửi hàng']=details.returnAddress;changes['Số điện thoại gửi hàng']=details.returnPhone;changes['Đơn vị vận chuyển']=details.returnCarrier;changes['Mã vận đơn']=details.returnTrackingCode;
         if(totals.returned===totals.received){changes['Trạng thái hồ sơ']='Đã hoàn tất';changes['Ngày trả khách']=parseDateRequired_(date,'Ngày trả khách');}
       }
-      if(!changes['Trạng thái hồ sơ'])changes['Trạng thái hồ sơ']=totals.waiting>0&&row['Trung tâm đang giữ hàng']===row['Trung tâm tiếp nhận khách']?'Sẵn sàng trả khách':'Đang xử lý';
-      if(totals.waiting>0&&!row['Ngày sẵn sàng trả khách']&&row['Trung tâm đang giữ hàng']===row['Trung tâm tiếp nhận khách'])changes['Ngày sẵn sàng trả khách']=parseDateRequired_(date,'Ngày sẵn sàng trả');
+      if(!changes['Trạng thái hồ sơ'])changes['Trạng thái hồ sơ']=totals.waiting>0?'Sẵn sàng trả khách':'Đang xử lý';
+      if(totals.waiting>0&&!row['Ngày sẵn sàng trả khách'])changes['Ngày sẵn sàng trả khách']=parseDateRequired_(date,'Ngày sẵn sàng trả');
       if(totals.waiting===0)changes['Ngày sẵn sàng trả khách']='';
       if(totals.completed===totals.received&&kind==='technical'){
         var outcomes=history.filter(function(e){return e['Loại thao tác']==='technical';}).map(function(e){return clean_(e['Kết quả']);}).concat([action.outcome]);

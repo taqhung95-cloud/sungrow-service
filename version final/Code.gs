@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.16-batched-case-reads';
+const APP_VERSION = '1.11.17-last-center-handoff';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -965,8 +965,9 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   const caseTable = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [record['Mã hồ sơ']]);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === record['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của công việc.');
+  if(record['Trung tâm xử lý']!==caseRecord['Trung tâm đang giữ hàng']||clean_(caseRecord['Trạng thái hồ sơ'])==='Đang luân chuyển')throw publicError_('Công việc không thuộc center đang giữ hàng hoặc hồ sơ đang luân chuyển.');
   if(typeof flIsLot_==='function'&&flIsLot_(caseRecord)&&typeof fwUpdateWorkOrder_==='function')return fwUpdateWorkOrder_(actor,caseRecord,record,payload);
-  if (!actor.isGlobalManager && ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(record['Trạng thái xử lý']) !== -1) {
+  if (['Chờ nhận hàng','Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(record['Trạng thái xử lý']) !== -1) {
     throw publicError_('Công việc đã kết thúc tại center này và không thể cập nhật thêm.');
   }
   assertCaseEditable_(actor, caseRecord);
@@ -1051,12 +1052,19 @@ function createTransferUnlocked_(idToken, payload) {
   assertTransferDestinationPolicy_(source, destination);
   if (source === destination) throw publicError_('Trung tâm nhận phải khác trung tâm gửi.');
 
+  const transfers=readScopedTable_(SHEETS.transfers,'Mã hồ sơ',[caseId]).rows;
+  const pending=transfers.filter(function(t){return clean_(t['Trạng thái luân chuyển'])==='Đang vận chuyển';});
+  if(pending.length){if(pending.length===1&&pending[0]['Trung tâm gửi']===source&&pending[0]['Trung tâm nhận']===destination)return {transferId:pending[0]['Mã luân chuyển'],destinationWorkOrderId:pending[0]['Mã công việc nhận'],replayed:true};throw publicError_('Hồ sơ đã có lượt luân chuyển chờ nhận.');}
+  if(['Đã hoàn tất','Đã hủy','Đang luân chuyển'].indexOf(clean_(caseRecord['Trạng thái hồ sơ']))>=0)throw publicError_('Hồ sơ không ở trạng thái cho phép tạo luân chuyển mới.');
+  if(payload.fromCenter&&payload.fromCenter!==source)throw publicError_('Center đã thay đổi. Tải lại hồ sơ trước khi luân chuyển.');
   const sourceWork = latestWorkOrder_(caseId, source);
-  if (!sourceWork) throw publicError_('Không tìm thấy công việc của trung tâm gửi.');
+  if (!sourceWork||['Chờ nhận hàng','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(clean_(sourceWork['Trạng thái xử lý']))>=0) throw publicError_('Không tìm thấy công việc đang mở của trung tâm gửi.');
+  if(payload.sourceWorkOrderId&&payload.sourceWorkOrderId!==sourceWork['Mã công việc'])throw publicError_('Công việc đã thay đổi. Tải lại hồ sơ.');
+  if(asDate_(sourceWork['Ngày trung tâm nhận hàng'])&&sentAt<asDate_(sourceWork['Ngày trung tâm nhận hàng']))throw publicError_('Ngày gửi không được trước ngày center nhận hàng.');
   const transferId = makeId_('LC');
   const destinationWorkId = makeId_('CV');
   const now = new Date();
-  appendObject_(SHEETS.workOrders, {
+  const receivingWork = {
       'Mã công việc': destinationWorkId,
       'Mã hồ sơ': caseId,
       'Trung tâm xử lý': destination,
@@ -1065,8 +1073,8 @@ function createTransferUnlocked_(idToken, payload) {
       'Ngày tạo': now,
       'Người cập nhật': actor.email,
       'Ngày cập nhật': now
-    });
-    appendObject_(SHEETS.transfers, {
+    };
+    const transferRow = {
       'Mã luân chuyển': transferId,
       'Mã hồ sơ': caseId,
       'Mã công việc gửi': sourceWork['Mã công việc'],
@@ -1078,18 +1086,20 @@ function createTransferUnlocked_(idToken, payload) {
       'Mã vận chuyển': clean_(payload.trackingReference),
       'Người bàn giao': actor.email,
       'Ghi chú bàn giao': clean_(payload.note)
-    });
-    updateObjectRow_(SHEETS.workOrders, tableHeaders_(SHEETS.workOrders), sourceWork.__rowNumber, {
+    };
+    const sourceChanges = {
       'Trạng thái xử lý': 'Đã chuyển hàng đi',
       'Ngày chuyển hàng đi': sentAt,
       'Người cập nhật': actor.email,
       'Ngày cập nhật': now
-    });
-    updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
+    };
+    const caseChanges = {
       'Trạng thái hồ sơ': 'Đang luân chuyển',
       'Người cập nhật gần nhất': actor.email,
       'Ngày cập nhật gần nhất': now
-    });
+    };
+    if(typeof flBatch_!=='function')throw publicError_('Cần cập nhật FanLots.gs để ghi luân chuyển an toàn.');
+    flBatch_([flAppendRequest_(SHEETS.workOrders,receivingWork),flAppendRequest_(SHEETS.transfers,transferRow)].concat(flUpdateRequest_(SHEETS.workOrders,sourceWork.__rowNumber,sourceChanges),flUpdateRequest_(SHEETS.cases,caseRecord.__rowNumber,caseChanges)));
     audit_(actor, 'Tạo luân chuyển', 'Luân chuyển', transferId, source, null, { toCenter: destination, caseId: caseId });
   syncCaseDerived_(caseId);
   bumpPortalDatabaseRevision_();
@@ -1113,7 +1123,8 @@ function acceptTransferUnlocked_(idToken, payload) {
   const transfer = transferTable.rows.find(function (row) { return row['Mã luân chuyển'] === transferId; });
   if (!transfer) throw publicError_('Không tìm thấy lần luân chuyển.');
   assertCenterAllowed_(actor, transfer['Trung tâm nhận']);
-  if (transfer['Trạng thái luân chuyển'] === 'Đã nhận') throw publicError_('Luân chuyển này đã được xác nhận nhận.');
+  if (transfer['Trạng thái luân chuyển'] === 'Đã nhận') {if(iso_(transfer['Ngày xác nhận nhận'])!==iso_(receivedAt))throw publicError_('Lượt này đã nhận; không dùng nhận lại để thay ngày nhận.');return {ok:true,replayed:true};}
+  if(clean_(transfer['Trạng thái luân chuyển'])!=='Đang vận chuyển')throw publicError_('Lượt luân chuyển không còn chờ nhận.');
   const sentAt = asDate_(transfer['Ngày gửi']);
   if (sentAt && receivedAt < sentAt) throw publicError_('Ngày nhận không được trước ngày gửi.');
 
@@ -1122,25 +1133,29 @@ function acceptTransferUnlocked_(idToken, payload) {
   const caseTable = readScopedTable_(SHEETS.cases, 'Mã hồ sơ', [transfer['Mã hồ sơ']]);
   const caseRecord = caseTable.rows.find(function (row) { return row['Mã hồ sơ'] === transfer['Mã hồ sơ']; });
   if (!caseRecord) throw publicError_('Không tìm thấy hồ sơ của lần luân chuyển.');
+  if(!work||work['Mã hồ sơ']!==transfer['Mã hồ sơ']||work['Trung tâm xử lý']!==transfer['Trung tâm nhận']||clean_(work['Trạng thái xử lý'])!=='Chờ nhận hàng')throw publicError_('Công việc nhận không còn chờ xác nhận.');
+  if(caseRecord['Trung tâm đang giữ hàng']!==transfer['Trung tâm gửi']||clean_(caseRecord['Trạng thái hồ sơ'])!=='Đang luân chuyển')throw publicError_('Lượt nhận cũ hoặc center đã thay đổi. Tải lại hồ sơ.');
   assertCaseEditable_(actor, caseRecord);
   const now = new Date();
-  updateObjectRow_(SHEETS.transfers, transferTable.headers, transfer.__rowNumber, {
+  const transferChanges = {
     'Ngày xác nhận nhận': receivedAt,
     'Trạng thái luân chuyển': 'Đã nhận',
     'Người xác nhận nhận': actor.email
-  });
-  updateObjectRow_(SHEETS.workOrders, workTable.headers, work.__rowNumber, {
+  };
+  const workChanges = {
     'Ngày trung tâm nhận hàng': receivedAt,
     'Trạng thái xử lý': 'Đã nhận hàng',
     'Người cập nhật': actor.email,
     'Ngày cập nhật': now
-  });
-  updateObjectRow_(SHEETS.cases, caseTable.headers, caseRecord.__rowNumber, {
+  };
+  const caseChanges = {
     'Trung tâm đang giữ hàng': transfer['Trung tâm nhận'],
     'Trạng thái hồ sơ': 'Đang xử lý',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': now
-  });
+  };
+  if(typeof flBatch_!=='function')throw publicError_('Cần cập nhật FanLots.gs để xác nhận nhận an toàn.');
+  flBatch_([].concat(flUpdateRequest_(SHEETS.transfers,transfer.__rowNumber,transferChanges),flUpdateRequest_(SHEETS.workOrders,work.__rowNumber,workChanges),flUpdateRequest_(SHEETS.cases,caseRecord.__rowNumber,caseChanges)));
   audit_(actor, 'Xác nhận nhận luân chuyển', 'Luân chuyển', transferId, transfer['Trung tâm nhận'], transfer, { receivedAt: receivedAt });
   syncCaseDerived_(transfer['Mã hồ sơ']);
   bumpPortalDatabaseRevision_();
@@ -1174,12 +1189,16 @@ function returnToCustomerUnlocked_(idToken, payload) {
   if(typeof flIsLot_==='function'&&flIsLot_(record)&&typeof fwReturn_==='function')return fwReturn_(actor,record,payload);
   assertCaseEditable_(actor, record);
   if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(record);
-  assertCenterAllowed_(actor, record['Trung tâm tiếp nhận khách']);
-  if (record['Trung tâm đang giữ hàng'] !== record['Trung tâm tiếp nhận khách']) throw publicError_('Thiết bị phải được chuyển về center tiếp nhận trước khi trả khách.');
+  assertCenterAllowed_(actor, record['Trung tâm đang giữ hàng']);
+  if(['Đang luân chuyển','Đã hủy'].indexOf(clean_(record['Trạng thái hồ sơ']))>=0)throw publicError_('Hồ sơ đang luân chuyển hoặc đã hủy, không thể giao trả.');
+  const currentWork=latestWorkOrder_(caseId,record['Trung tâm đang giữ hàng']);
+  if(!currentWork||['Chờ nhận hàng','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(clean_(currentWork['Trạng thái xử lý']))>=0)throw publicError_('Center đang giữ hàng chưa có công việc hợp lệ để giao trả.');
   if (clean_(record['Tình trạng bảo hành']) === 'Chờ xác nhận') throw publicError_('Cần xác nhận tình trạng bảo hành trước khi giao trả khách hàng.');
   const receivedAt = asDate_(record['Ngày nhận từ khách']);
   if (receivedAt && returnedAt < receivedAt) throw publicError_('Ngày trả khách không được trước ngày nhận.');
   if (readyAt && returnedAt < readyAt) throw publicError_('Ngày trả khách không được trước ngày sẵn sàng trả.');
+  const handledAt=asDate_(currentWork['Ngày trung tâm nhận hàng']),completedAt=asDate_(currentWork['Ngày hoàn tất kỹ thuật']);
+  if((handledAt&&returnedAt<handledAt)||(completedAt&&returnedAt<completedAt))throw publicError_('Ngày trả khách không được trước ngày center nhận hàng/hoàn tất kỹ thuật.');
   const changes = {
     'Ngày sẵn sàng trả khách': readyAt,
     'Ngày trả khách': returnedAt,
@@ -1645,6 +1664,7 @@ function publicIndexedCase_(actor, item) {
   const intakeCenter = clean_(item['Trung tâm tiếp nhận khách']);
   const currentCenter = clean_(item['Trung tâm đang giữ hàng']);
   const isIntake = isManager || actor.centers.indexOf(intakeCenter) !== -1;
+  const isCurrent = isManager || actor.centers.indexOf(currentCenter) !== -1;
   const canDelete = canDeleteCaseRecord_(actor,item,bool_(item['Có luân chuyển']));
   const latestWork = clean_(item['Mã công việc gần nhất']) && (isManager || actor.centers.indexOf(clean_(item['Trung tâm xử lý gần nhất'])) !== -1) ? [{
     workOrderId: clean_(item['Mã công việc gần nhất']),
@@ -1660,7 +1680,7 @@ function publicIndexedCase_(actor, item) {
     serialNumber: clean_(item['Số sê-ri (S/N)']), model: clean_(item.Model),
     quantity: Math.max(1, Number(item['Số lượng']) || 1), intakeCenter: intakeCenter,
     currentCenter: currentCenter, caseStatus: clean_(item['Trạng thái hồ sơ']),
-    warrantyStatus: clean_(item['Tình trạng bảo hành']), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
+    warrantyStatus: clean_(item['Tình trạng bảo hành']), receivedAt: (isIntake || isCurrent) ? iso_(item['Ngày nhận từ khách']) : null,
     canDelete: canDelete, workOrders: latestWork, transfers: []
   };
 }
@@ -1774,6 +1794,8 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
   const isClosed = clean_(item['Trạng thái hồ sơ']) === 'Đã hoàn tất';
   const hasPrivateAccess = isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1 || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1;
   const isIntake = isManager || actor.centers.indexOf(item['Trung tâm tiếp nhận khách']) !== -1;
+  const isCurrent = isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1;
+  const inTransit = clean_(item['Trạng thái hồ sơ'])==='Đang luân chuyển';
   const ownWorks = isManager ? workOrders : workOrders.filter(function (work) { return actor.centers.indexOf(work['Trung tâm xử lý']) !== -1; });
   const hasEditableWork = ownWorks.some(function (work) { return ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1; });
   const canEditCase = (isManager || !isClosed) && (isManager || (hasCapability_(actor, 'updateWorkOrder') && hasEditableWork));
@@ -1806,15 +1828,15 @@ function publicCase_(actor, item, workOrders, transfers, issuesByWork, partsByWo
     senderEmail: hasPrivateAccess ? item['Email gửi hàng'] : '', carrier: hasPrivateAccess ? item['Đơn vị vận chuyển'] : '', trackingCode: hasPrivateAccess ? item['Mã vận đơn'] : '',
     createdBy: item['Người tạo'], createdAt: iso_(item['Ngày tạo']),
     warrantyConfirmedBy: item['Người xác nhận bảo hành'], warrantyConfirmedAt: iso_(item['Ngày xác nhận bảo hành']), warrantyNote: item['Ghi chú xác nhận bảo hành'],
-    isClosed: isClosed, canEditCase: canEditCase, canSupplementAttachments: typeof saCanSupplement_==='function'&&saCanSupplement_(actor,item,workOrders), canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: isIntake ? iso_(item['Ngày nhận từ khách']) : null,
+    isClosed: isClosed, canEditCase: canEditCase, canSupplementAttachments: typeof saCanSupplement_==='function'&&saCanSupplement_(actor,item,workOrders), canConfirmWarranty: canEditCase && canApproveWarranty_(actor), receivedAt: (isIntake || isCurrent) ? iso_(item['Ngày nhận từ khách']) : null,
     canDelete: canDeleteCase,
     canRequestWarranty: typeof requestWarrantyReview==='function'&&!canApproveWarranty_(actor)&&hasCapability_(actor,'viewCases')&&(typeof flWarrantyLabel_==='function'?flWarrantyLabel_(item):clean_(item['Tình trạng bảo hành']))==='Chờ xác nhận'&&clean_(item['Trạng thái hồ sơ'])!=='Đã hủy',
     canCorrectCase: systemCaseManager_(actor), correctionRevision: systemCaseManager_(actor) ? getPortalDatabaseRevision_() : '',
-    readyAt: isIntake ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: isIntake ? iso_(item['Ngày trả khách']) : null,
-    workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && hasCapability_(actor, 'updateWorkOrder') && (isManager || ['Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1); return value; }), transfers: relevantTransfers,
-    canTransfer: (isManager || !isClosed) && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
+    readyAt: (isIntake || isCurrent) ? iso_(item['Ngày sẵn sàng trả khách']) : null, returnedAt: (isIntake || isCurrent) ? iso_(item['Ngày trả khách']) : null,
+    workOrders: ownWorks.map(function (work) { const workId = clean_(work['Mã công việc']); const value = publicWorkOrder_(work, (issuesByWork && issuesByWork[workId]) || [], (partsByWork && partsByWork[workId]) || [], (holdsByWork && holdsByWork[workId]) || []); value.canUpdate = (isManager || !isClosed) && !inTransit && work['Trung tâm xử lý']===item['Trung tâm đang giữ hàng'] && hasCapability_(actor, 'updateWorkOrder') && ['Chờ nhận hàng','Đã chuyển hàng đi', 'Đã đóng công việc'].indexOf(work['Trạng thái xử lý']) === -1; return value; }), transfers: relevantTransfers,
+    canTransfer: !isClosed && !inTransit && hasCapability_(actor, 'createTransfer') && (isManager || actor.centers.indexOf(item['Trung tâm đang giữ hàng']) !== -1),
     transferDestinations: transferDestinationsForSource_(item['Trung tâm đang giữ hàng']),
-    canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isIntake && item['Trung tâm đang giữ hàng'] === item['Trung tâm tiếp nhận khách'] && (item['Tình trạng bảo hành'] !== 'Chờ xác nhận' || (typeof flIsLot_==='function'&&flIsLot_(item)&&SungrowFanLotRules.totals(flState_(item)).completed>0))
+    canReturn: (isManager || !isClosed) && hasCapability_(actor, 'returnToCustomer') && isCurrent && !inTransit && (item['Tình trạng bảo hành'] !== 'Chờ xác nhận' || (typeof flIsLot_==='function'&&flIsLot_(item)&&SungrowFanLotRules.totals(flState_(item)).completed>0))
   };
 }
 
@@ -1949,10 +1971,9 @@ function updateCaseAfterWork_(caseId, actor, changes, suppliedTable, extraChange
   if (!record) return;
   const terminal = ['Hoàn tất kỹ thuật','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(changes['Trạng thái xử lý'])>=0&&!!changes['Kết quả xử lý']&&!!changes['Ngày hoàn tất kỹ thuật'];
   const closed=clean_(record['Trạng thái hồ sơ'])==='Đã hoàn tất';
-  const atIntakeCenter = record['Trung tâm đang giữ hàng'] === record['Trung tâm tiếp nhận khách'];
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changedRowValues_(record, Object.assign({}, extraChanges || {}, {
-    'Trạng thái hồ sơ': closed?'Đã hoàn tất':terminal && atIntakeCenter ? 'Sẵn sàng trả khách' : 'Đang xử lý',
-    'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal && atIntakeCenter ? changes['Ngày hoàn tất kỹ thuật'] : '',
+    'Trạng thái hồ sơ': closed?'Đã hoàn tất':terminal ? 'Sẵn sàng trả khách' : 'Đang xử lý',
+    'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal ? changes['Ngày hoàn tất kỹ thuật'] : '',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
   })));

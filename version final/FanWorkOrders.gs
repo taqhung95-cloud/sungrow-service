@@ -102,8 +102,8 @@ function fwUpdateWorkOrder_(actor,row,work,payload){
   var workChanges={'Trạng thái xử lý':all?'Hoàn tất kỹ thuật':status==='Hoàn tất kỹ thuật'?'Đang sửa chữa':status,'Ngày hoàn tất chẩn đoán':payload.diagnosisCompletedAt?parseDateRequired_(payload.diagnosisCompletedAt,'Ngày chẩn đoán'):'','Ngày hoàn tất kỹ thuật':all&&dates.length?parseDateRequired_(dates[dates.length-1],'Ngày hoàn tất'):'','Kết quả xử lý':all&&outcomes.length&&outcomes.every(function(o){return o===outcomes[0];})?outcomes[0]:'','Loại thiết bị đổi':all?clean_(payload.replacementType):'','Ghi chú nội bộ':note,'Người cập nhật':actor.email,'Ngày cập nhật':tx.now};
   if(workChanges['Loại thiết bị đổi']==='Fan'&&typeof allowListValidationValue_==='function')allowListValidationValue_(SHEETS.workOrders,tableHeaders_(SHEETS.workOrders),work.__rowNumber,'Loại thiết bị đổi','Fan','Quy tắc loại thiết bị đổi cần quản lý đối soát.');
   tx.workExpected={id:work['Mã công việc'],keys:Object.keys(workChanges),digest:digest_(JSON.stringify(fwValues_(workChanges)))};tx.requests=tx.requests.concat(flUpdateRequest_(SHEETS.workOrders,work.__rowNumber,workChanges));
-  var changes={'GSP':gsp,'MA':ma,'Trạng thái hồ sơ':totals.waiting>0&&row['Trung tâm đang giữ hàng']===row['Trung tâm tiếp nhận khách']?'Sẵn sàng trả khách':'Đang xử lý'};
-  if(totals.waiting>0&&!row['Ngày sẵn sàng trả khách']&&row['Trung tâm đang giữ hàng']===row['Trung tâm tiếp nhận khách'])changes['Ngày sẵn sàng trả khách']=parseDateRequired_(newDates[0]||tx.today,'Ngày sẵn sàng');
+  var changes={'GSP':gsp,'MA':ma,'Trạng thái hồ sơ':totals.waiting>0?'Sẵn sàng trả khách':'Đang xử lý'};
+  if(totals.waiting>0&&!row['Ngày sẵn sàng trả khách'])changes['Ngày sẵn sàng trả khách']=parseDateRequired_(newDates[0]||tx.today,'Ngày sẵn sàng');
   return fwCommit_(tx,row,actor,'work',changes,{workOrderId:work['Mã công việc'],workflowStatus:status,note:note,parts:usage.entries});
 }
 function fwConfirmWarranty_(actor,row,payload){
@@ -115,7 +115,7 @@ function fwConfirmWarranty_(actor,row,payload){
 }
 function fwReturn_(actor,row,payload){
   var tx=fwBegin_(actor,row,payload,'return-batch');if(tx.replayed)return tx.result;
-  assertCenterAllowed_(actor,row['Trung tâm tiếp nhận khách']);if(row['Trung tâm đang giữ hàng']!==row['Trung tâm tiếp nhận khách'])throw publicError_('Chuyển hồ sơ về center tiếp nhận trước khi giao trả.');
+  assertCenterAllowed_(actor,row['Trung tâm đang giữ hàng']);
   var current=findTableRowsByField_(SHEETS.workOrders,'Mã hồ sơ',[row['Mã hồ sơ']]).filter(function(w){return w['Trung tâm xử lý']===row['Trung tâm đang giữ hàng'];}).pop();if(!current||['Chờ nhận hàng','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(clean_(current['Trạng thái xử lý']))>=0)throw publicError_('Center chưa có công việc mở để giao trả.');var earliest=[iso_(row['Ngày nhận từ khách']),iso_(current['Ngày trung tâm nhận hàng'])].sort().pop();var date=fwDay_(payload.returnedAt,'Ngày trả khách',earliest,tx.today);if(payload.readyAt&&date<fwDay_(payload.readyAt,'Ngày sẵn sàng',iso_(row['Ngày nhận từ khách']),tx.today))throw publicError_('Ngày trả trước ngày sẵn sàng.');
   var history=findTableRowsByField_(FL_EVENT_SHEET_,'Mã hồ sơ',[row['Mã hồ sơ']]),changes={};
   var fields={returnCompany:'Tên công ty gửi hàng',returnCustomer:'Tên người gửi hàng',returnAddress:'Địa chỉ gửi hàng',returnPhone:'Số điện thoại gửi hàng',returnEmail:'Email gửi hàng',returnCarrier:'Đơn vị vận chuyển',returnTrackingCode:'Mã vận đơn'};
