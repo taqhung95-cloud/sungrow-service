@@ -56,9 +56,41 @@ function asCleanup_(record) {
 }
 /** Editor-only read-only check; does not activate the new storage mode. */
 function kiemTraKhoDinhKemRieng() {
-  const effective=String(Session.getEffectiveUser().getEmail()||'').toLowerCase(),active=String(Session.getActiveUser().getEmail()||'').toLowerCase();
-  if(!effective||active!==effective)throw Error('Chỉ chạy kiểm tra này từ Apps Script Editor bằng tài khoản thực thi chính.');
+  asOwner_();
   const result=asCall_('probe',{});
   if(result.executor!=='sungrowservicecenter@gmail.com')throw Error('Sai tài khoản thực thi dịch vụ lưu trữ.');
   return {ok:true,enabled:asEnabled_(),storage:result,mainExecutor:Session.getEffectiveUser().getEmail(),mainDeploymentUnchanged:true};
+}
+function asOwner_() {
+  const effective=String(Session.getEffectiveUser().getEmail()||'').toLowerCase(),active=String(Session.getActiveUser().getEmail()||'').toLowerCase();
+  if(!effective||effective!=='taqhung.95@gmail.com'||active!==effective)throw Error('Chỉ chủ backend hiện tại được cấu hình kho đính kèm.');
+  return effective;
+}
+/** Private owner-only setup, also available on the editor-only /dev deployment.
+ * No secret is embedded in source, HTML responses, logs or URLs. */
+function asSetupPage_() {
+  const owner=asOwner_(),nonce=Utilities.getUuid()+Utilities.getUuid();
+  CacheService.getScriptCache().put('AS_SETUP:'+nonce,owner,600);
+  return HtmlService.createHtmlOutput('<!doctype html><html lang="vi"><meta charset="utf-8"><title>Cấu hình kho đính kèm riêng</title><style>body{font:14px system-ui;max-width:680px;margin:32px auto;padding:16px}label{display:block;margin:18px 0}input{display:block;width:100%;padding:10px;box-sizing:border-box;margin-top:6px}button{padding:10px 18px}#status{white-space:pre-wrap}</style><h2>Cấu hình kho đính kèm riêng</h2><p>Chỉ chủ backend được dùng trang này. Chỉ lưu URL và khóa upload; không bật chế độ mới hoặc thay các thuộc tính khác.</p><form id="setup"><label>URL dịch vụ lưu trữ<input id="url" type="url" required autocomplete="off"></label><label>Khóa HMAC<input id="key" type="password" required autocomplete="new-password"></label><button id="save">Lưu cấu hình upload</button></form><p id="status" role="status"></p><script>document.getElementById("setup").onsubmit=function(e){e.preventDefault();var b=document.getElementById("save"),s=document.getElementById("status"),k=document.getElementById("key");b.disabled=true;s.textContent="Đang lưu...";google.script.run.withSuccessHandler(function(){k.value="";s.textContent="Đã lưu URL và khóa upload. Chế độ mới chưa bật.";}).withFailureHandler(function(){k.value="";s.textContent="Chưa lưu được. Tải lại trang để thử lại.";}).configureAttachmentStorageForOwner('+JSON.stringify(nonce)+',document.getElementById("url").value,k.value);};</script></html>').setTitle('Cấu hình kho đính kèm riêng');
+}
+function configureAttachmentStorageForOwner(nonce,url,secret) {
+  const owner=asOwner_();
+  if(!/^[A-Za-z0-9-]{72}$/.test(nonce||'')||!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url||'')||!(/^[A-Za-z0-9_-]{43,128}$/.test(secret||'')))throw Error('Cấu hình không hợp lệ.');
+  const lock=LockService.getScriptLock();if(!lock.tryLock(1500))throw Error('Hệ thống đang cập nhật. Tải lại trang trước khi thử lại.');
+  try{
+    const cache=CacheService.getScriptCache();if(cache.get('AS_SETUP:'+nonce)!==owner)throw Error('Phiên cấu hình không hợp lệ hoặc hết hạn.');
+    const props=PropertiesService.getScriptProperties(),oldUrl=props.getProperty('ATTACHMENT_STORAGE_URL'),oldKey=props.getProperty('ATTACHMENT_STORAGE_SECRET');
+    if(oldUrl&&oldUrl!==url||oldKey&&oldKey!==secret)throw Error('Đã có cấu hình khác. Không tự ghi đè khóa đang dùng.');
+    props.setProperties({ATTACHMENT_STORAGE_URL:url,ATTACHMENT_STORAGE_SECRET:secret},false);
+    cache.remove('AS_SETUP:'+nonce);
+    return {ok:true,enabled:asEnabled_()};
+  }finally{lock.releaseLock();}
+}
+/** Explicit activation after the main deployment has been updated in place. */
+function batKhoDinhKemRieng() {
+  const checked=kiemTraKhoDinhKemRieng();
+  if(!checked.ok||checked.storage.executor!=='sungrowservicecenter@gmail.com'||checked.storage.roots.length!==6)throw Error('Kiểm tra kho đính kèm chưa đạt.');
+  PropertiesService.getScriptProperties().setProperty('ATTACHMENT_STORAGE_MODE',AS_MODE);
+  console.log('ATTACHMENT_STORAGE_ENABLED dedicated-v1; main executor unchanged');
+  return {enabled:true,executor:checked.storage.executor,mainExecutor:checked.mainExecutor};
 }

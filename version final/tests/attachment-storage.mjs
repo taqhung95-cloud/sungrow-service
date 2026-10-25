@@ -10,7 +10,8 @@ File.prototype.getOwner=Folder.prototype.getOwner;File.prototype.getBlob=functio
 const createFolder=Folder.prototype.createFolder,createFile=Folder.prototype.createFile;
 Folder.prototype.createFolder=function(name){const folder=createFolder.call(this,name);folder.owner=inWorker?owner:oldOwner;return folder;};
 Folder.prototype.createFile=function(blob){const file=createFile.call(this,blob);file.owner=inWorker?owner:oldOwner;return file;};
-const getProps=map=>({getProperty:k=>map.get(k)||null,setProperty:(k,v)=>map.set(k,v),deleteProperty:k=>map.delete(k),getProperties:()=>Object.fromEntries(map)});
+const getProps=map=>({getProperty:k=>map.get(k)||null,setProperty:(k,v)=>map.set(k,v),setProperties:(values,clear)=>{assert.equal(clear,false);for(const [k,v] of Object.entries(values))map.set(k,v);},deleteProperty:k=>map.delete(k),getProperties:()=>Object.fromEntries(map)});
+ctx.PropertiesService={getScriptProperties:()=>getProps(props)};
 ctx.DriveApp.Permission={OWNER:'OWNER',EDIT:'EDIT',ORGANIZER:'ORGANIZER'};
 Object.assign(ctx.Utilities,{getUuid:()=>crypto.randomUUID(),base64Encode:b=>Buffer.from(b).toString('base64'),computeHmacSha256Signature:(text,key)=>[...crypto.createHmac('sha256',key).update(text).digest()]});
 workerProps.set('ATTACHMENT_STORAGE_SECRET',secret);
@@ -81,6 +82,19 @@ const zip={name:'evidence.zip',base64:Buffer.from([80,75,3,4,1,2,3]).toString('b
 const legacyUrl=ctx.uploadCaseEvidence_('DAT Center',new Date(),'SN','Model','Customer',zip,sid(300));
 const legacyFolder=legacyUrl.split('/').pop();assert.equal(folders.get(legacyFolder).owner,owner);
 assert.equal([...files.values()].filter(f=>f.parent===legacyFolder).every(f=>f.owner===owner),true);
+// Owner-only initial setup works even with >50 properties, preserves sessions,
+// consumes a one-time nonce and never includes the secret in served HTML.
+const setupCache=new Map();ctx.CacheService={getScriptCache:()=>({put:(k,v)=>setupCache.set(k,v),get:k=>setupCache.get(k),remove:k=>setupCache.delete(k)})};
+ctx.HtmlService={createHtmlOutput:html=>({html,setTitle(){return this}})};
+props.set('PORTAL_SESSION_TEST','keep-session');for(let i=0;i<60;i++)props.set('EXISTING_'+i,'keep');
+props.delete('ATTACHMENT_STORAGE_URL');props.delete('ATTACHMENT_STORAGE_SECRET');
+const form=ctx.asSetupPage_();assert.equal(form.html.includes(secret),false);const nonce=[...setupCache.keys()][0].slice('AS_SETUP:'.length);
+assert.throws(()=>ctx.configureAttachmentStorageForOwner(nonce,'https://attacker.test',secret),/không hợp lệ/);
+assert.equal(ctx.configureAttachmentStorageForOwner(nonce,'https://script.google.com/macros/s/test-worker/exec',secret).ok,true);
+assert.equal(props.get('PORTAL_SESSION_TEST'),'keep-session');assert.equal(props.get('EXISTING_59'),'keep');assert.equal(props.get('ATTACHMENT_STORAGE_SECRET'),secret);
+assert.throws(()=>ctx.configureAttachmentStorageForOwner(nonce,'https://script.google.com/macros/s/test-worker/exec',secret),/hết hạn/);
+ctx.Session.getActiveUser=()=>({getEmail:()=> 'staff@example.test'});assert.throws(()=>ctx.asSetupPage_(),/Chỉ chủ/);assert.throws(()=>ctx.batKhoDinhKemRieng(),/Chỉ chủ/);
+ctx.Session.getActiveUser=()=>({getEmail:()=>oldOwner});assert.equal(ctx.batKhoDinhKemRieng().enabled,true);
 // New sessions cannot proceed with an incomplete install.
 ctx.asEnabled_=undefined;assert.throws(()=>ctx.beginCaseUpload('staff',{center:'DAT Center',sessionId:sid(10)}),/Thiếu module/);
 console.log('Attachment storage passed: signed protocol/replay, dedicated ownership, lost response/recovery, staged create/prepare/remove, legacy ZIP, supplemental actor/commit, safe cleanup/canonical preservation, old sessions, no read dependency and no silent fallback.');

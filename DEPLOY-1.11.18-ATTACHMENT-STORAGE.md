@@ -17,7 +17,7 @@ Không sửa docs/config.js, Google Client ID, domain, Google Cloud/IAM/OAuth c�
 
 1. Mở project Apps Script riêng bằng đúng sungrowservicecenter@gmail.com; thêm StorageWorker.gs và manifest riêng. Không chuyển chủ project nghiệp vụ.
 2. Gmail này cần quyền ghi tại root tạm và từng root center đã cố định trong worker. Giữ thư mục ở chế độ Hạn chế. Không mở public/domain. Chỉ sửa quyền còn thiếu sau khi kiểm tra và xác nhận đúng folder/tài khoản; không cấp Cloud Owner hoặc quyền quản lý nghiệp vụ.
-3. Tạo chuỗi bí mật ngẫu nhiên ít nhất 32 byte (ví dụ 64 ký tự hex từ trình quản lý mật khẩu). Đặt Script Property ATTACHMENT_STORAGE_SECRET bằng chuỗi đó tại project lưu trữ. Không lưu chuỗi vào code, Git, URL, log hoặc chat.
+3. Chạy khoiTaoKhoaKhoDinhKem trong Editor bằng chủ project để tạo khóa một lần trong Script Properties. Hàm không trả/log giá trị và không thay khóa đã có. Có thể dùng khóa ngẫu nhiên riêng ít nhất32byte nếu triển khai thủ công. Không lưu giá trị khóa vào code, Git, URL, log hoặc chat.
 4. Chạy kiemTraDichVuLuuTru. Đây là kiểm tra chỉ đọc quyền và danh tính, không tạo file. Người dùng tự hoàn tất yêu cầu cấp quyền Google nếu xuất hiện. Phải nhận executor sungrowservicecenter@gmail.com và đủ sáu root restricted:true.
 5. Deploy Web app mới: Execute as Me của Gmail chuyên dụng. Backend gọi server-to-server nên endpoint cần nhận được POST không qua trang đăng nhập (Who has access: Anyone); tất cả lệnh storage vẫn bắt buộc HMAC, timestamp và nonce, folder/file vẫn private. Xác nhận cụ thể bước cấp quyền/công khai endpoint trước khi áp dụng bằng UI. Nếu chính sách Google không cho cấu hình này, dừng; không đổi Google Cloud/đăng nhập chính để lách.
 6. Lấy URL /exec của dịch vụ lưu trữ. URL này CHỈ đi vào Script Properties của backend chính, không vào frontend.
@@ -27,9 +27,10 @@ Không sửa docs/config.js, Google Client ID, domain, Google Cloud/IAM/OAuth c�
 1. Sao lưu nội dung bốn file sẽ thay trên project thực tế và tên phiên bản deployment hiện hành. Giữ nguyên module/session/property/trigger khác.
 2. Thay ba file và thêm AttachmentStorage.gs theo bảng trên. Chưa bật ATTACHMENT_STORAGE_MODE.
 3. Đặt ATTACHMENT_STORAGE_URL bằng URL worker /exec, ATTACHMENT_STORAGE_SECRET bằng đúng bí mật dùng chung ở bước 1. Không đặt UPLOAD_EXECUTOR_EMAIL theo hướng dẫn cũ.
+   Nếu project có hơn50properties, giao diện Google chỉ đọc: dùng Deploy → Test deployments → Web app để lấy URL /dev của backend chính, mở URL đó với ?attachment_storage_setup=1. Trang chỉ mở khi active/effective user đều là chủ backend hiện tại; form nhập URL/khóa qua HTTPS, nonce một lần10phút, không nhúng secret vào source/HTML/log/URL. Chỉ ghi hai property bằng merge, giữ mọi phiên/property khác; không tự bật mode và không ghi đè cấu hình khác đã tồn tại. Không đổi quyền truy cập hoặc loại project chính chỉ để dùng form này.
 4. Chạy kiemTraKhoDinhKemRieng. Kết quả phải ok:true, storage.executor đúng Gmail mới, đủ root; mainExecutor vẫn là tài khoản cũ. enabled:false ở bước này là bình thường. Chức năng này không tự bật chế độ mới.
 5. Tạo New version trên deployment backend HIỆN TẠI, giữ nguyên deployment ID và URL. Không tạo Web app nghiệp vụ mới. Kiểm tra API trả version 1.11.18-attachment-storage và đăng nhập/list/detail hoạt động.
-6. Sau khi kiểm tra runtime đủ module, đặt ATTACHMENT_STORAGE_MODE = dedicated-v1. Không cần deploy lại khi chỉ sửa Script Property. TEMP_UPLOAD_ENABLED và trigger cleanup hiện hữu giữ nguyên; không chạy lại initializeTemporaryUploads để đổi tài khoản.
+6. Sau khi kiểm tra runtime đủ module và deployment chính đã cập nhật, chạy batKhoDinhKemRieng trong Editor bằng chủ backend. Hàm chạy probe có chữ ký, xác nhận đúng Gmail lưu trữ và đủ6root rồi mới đặt ATTACHMENT_STORAGE_MODE=dedicated-v1. Không cần deploy lại khi chỉ sửa Script Property. TEMP_UPLOAD_ENABLED và trigger cleanup hiện hữu giữ nguyên; không chạy lại initializeTemporaryUploads để đổi tài khoản.
 
 ## Bước 3 — người dùng thử tạo case
 

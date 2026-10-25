@@ -58,6 +58,7 @@ const ROLE_CAPABILITIES = Object.freeze({
 });
 
 function doGet(e) {
+  if(e&&e.parameter&&e.parameter.attachment_storage_setup==='1')return asSetupPage_();
   if (e && e.parameter && e.parameter.portal_bridge === '1') return renderPortalBridge_(e.parameter);
   const template = HtmlService.createTemplateFromFile('Index');
   template.authBrokerUrl = AUTH_BROKER_URL;
