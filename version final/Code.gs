@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.17-last-center-handoff';
+const APP_VERSION = '1.11.18-attachment-storage';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -543,7 +543,7 @@ function createCase(idToken, payload) {
     reservation.releaseLock();
   }
   if (!evidenceLink) {
-    evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment);
+    evidenceLink = uploadCaseEvidence_(center, receivedAt, serial, model, customerName, payload.attachment, requestId);
     receipts.setProperty(receiptKey, JSON.stringify({ owner: actor.email, link: evidenceLink }));
   }
   }
@@ -2281,7 +2281,8 @@ function ensureSheetColumns_(sheetName, names) {
   });
 }
 
-function uploadCaseEvidence_(center, receivedAt, serial, model, customerName, attachment) {
+function uploadCaseEvidence_(center, receivedAt, serial, model, customerName, attachment, requestId) {
+  if(PropertiesService.getScriptProperties().getProperty('ATTACHMENT_STORAGE_MODE')&&typeof asEnabled_!=='function')throw publicError_('Thiếu module kho đính kèm riêng.');
   if (!attachment || !attachment.base64 || !attachment.name) throw publicError_('Vui lòng đính kèm hồ sơ .zip hoặc .rar.');
   const filename = clean_(attachment.name).replace(/[\\/]/g, '_').slice(0, 150);
   if (!/\.(zip|rar)$/i.test(filename)) throw publicError_('Chỉ nhận file .zip hoặc .rar.');
@@ -2295,6 +2296,13 @@ function uploadCaseEvidence_(center, receivedAt, serial, model, customerName, at
   if (!parentId) throw publicError_('Chưa cấu hình thư mục Drive cho center.');
   const safe = function (value) { return clean_(value).replace(/[\\/:*?"<>|\r\n]/g, '_').slice(0, 80) || 'Chua-co'; };
   const folderName = [iso_(receivedAt), safe(serial || 'Fan-khong-SN'), safe(model), safe(customerName)].join('-');
+  if(typeof asEnabled_==='function'&&asEnabled_()){
+    const record={id:requestId,storageMode:AS_MODE,targetParent:parentId,files:[]};
+    const file={id:requestId,name:filename,size:bytes.length,hash:Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,bytes)).replace(/=+$/g,''),category:''};
+    record.folderId=asFolder_(record);
+    file.fileId=asUpload_(record,file,{bytes:bytes,mime:/\.zip$/i.test(filename)?'application/zip':'application/vnd.rar'});record.files=[file];
+    return asPrepare_(record,folderName);
+  }
   const parent = DriveApp.getFolderById(parentId);
   const existing = parent.getFoldersByName(folderName);
   const folder = existing.hasNext() ? existing.next() : parent.createFolder(folderName);

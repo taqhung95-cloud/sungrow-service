@@ -1,5 +1,13 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Upload riêng — 25/10/2026, Code1.11.18 local CHƯA deploy
+
+Chỉ file đính kèm mới dùng dịch vụ Apps Script riêng thực thi bởi sungrowservicecenter@gmail.com. Backend chính/URL/Cloud OAuth/Client ID/database/session/quyền/KPI giữ nguyên. AttachmentStorage.gs ký request/response HMAC server-to-server, nonce/expiry và không gửi token portal; worker riêng tại attachment-storage/ chỉ có Drive+userinfo scopes, root allowlist, owner check, idempotent upload theo ID/hash, prepare/supplement/remove/cleanup. Không chép worker doGet/doPost vào project chính.
+
+Mode explicit ATTACHMENT_STORAGE_MODE=dedicated-v1, URL/secret nằm trong Script Properties, không nằm frontend/Git. Phiên tạm cũ giữ luồng cũ; phiên mới đóng dấu mode, lỗi worker không fallback. Drive I/O vẫn ngoài khóa database; không thêm request worker vào dashboard/login/list. Actor journal/audit là người thao tác, không đổi thành file owner. Worker staged tối đa32MB/file do transport, legacyZIP/RAR8MB. Existing CREATE_UPLOAD_ uncertain guard giữ nguyên, cần đối soát khi classic route mất phản hồi trước lưu link. Cleanup chính bảo vệ canonical trước gọi storage; supplemental committed chỉ dọn folder rỗng. Không chuyển owner file cũ, không đổi trigger nghiệp vụ.
+
+Thay Code.gs/TemporaryUploads.gs/SupplementalAttachments.gs, thêm AttachmentStorage.gs, Save/Newversion cùngURL sau khi đối chiếu module đang chạy. Tạo worker riêng bằng Gmail chuyên dụng, preflight đủroot/cấu hình/quyền trước bật mode. Hướng dẫn DEPLOY-1.11.18-ATTACHMENT-STORAGE.md. Validator gồm test signedprotocol/ownership/recovery/create/legacy/supplement/cleanup/oldsession/failure. Chưa deploy Google thật và chưa tạo case production; cần URL project riêng để hoàn tất cấu hình.
+
 ## Center cuối phụ trách giao trả & chống lượt nhận trùng — 22/10/2026, Code1.11.17 / liveJS161 / entry142
 
 Center đang giữ hàng sau xác nhận nhận là center chịu trách nhiệm xử lý và giao trả. Giữ center tiếp nhận ban đầu làm lịch sử, không ghi đè. Hoàn tất kỹ thuật có kết quả/ngày chuyển hồ sơ sang Sẵn sàng trả khách dù đã chuyển center; Fan tính theo phần hoàn tất/chờ trả ở center hiện tại. publicCase canReturn và ngày nguồn cho center hiện tại, backend xác thực currentCenter, chặn đang vận chuyển/hủy và ngày trả trước ngày nhận/hoàn tất. Center cũ không được giao trả hoặc cập nhật công việc chặng cũ. Không suy số trả sang spare parts.

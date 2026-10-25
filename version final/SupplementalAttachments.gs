@@ -59,7 +59,11 @@ function commitCaseAttachments(token,payload) {
     r.state='ATTACHING';r.lease=lease;r.leaseUntil=Date.now()+TU_LEASE;tuWrite_(r);return r;});
   if(record.state==='COMMITTED')return record.receipt;
   try{
-    record.files.forEach(function(f){
+    if(typeof asRemote_==='function'&&asRemote_(record)){
+      scope=saScope_(token,payload.caseId);
+      if(scope.center!==record.center||scope.folderId!==record.targetFolderId)throw publicError_('Center hoặc thư mục hồ sơ đã thay đổi khi đang bổ sung.');
+      asSupplement_(record);
+    }else record.files.forEach(function(f){
       scope=saScope_(token,payload.caseId);
       if(scope.center!==record.center||scope.folderId!==record.targetFolderId)throw publicError_('Center hoặc thư mục hồ sơ đã thay đổi khi đang bổ sung.');
       const saved=DriveApp.getFileById(f.fileId),parents=saved.getParents();
