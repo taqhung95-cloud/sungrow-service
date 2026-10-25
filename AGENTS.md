@@ -8,6 +8,8 @@
 - Frontend production GitHub Pages: `docs/index.html`, `docs/live-data.js`, `docs/entry.html`, `docs/visual-polish.css`, `docs/config.js`.
 - `version final/Index.html` là bản giao diện Apps Script tương ứng, không phải frontend chính mà người dùng đang mở.
 - `apps-script/` và các tài liệu deploy cũ là tham khảo lịch sử, không tự động đồng bộ với production.
+- Trạng thái triển khai và danh mục module: `PRODUCTION-STATE.md`. Backend chính gồm nhiều module trong `version final/`, không chỉ Code/Legacy; không xóa module phụ khi cập nhật.
+- `attachment-storage/` là project lưu trữ RIÊNG, chạy bằng sungrowservicecenter@gmail.com. Không chép worker doGet/doPost vào project chính; không đổi main URL/OAuth/Cloud/database vì yêu cầu upload.
 
 ## Guard bắt buộc
 
@@ -19,6 +21,7 @@
 - Xóa hồ sơ là soft delete `Đã hủy`, không xóa vật lý.
 - “Đang xử lý” là trạng thái nghiệp vụ, không phải trạng thái loading UI.
 - Không lưu token, client secret, mật khẩu hoặc dữ liệu nguồn vào Git.
+- Không commit giá trị HMAC, Script Properties/session/journal dump hoặc file đính kèm. Chỉ đồng bộ mã nguồn và tài liệu; phiên upload cũ và file cũ không tự chuyển owner.
 
 ## Kiểm thử tối thiểu
 
@@ -37,3 +40,4 @@ git diff --check
 - Migration lịch sử chỉ chạy khi release yêu cầu. Luôn chạy audit trước repair.
 
 Sau khi hoàn tất một thay đổi có ảnh hưởng quy tắc hoặc deploy, cập nhật `CURRENT-IMPLEMENTATION.md` trong cùng commit.
+Khi thay trạng thái triển khai, cập nhật thêm `PRODUCTION-STATE.md`; phân biệt code local, đã push nhánh, đã vào main, đã deploy và người dùng đã thử. Không ghi “chưa deploy” cho bản đã được xác nhận, hoặc coi một module local là đã đối chiếu byte-for-byte với runtime khi chưa có bằng chứng.

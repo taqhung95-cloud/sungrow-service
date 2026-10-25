@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Bộ lọc kết quả gần nhất
 
 Chỉ thay Code.gs bằng bản1.11.10-case-result-filter trong version final. Giữ nguyên LegacyDashboardApi.gs/FanLotRules.gs/FanLots.gs và các file khác đã cập nhật trước đó.

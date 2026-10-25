@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Bổ sung Model inverter cho hồ sơ Fan theo lô cũ
 
 Đã cài1.11.9: chỉ thay nội dung FanLots.gs bằng version final/FanLots.gs hiện tại. Giữ nguyên Code.gs, LegacyDashboardApi.gs, FanLotRules.gs và các file khác. Save → Deploy → Manage deployments → Edit Web App đang dùng → New version → Deploy, không đổi URL/quyền. Website Ctrl+F5.

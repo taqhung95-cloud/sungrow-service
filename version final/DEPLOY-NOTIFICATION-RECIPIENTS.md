@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Quy tắc người nhận và noti hai hàng — 12/10/2026
 
 Đây là bản bổ sung trên backend 1.10.20 đã cài. **Chỉ thay toàn bộ nội dung file Notifications.gs hiện có bằng file local cùng thư mục**, không tạo file trùng. Save → Manage deployments → Edit → New version → Deploy, giữ URL. Code.gs/LegacyDashboardApi.gs/ReportExport.gs không cần thay thêm cho bản bổ sung này.

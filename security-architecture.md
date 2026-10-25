@@ -1,109 +1,65 @@
-# Kiến trúc bảo mật — Service Center Dashboard
+# Kiến trúc bảo mật hiện hành
 
-## Quyết định
+Cập nhật: 26/10/2026, backend 1.11.18. Tài liệu mô tả code đang dùng, thay bản thiết kế registry/`ticket.create` cũ. Quy tắc chi tiết nằm trong CURRENT-IMPLEMENTATION.md; trạng thái triển khai nằm trong PRODUCTION-STATE.md.
 
-Giữ GitHub Pages cho giao diện và Google Apps Script cho API, nhưng coi cả URL website lẫn URL Apps Script là công khai. Dữ liệu chỉ được đọc hoặc ghi sau khi Apps Script xác thực Google ID token và phân quyền phía máy chủ.
+## Ranh giới tin cậy
+
+Website GitHub Pages và URL Apps Script là công khai. Ẩn menu không cấp hoặc thu hồi quyền. API xác thực và kiểm tra role/center/phạm vi hồ sơ tại server trước khi đọc hoặc ghi.
 
 ```mermaid
-sequenceDiagram
-    actor U as Người dùng center
-    participant W as GitHub Pages
-    participant G as Google Identity Services
-    participant A as Apps Script API
-    participant R as Users/Center Registry
-    participant S as Google Sheet của center
-
-    U->>W: Mở dashboard
-    W->>G: Đăng nhập Google
-    G-->>W: ID token ngắn hạn
-    W->>A: action + payload + ID token
-    A->>G: Xác minh token/claims
-    A->>R: Tra GoogleSub, role, CenterID, Active
-    alt Không hợp lệ/không có quyền
-        A-->>W: AUTH_REQUIRED hoặc FORBIDDEN
-    else Có quyền
-        A->>S: Đọc/ghi đúng Sheet và đúng trường
-        A-->>W: JSON tối giản theo role
-    end
+flowchart LR
+  U[Người dùng] --> W[Website]
+  W --> G[Google Identity Services]
+  W --> A[Backend nghiệp vụ hiện tại]
+  A --> R[Người dùng / quyền trong database]
+  A --> D[Google Sheets nghiệp vụ]
+  A -->|Lệnh lưu trữ có HMAC| S[Worker Gmail chuyên dụng]
+  S --> F[File đính kèm private trên Drive]
 ```
 
-## Mô hình quyền
+Chỉ backend chính quyết định quyền nghiệp vụ. Worker không nhận portal token, không cần quyền database/quản lý center hay Cloud Owner và không thực hiện lưu công việc/KPI.
 
-| Role | Đọc | Ghi |
-|---|---|---|
-| `center_editor` | Dữ liệu center được gán | Tạo/cập nhật phiếu center được gán |
-| `center_manager` | Dashboard và lỗi dữ liệu của center được gán | Duyệt/chỉnh theo quy trình center |
-| `service_manager` | Tất cả center và so sánh tháng | Quản trị center/người dùng, thao tác được cấp riêng |
+## Xác thực và phiên
 
-Một tài khoản có thể được gán nhiều center bằng bảng quan hệ riêng nếu cần. Quyền được xác định từ `GoogleSub` trong token; không dùng email do client tự gửi.
+- Google ID token được kiểm tra `aud`, `iss`, `exp`, `email_verified` và `sub`; client không tự cung cấp actor đáng tin cậy.
+- Tab `Người dùng` là nguồn quyền, gồm trạng thái hoạt động và center. Không dùng `USERS_JSON` làm registry hiện hành.
+- `PortalSessions.gs` đổi credential Google còn hợp lệ thành phiên portal tuyệt đối8giờ; lưu hash token trong Script Properties. Retry không kéo dài hạn, không dùng phiên cũ để cấp phiên mới.
+- Phiên portal đọc lại quyền hiện hành; user bị tắt, đổi center/role hoặc GoogleSub không khớp bị xử lý tại server. Đăng xuất để lại trạng thái thu hồi chống phản hồi cũ khôi phục phiên.
+- Không đưa token vào URL, audit, log, Git hoặc dữ liệu Sheet. Không reset Script Properties để xử lý upload hoặc đồng bộ mã nguồn.
 
-## Hợp đồng request
+## Vai trò và capability
 
-Frontend chỉ gửi POST qua HTTPS. Không đưa token vào query string.
+| Nhóm | Phạm vi chính |
+|---|---|
+| `service_manager` gốc | Quản lý toàn hệ thống; sửa nguồn mọi loại thiết bị và xóa mềm cả hồ sơ hoàn tất/đã duyệt theo guard hiện hành |
+| `center_manager` tại đúng Sungrow Service Center | Quản lý toàn cục và sửa nguồn như quyền hiện hành; không tự có capability xóa mở rộng của vai trò hệ thống gốc |
+| `center_manager` khác | Nghiệp vụ trong center được cấp, không sửa nguồn không giới hạn |
+| `center_staff` | Theo center được cấp; tiếp nhận/cập nhật/nhận luân chuyển/giao trả khi hồ sơ đủ điều kiện, không chủ động tạo luân chuyển |
 
-```json
-{
-  "action": "ticket.create",
-  "idToken": "<Google ID token>",
-  "idempotencyKey": "<UUID>",
-  "payload": {
-    "receivedDate": "2026-09-17",
-    "serialNumber": "...",
-    "model": "SG...",
-    "issue": "..."
-  }
-}
-```
+`center_editor` là alias nhập liệu cũ được chuẩn hóa về `center_staff`, không phải vai trò thứ tư. Khả năng sửa nguồn dùng `canCorrectCaseSources`; quyền xóa mở rộng dùng `canDeleteAnyCase`, giữ nguồn vai trò trước khi nâng quản lý Sungrow. Không suy quyền xóa chỉ từ `isGlobalManager` hoặc role sau chuẩn hóa.
 
-Apps Script xử lý theo thứ tự cố định:
+Center đang giữ hàng và trạng thái vận chuyển/công việc được kiểm tra lại trước giao trả/cập nhật. Center cũ không sửa tiếp chặng đã đóng. Hồ sơ hủy bị loại khỏi danh sách/KPI thông thường; backend có guard riêng cho truy cập quản lý.
 
-1. Chỉ nhận action trong allowlist.
-2. Xác minh token và các claim `aud`, `iss`, `exp`, `email_verified`.
-3. Tra `GoogleSub` trong `Users`; kiểm tra `Active`, role và center được gán.
-4. Chọn Spreadsheet ID từ registry phía máy chủ.
-5. Kiểm tra schema và payload; bỏ mọi trường ngoài whitelist.
-6. Với thao tác ghi, lấy script lock, kiểm tra `idempotencyKey` và `rowVersion`, rồi ghi dữ liệu và AuditLog.
-7. Trả JSON đã tối giản; không trả stack trace hoặc chi tiết cấu hình.
+## API và giao vận
 
-## Cấu hình phía máy chủ
+- Dispatcher `handlePortalApi_` chỉ gọi các `functionName` trong allowlist, nhận `args` theo hợp đồng API hiện hành. Không dùng ví dụ `ticket.create`/`rowVersion` chung từ bản thiết kế cũ làm hợp đồng production.
+- `apps-script-transport.js` dùng bridge iframe với origin/ancestor/channel được kiểm tra. Không đưa token vào URL để né lỗi giao vận.
+- Không tự replay mutation khi chưa biết server đã ghi hay chưa. Tạo hồ sơ dùng requestId/receipt; Fan/correction dùng CAS/ledger/pending guards theo từng luồng.
+- Khóa ScriptLock bảo vệ phần ghi nghiệp vụ. Drive/network I/O upload nằm ngoài khóa database dài.
+- Audit ghi người thao tác thực; projection/index/revision đồng bộ sau ghi. Xóa là soft delete, không xóa bảng lịch sử.
 
-Script Properties lưu các giá trị cấu hình, không commit vào GitHub:
+## Kho đính kèm riêng
 
-- `GOOGLE_WEB_CLIENT_ID`
-- `CENTER_REGISTRY_SPREADSHEET_ID`
-- `ENVIRONMENT`
-- phiên bản schema
+- Backend chính giữ danh tính thực thi hiện tại; worker chạy bằng `sungrowservicecenter@gmail.com`.
+- Endpoint worker nhận được POST từ backend qua Internet; mọi lệnh yêu cầu HMAC SHA-256, nonce và timestamp5phút. Phản hồi cũng được ký và gắn nonce.
+- Secret chỉ ở Script Properties; URL worker chỉ cấu hình phía server. Không đưa chúng vào frontend hoặc tài liệu/Git.
+- Worker kiểm đúng tài khoản thực thi, root allowlist, parent/session, owner, kích thước và hash khi upload/recovery. Không mở API Drive tổng quát cho client.
+- Upload có định danh để phục hồi mất phản hồi; không fallback âm thầm về email cũ. Dọn file tạm theo journal, bảo vệ file/folder đã thuộc hồ sơ canonical.
+- Trang cấu hình `attachment_storage_setup=1` chỉ chủ backend hiện tại được dùng qua kiểm tra active/effective identity và nonce một lần10phút; merge đúng URL/secret, không tự bật mode hoặc reset thuộc tính khác. Hàm cấu hình không thuộc allowlist portal.
+- File mới nhận owner mới; file cũ và liên kết cũ giữ nguyên. Quyền folder private vẫn phải được kiểm chứng trên Google thật.
 
-Registry center lưu `CenterID`, tên hiển thị, Spreadsheet ID, trạng thái hoạt động, timezone và ngày bắt đầu. Registry người dùng lưu `GoogleSub`, email, role, center và trạng thái hoạt động. Chỉ tài khoản quản trị hệ thống có quyền mở hai registry này.
+## Dữ liệu trả về và cache
 
-## Bảo vệ thao tác ghi
+Response chỉ trả trường được role và phạm vi hồ sơ cho phép; không chia sẻ một response chứa PII toàn hệ thống cho mọi người dùng. Có thể dùng chung raw index/cache theo revision nhưng phải lọc quyền trước serialize response. Phiên Google, phiên portal, request nonce và biên nhận lưu trữ là những khái niệm riêng, không thay thế nhau.
 
-- TicketID được Apps Script tạo; client không tự cấp mã cuối cùng.
-- `LockService.getScriptLock()` bao quanh đoạn kiểm tra phiên bản và ghi.
-- Mỗi bản ghi có `CreatedAt`, `CreatedBySub`, `UpdatedAt`, `UpdatedBySub`, `RowVersion`.
-- Mỗi request ghi có `idempotencyKey`; key đã xử lý trả lại kết quả cũ.
-- Cập nhật yêu cầu `RowVersion` hiện tại; sai phiên bản trả `CONFLICT` để người dùng tải lại.
-- AuditLog là append-only. Giao diện chỉ soft-delete/đóng phiếu; không xóa vật lý.
-- Giới hạn số request theo `GoogleSub` bằng CacheService để giảm gửi lặp. Đây là lớp bảo vệ bổ sung, không thay thế hạ tầng chống DDoS.
-
-## Dữ liệu trả về dashboard
-
-Endpoint tổng quan chỉ trả số liệu tổng hợp và danh sách phiếu tối thiểu theo role. Các trường như tên/số điện thoại khách hàng, địa chỉ chi tiết, ghi chú nội bộ, tài liệu đính kèm, Spreadsheet ID và lịch sử audit không xuất hiện trong response thông thường.
-
-Cache dùng khóa có phạm vi, ví dụ `dashboard:v1:service_manager:all:2026-09` hoặc `dashboard:v1:center_editor:DAT:2026-09`. Không dùng một response toàn hệ thống chung cho mọi role.
-
-## Tiêu chí kiểm thử trước khi dùng dữ liệu thật
-
-- Không token, token giả, token hết hạn và `aud` sai đều không nhận dữ liệu.
-- Tài khoản bị vô hiệu hóa mất quyền ngay cả khi biết endpoint.
-- Tài khoản DAT không đọc/ghi được dữ liệu XBSolar/BKE bằng cách đổi payload.
-- `center_editor` không gọi được action quản trị.
-- Gửi lại cùng `idempotencyKey` không tạo phiếu thứ hai.
-- Hai bản sửa cùng `RowVersion` chỉ một bản thành công.
-- Response và log không chứa token, Spreadsheet ID hoặc dữ liệu ngoài allowlist.
-- Cache của role/center này không được trả cho role/center khác.
-- AuditLog truy được ai đã thay đổi phiếu nào và lúc nào.
-
-## Khi nào cần nâng cấp backend
-
-Chuyển từ Apps Script sang Cloud Run/Cloud Functions + Firebase Authentication khi dữ liệu chứa thông tin khách hàng nhạy cảm, cần kiểm soát CORS/status code/rate limit chặt, có nhiều người dùng ngoài hệ sinh thái Google, hoặc lưu lượng ghi bắt đầu chạm quota Apps Script. GitHub Pages và cấu trúc Google Sheets có thể giữ nguyên trong lần nâng cấp đó.
+Kiểm thử local bao gồm từ chối quyền, phiên hết hạn/thu hồi, gửi lặp, phạm vi center, property preservation, chữ ký/replay và cleanup. Các kiểm thử này không thay thế audit Cloud IAM, consent, quota, cấu hình folder thực tế hoặc kiểm thử tải production. Không tự thay các cấu hình đó chỉ vì đồng bộ repository.

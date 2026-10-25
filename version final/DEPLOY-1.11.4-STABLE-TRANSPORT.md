@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # 1.11.4 — Kết nối dashboard ổn định
 
 ## Vì sao sửa

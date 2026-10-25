@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # 1.11.16 — đọc gộp và rút ngắn luồng tải/lưu
 
 Triển khai trên bộ backend1.11.15 hiện tại. Thay toàn bộ Code.gs, thêm file FastCaseReads.gs, Save rồi New version trên deployment hiện tại, giữ URL. Không đổi dữ liệu, schema hoặc quyền; không chạy migration. Sheets API và các OAuth scope sử dụng đã có trong bộ Fan hiện hành. Không cần bật Advanced Service riêng vì dùng REST qua UrlFetchApp.

@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # 1.11.3 — KPI Thiết bị/Hồ sơ cho Fan
 
 Fan nhập thường tính 1 thiết bị cho mỗi hồ sơ đang có hiệu lực. Mỗi lô Fan tính 1 hồ sơ, bao gồm lô tạo mới và lô đã chuyển đổi. Các loại thiết bị khác giữ quy tắc hiện hành. Hồ sơ nguồn đã nhập lô không cộng thêm. Áp dụng cùng đơn vị cho KPI, tỷ trọng model, bảng center, lũy kế, SLA và báo cáo dựa trên canonical reader. Không hiển thị dòng Fan theo lô: ... chiếc trên thẻ KPI; giữ tên Thiết bị/Hồ sơ.

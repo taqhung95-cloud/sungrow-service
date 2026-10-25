@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Ngày sử dụng linh kiện và bố cục cột — 13/10/2026
 
 Frontend liveJS122 / entry104 / work-order-rules JS2 / work-order-locks JS2 / form-drafts JS3.

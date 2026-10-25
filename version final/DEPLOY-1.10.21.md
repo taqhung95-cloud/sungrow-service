@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Phiên đăng nhập 8 giờ — 1.10.21
 
 Frontend đã hỗ trợ nâng cấp sau khi backend được deploy. Backend cũ tiếp tục dùng Google ID token (~1 giờ), không tự biến thành phiên 8 giờ.

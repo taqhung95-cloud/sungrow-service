@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Phát hành 1.11.0 — Fan theo lô
 
 Frontend chính: GitHub Pages, thư mục `docs/`. Giữ bố cục portal, form tiếp nhận, drawer chi tiết và màn hình cập nhật. Tên đơn vị trên bốn KPI: **Thiết bị/Hồ sơ**. Chưa thể tạo lô chỉ bằng cập nhật GitHub; backend phải được chuẩn bị và bật riêng.

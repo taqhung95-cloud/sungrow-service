@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Tối ưu lưu và tải lại — 1.11.15
 
 Bản này hợp nhất trên Code.gs 1.11.14-system-case-delete (commit c79676f). Giữ quyền xóa mới, quyền sửa Sungrow, Fan, audit, projection/index/revision và các API hiện hành. Thay toàn bộ Code.gs, Save → New version trên deployment hiện tại → Deploy. Giữ URL. Không cần thay frontend hay chạy migration. Không dùng lại file 1.11.13 trước đó.

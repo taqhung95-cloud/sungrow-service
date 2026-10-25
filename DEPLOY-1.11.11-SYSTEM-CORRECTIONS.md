@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Quyền sửa hồ sơ — 1.11.11
 
 Chỉ tài khoản **Quản lý hệ thống** (service_manager) được sửa thông tin gốc. Quản lý center và nhân viên không có quyền, kể cả quản lý center Sungrow. Áp dụng cho mọi loại thiết bị và hồ sơ đã hoàn tất. Các quyền cập nhật công việc thường ngày giữ nguyên.

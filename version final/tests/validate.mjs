@@ -1,4 +1,8 @@
 import './attachment-storage.mjs';
+import './customer-directory.mjs';
+import './notifications.mjs';
+import './portal-sessions.mjs';
+import './replacement-deliveries.mjs';
 import './transfer-repair.mjs';
 import './last-center-transfer.mjs';
 import './system-case-delete.mjs';

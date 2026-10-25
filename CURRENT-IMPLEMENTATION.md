@@ -1,12 +1,18 @@
 # Sungrow Service Center - Current Implementation Handbook
 
-## Upload riêng — 25/10/2026, Code1.11.18 local CHƯA deploy
+## Trạng thái đã xác nhận — 26/10/2026
+
+Backend chính `1.11.18-attachment-storage` đã triển khai Version73 trên cùng URL và cùng tài khoản thực thi cũ; worker lưu trữ riêng đã triển khai Version1 bằng sungrowservicecenter@gmail.com. Probe có HMAC đã hoàn tất không lỗi; người dùng xác nhận file đính kèm mới được upload bằng email mới. Không đổi Cloud/OAuth/ClientID/database/schema hoặc quyền nghiệp vụ. Frontend vẫn liveJS161/entry142/CSS36; release upload không sửa `docs/*`.
+
+Xem PRODUCTION-STATE.md để biết danh mục mã nguồn, module local được bổ sung vào Git và giới hạn đối chiếu. Những mục release bên dưới là lịch sử theo thời điểm; câu “chưa deploy/chưa chạy repair” ở một release cũ không chứng minh trạng thái hiện tại. Phần quy tắc tổng hợp từ mục1 trở đi đã được chỉnh theo bản1.11.18; không dùng hướng dẫn deploy cũ để ghi đè runtime.
+
+## Upload riêng — 26/10/2026, Code1.11.18 đã triển khai
 
 Chỉ file đính kèm mới dùng dịch vụ Apps Script riêng thực thi bởi sungrowservicecenter@gmail.com. Backend chính/URL/Cloud OAuth/Client ID/database/session/quyền/KPI giữ nguyên. AttachmentStorage.gs ký request/response HMAC server-to-server, nonce/expiry và không gửi token portal; worker riêng tại attachment-storage/ chỉ có Drive+userinfo scopes, root allowlist, owner check, idempotent upload theo ID/hash, prepare/supplement/remove/cleanup. Không chép worker doGet/doPost vào project chính.
 
 Mode explicit ATTACHMENT_STORAGE_MODE=dedicated-v1, URL/secret nằm trong Script Properties, không nằm frontend/Git. Phiên tạm cũ giữ luồng cũ; phiên mới đóng dấu mode, lỗi worker không fallback. Drive I/O vẫn ngoài khóa database; không thêm request worker vào dashboard/login/list. Actor journal/audit là người thao tác, không đổi thành file owner. Worker staged tối đa32MB/file do transport, legacyZIP/RAR8MB. Existing CREATE_UPLOAD_ uncertain guard giữ nguyên, cần đối soát khi classic route mất phản hồi trước lưu link. Cleanup chính bảo vệ canonical trước gọi storage; supplemental committed chỉ dọn folder rỗng. Không chuyển owner file cũ, không đổi trigger nghiệp vụ.
 
-Thay Code.gs/TemporaryUploads.gs/SupplementalAttachments.gs, thêm AttachmentStorage.gs, Save/Newversion cùngURL sau khi đối chiếu module đang chạy. Tạo worker riêng bằng Gmail chuyên dụng, preflight đủroot/cấu hình/quyền trước bật mode. Hướng dẫn DEPLOY-1.11.18-ATTACHMENT-STORAGE.md. Validator gồm test signedprotocol/ownership/recovery/create/legacy/supplement/cleanup/oldsession/failure. Chưa deploy Google thật và chưa tạo case production; cần URL project riêng để hoàn tất cấu hình.
+Đã thay Code.gs/TemporaryUploads.gs/SupplementalAttachments.gs, thêm AttachmentStorage.gs và cập nhật Newversion cùngURL sau khi đối chiếu nội dung ba file cũ với baseline GitHub. Worker riêng đã được tạo bằng Gmail chuyên dụng, preflight quyền và probe kết nối có chữ ký đã đạt. Hướng dẫn DEPLOY-1.11.18-ATTACHMENT-STORAGE.md. Validator gồm signedprotocol/ownership/recovery/create/legacy/supplement/cleanup/oldsession/failure và setup owner-only. Agent không tạo case nghiệp vụ giả; người dùng tự thử và xác nhận owner mới. Không chuyển owner file cũ.
 
 Project thực tế có hơn50ScriptProperties nên UI chỉ đọc. Trang ?attachment_storage_setup=1 trên /dev chỉ chủ backend (active/effective email cùng tài khoản cũ) được mở; nonce một lần10phút, secret chỉ nhập form HTTPS và lưu merge2property, không nhúng source/HTML/log/URL hoặc xóa session. configureAttachmentStorageForOwner không thuộc API portal và vẫn kiểm owner/nonce/URL/secret/không overwrite khác. batKhoDinhKemRieng chạy probe trước set mode sau khi deploy chính. Worker khoiTaoKhoaKhoDinhKem tạo khóa một lần bằng owner, không trả/log giá trị. Tests role denial,nonce replay, >50properties/session preservation và activate probe.
 
@@ -512,9 +518,9 @@ Gói JSON đã được tải và đọc lại metadata tại đúng thư mục 
 
 ## 1. Phiên bản và kiến trúc hiện tại
 
-- Backend version: `1.10.2-ticket-coverage`.
-- Frontend cache keys hiện tại: `live-data.js?v=69`, embedded entry `v=64`.
-- Frontend production: GitHub Pages tại `https://taqhung95-cloud.github.io/sungrow-service/`.
+- Backend version: `1.11.18-attachment-storage`, deployment chính Version73; worker lưu trữ riêng Version1.
+- Frontend cache keys hiện tại: `live-data.js?v=161`, embedded entry `v=142`, `visual-polish.css?v=36`.
+- Frontend production: `https://sungrow-service.sungrowvietnam.com.vn`, được phục vụ bởi GitHub Pages; origin GitHub Pages hiện có được giữ.
 - Backend production: Google Apps Script Web App; URL `/exec` nằm trong `docs/config.js`.
 - Database production: Google Spreadsheet ID `1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI`.
 - Dữ liệu bảo hành tham chiếu: Google Spreadsheet ID `1CPQkL-FJVxaXwuPKJUO-PnK9ML3s2KYXg8ZvmnfPev8` hoặc Script Property `WARRANTY_LOOKUP_SHEET_ID` nếu được cấu hình.
@@ -526,10 +532,11 @@ Luồng tổng quát:
 ```text
 Trình duyệt/GitHub Pages
   -> Google Sign-In lấy ID token
-  -> Apps Script doPost
-  -> xác thực token + user/role/center
+  -> Apps Script API qua bridge/dispatcher allowlist hiện hành
+  -> xác thực Google hoặc phiên portal8giờ + user/role/center
   -> đọc/ghi Google Sheets
   -> cache/index/projection theo database revision
+  -> khi đính kèm: lệnh có HMAC tới worker riêng, file owner Gmail chuyên dụng
 ```
 
 ## 2. File nào là nguồn chuẩn
@@ -545,6 +552,9 @@ Trình duyệt/GitHub Pages
 | Cấu hình công khai | `docs/config.js` | Apps Script URL, OAuth client ID, entry page |
 | UI Apps Script | `version final/Index.html` | Bản tương ứng khi mở Web App trực tiếp |
 | Regression guard | `version final/tests/validate.mjs` | Phải chạy trước deploy |
+| Các module auth/phụ trợ | PortalSessions.gs, CustomerDirectory.gs, Notifications.gs, ReportExport.gs | Xem đầy đủ ở PRODUCTION-STATE.md, không chỉ copy hai file core |
+| Adapter upload | `version final/AttachmentStorage.gs` | Backend chính, cấu hình riêng trong Script Properties |
+| Worker upload | `attachment-storage/StorageWorker.gs` | Project khác, không copy vào backend chính |
 
 Không mặc định dùng `apps-script/Code.gs`, `ManagerDashboard.gs` hoặc README/deploy cũ làm nguồn code mới nhất.
 
@@ -647,8 +657,8 @@ Quy tắc quan trọng:
 - `Hoàn tất kỹ thuật` bắt buộc có `Ngày hoàn tất kỹ thuật` và `Kết quả xử lý`.
 - Nếu kết quả là `Đổi thiết bị`, bắt buộc có loại thiết bị đổi.
 - Công việc `Đã chuyển hàng đi` hoặc `Đã đóng công việc` không được center thường cập nhật tiếp.
-- Chỉ center tiếp nhận được giao trả khách.
-- Thiết bị phải quay về center tiếp nhận trước khi giao trả.
+- Center hiện tại sau xác nhận nhận luân chuyển chịu trách nhiệm xử lý và giao trả; giữ center tiếp nhận gốc cho lịch sử.
+- Hoàn tất kỹ thuật đủ kết quả/ngày chuyển sang Sẵn sàng trả khách kể cả đã chuyển center. Center cũ không cập nhật chặng đã đóng hoặc giao trả thay center đang giữ.
 - Ngày nhận luân chuyển không được trước ngày gửi; ngày trả không được trước ngày tiếp nhận hoặc ngày sẵn sàng trả.
 - Center ngoài Sungrow chỉ được chuyển về Sungrow.
 - Sungrow được chuyển đến mọi center khác.
@@ -658,13 +668,12 @@ Quy tắc quan trọng:
 
 Xóa là **soft delete**, không xóa dòng vật lý.
 
-Điều kiện được xóa:
+Điều kiện theo capability:
 
-- `Tình trạng bảo hành = Chờ xác nhận`;
-- chưa có luân chuyển;
-- thiết bị vẫn đang ở center tiếp nhận;
-- người thao tác thuộc center tiếp nhận hoặc là quản lý toàn hệ thống;
-- có lý do xóa, tối đa 500 ký tự.
+- Vai trò quản lý hệ thống gốc có `canDeleteAnyCase`: được xóa mềm mọi loại thiết bị, kể cả đã hoàn tất/duyệt bảo hành/luân chuyển; vẫn phải qua guard pending và ràng buộc dữ liệu hiện hành.
+- Không có capability đó: chỉ hủy tiếp nhận đủ điều kiện trước xác nhận/chưa hoàn tất/chưa luân chuyển, tại center tiếp nhận và đúng quyền. Lô đã phát sinh nghiệp vụ không dùng đường hủy tiếp nhận thông thường.
+- Quản lý Sungrow có quyền sửa nguồn nhưng không tự nhận quyền xóa mở rộng. Không suy capability này từ `isGlobalManager` hoặc role sau chuẩn hóa.
+- Mọi trường hợp bắt buộc lý do theo giới hạn API; giữ audit, lịch sử công việc/parts/luân chuyển/file.
 
 Khi xóa:
 
@@ -686,19 +695,23 @@ Hồ sơ `Đã hủy` phải bị loại khỏi danh sách platform, dashboard, 
 
 - Tab `Người dùng` là nguồn quyền duy nhất.
 - Quản lý Sungrow được nâng quyền quản lý toàn hệ thống theo quy tắc hiện hành.
+- Quyền sửa nguồn không giới hạn theo loại thiết bị dành cho quản lý hệ thống và quản lý Sungrow. Các quản lý center khác và nhân viên không có quyền này. Quyền xóa mở rộng giữ theo vai trò gốc, không theo sự nâng role của quản lý Sungrow.
 - Token Google được kiểm tra `aud`, `iss`, `exp`, `email_verified`, `sub`.
 - Lần đăng nhập đầu tiên khóa `GoogleSub` vào user; các lần sau ưu tiên `GoogleSub` hơn email.
 - Trùng email, trùng GoogleSub, user inactive hoặc GoogleSub sai đều phải bị từ chối.
+- PortalSessions.gs quản lý phiên tuyệt đối8giờ, token hash phía server, không kéo dài phiên khi retry; đọc lại quyền hiện hành và hỗ trợ thu hồi khi đăng xuất.
 - Ẩn menu frontend không phải bảo mật; mọi quyền ghi/đọc đều phải kiểm lại ở backend.
 
 ## 8. File hồ sơ và Google Drive
 
-- Chỉ nhận `.zip`/`.rar`, tối đa 8 MB theo UI hiện hành.
+- Luồng staged nhận các loại cho phép trong TU_TYPES (DOC/DOCX, PDF, XLS/XLSX, ZIP/RAR, JPG/JPEG, PNG, TXT, CSV), kiểm tra nội dung/định dạng. Worker riêng tối đa32MB/file do transport; đường ZIP/RAR cũ vẫn8MB.
 - Mỗi center có một Drive folder riêng được khai báo trong `CASE_EVIDENCE_FOLDERS`.
 - Folder con đặt theo ngày nhận, S/N, model và khách hàng.
 - Link Drive được ghi vào `Liên kết hồ sơ Drive` và chỉ trả ra frontend nếu là URL `drive.google.com` hoặc `docs.google.com` hợp lệ.
 - Không tự cấp quyền public.
-- Tài khoản chạy Web App phải có quyền ghi vào tất cả folder cần sử dụng.
+- Worker thực thi bởi sungrowservicecenter@gmail.com tạo file mới; backend chính giữ executor hiện tại. Quyền thư mục phải đủ cho hai luồng nhưng không mở public/domain và không cấp thêm quyền nghiệp vụ cho account lưu trữ.
+- ATTACHMENT_STORAGE_MODE=dedicated-v1 áp dụng cho phiên upload mới; URL/secret ở Script Properties. Phiên cũ tiếp tục cơ chế cũ, lỗi worker không fallback âm thầm. File cũ không tự chuyển owner.
+- HMAC/nonce/thời hạn bảo vệ lệnh và phản hồi. Backend chính giữ actor/quyền/journal/canonical receipt; worker chỉ lưu trữ. Cleanup bảo vệ folder canonical; folder bổ sung đã commit chỉ dọn khi trống.
 - Upload chạy ngoài database lock. Receipt `CREATE_UPLOAD_<requestId>` ngăn upload lặp khi kết quả request không chắc chắn.
 - Nếu frontend timeout nhưng case đã tạo, phải gọi `getCreationStatus(requestId)`; không tự gửi lại file/case mù quáng.
 
@@ -723,8 +736,9 @@ Một record nghiệp vụ mới không được nhân đôi với dòng lịch 
 - **Tích lũy**: tổng có thể phân bổ theo ngày nhận hợp lệ; nhãn UI giữ ngắn là `Tích lũy`, thông tin độ phủ ngày nằm trong tooltip/note.
 - **Đã trả**: dựa trên ngày trả khách.
 - **SLA**: chỉ tính record có ngày nhận và ngày trả hợp lệ, ngày trả không trước ngày nhận; đạt khi không quá 7 ngày.
-- **Linh kiện theo kỳ**: theo ngày kiểm tra/sửa hoặc ngày sử dụng đã chuẩn hóa tùy nguồn; số lượng lấy từ quantity, không mặc định một dòng bằng một linh kiện.
-- **KPI số thiết bị**: khi trường `Số lượng` tồn tại, không được mặc định mỗi hồ sơ luôn bằng một thiết bị.
+- **Linh kiện theo kỳ**: từ bản ghi sử dụng thực tế theo ngày dùng/chuẩn hóa tùy nguồn; không suy linh kiện từ số Fan đã trả, không trả hoặc số Fan nhận.
+- **KPI thiết bị/hồ sơ**: Fan theo lô được tính là hồ sơ vận hành, không nhân theo số quạt vật lý. Giữ định nghĩa thiết bị/hồ sơ của từng nguồn như code hiện hành.
+- **Tỷ trọng Model Fan**: cộng đủ số quạt vật lý theo Model/Mã Fan trên từng dòng, áp dụng cả nhập đơn/lô và chọn Tất cả thiết bị. Không dùng Model inverter thay Model Fan hoặc lấy số hồ sơ làm số quạt; ví dụ2hồ sơ tổng9Fan cùng Model có SL9 ở tỷ trọng và2hồ sơ ở KPI.
 
 Tổng Danh sách hồ sơ, Danh sách thiết bị và Tích lũy không được ép bằng nhau một cách cơ học. Khi lệch, đối soát theo: hồ sơ hủy, quyền center, provenance, ngày nhận thiếu/sai, center chưa chuẩn hóa, bản ghi trùng/mơ hồ và số lượng.
 
@@ -820,9 +834,7 @@ Không cần cập nhật Apps Script cho trường hợp này.
 
 Áp dụng cho dữ liệu, quyền, API, cache backend, workflow, KPI/merge.
 
-1. Thay toàn bộ:
-   - `version final/Code.gs` -> file `Code.gs` trong project Apps Script;
-   - `version final/LegacyDashboardApi.gs` -> file cùng tên trong Apps Script.
+1. Thay đúng module mà release yêu cầu, giữ các module khác đang dùng; không mặc định chỉ hai file Code/Legacy là đủ hoặc thay cả project bằng một ZIP cũ. Kiểm tra danh mục trong PRODUCTION-STATE.md.
 2. Nếu release có thay UI trực tiếp Apps Script, thay thêm `version final/Index.html`.
 3. Save.
 4. Chạy audit/migration được ghi rõ cho release; không chạy repair tùy tiện.
@@ -830,6 +842,8 @@ Không cần cập nhật Apps Script cho trường hợp này.
 6. Không tạo deployment URL mới.
 7. Kiểm tra `getBootstrap`/endpoint trả đúng `APP_VERSION`.
 8. Reload GitHub portal.
+
+Riêng upload1.11.18: adapter/TemporaryUploads/SupplementalAttachments thuộc backend chính; StorageWorker.gs và manifest riêng thuộc project Gmail lưu trữ. Không thay OAuth/Cloud/ClientID hoặc URL chính. Nếu hơn50ScriptProperties, dùng form owner-only trên /dev, không reset property/session.
 
 Push GitHub không tự deploy Apps Script; Save Apps Script cũng không cập nhật deployment đang chạy nếu chưa tạo New version.
 

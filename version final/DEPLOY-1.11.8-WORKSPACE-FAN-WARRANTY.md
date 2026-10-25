@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Tab toàn website và tra bảo hành Fan — 1.11.8
 
 Frontend: liveJS147 / entry128. Backend: 1.11.8-workspace-fan-warranty.

@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Đính kèm gọn và bỏ giới hạn ứng dụng — 12/10/2026
 
 Cập nhật tiếp: liveJS115 / entry98 / case-uploads JS6 thêm nhóm **Hình ảnh tại center** (`centerPhotos`), prefix lưu file `05_Hinh anh tai center`. Vẫn chỉ cần thay TemporaryUploads.gs và deploy phiên bản mới theo hướng dẫn dưới đây.

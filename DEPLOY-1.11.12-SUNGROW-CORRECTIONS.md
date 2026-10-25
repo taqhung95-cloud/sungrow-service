@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Bổ sung quản lý Sungrow Center — 1.11.12
 
 Quyền sửa thông tin gốc: Quản lý hệ thống và Quản lý Sungrow Service Center. Áp dụng mọi loại thiết bị, mọi center, kể cả hồ sơ đã hoàn tất. Quản lý các center khác và nhân viên mọi center không được sửa thông tin gốc. Quyền cập nhật công việc hằng ngày giữ nguyên.

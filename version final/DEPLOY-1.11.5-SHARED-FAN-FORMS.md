@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # 1.11.5 — Fan dùng biểu mẫu và thẻ chức năng hiện hành
 
 Fan nhập thường giữ biểu mẫu chung. Fan theo lô cũng dùng biểu mẫu đó, thêm chọn một/nhiều S/N inverter và số Fan áp dụng; không mở màn hình nhập Fan riêng. Chưa cập nhật backend thì web tiếp tục cách đang chạy, không gửi payload mới vào backend cũ. Chỉ kích hoạt biểu mẫu chung khi backend đã có đủ năm file bên dưới. Không đổi URL, Spreadsheet ID, tên tab/cột hoặc chạy migration lại.

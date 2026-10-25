@@ -1,45 +1,35 @@
-# Checklist phân quyền production
+# Checklist quyền production hiện hành
 
-## 1. Nguồn xác thực và phân quyền
+Cập nhật: 26/10/2026, backend1.11.18. Đối chiếu CURRENT-IMPLEMENTATION.md và security-architecture.md; không tự thay Cloud/OAuth hoặc cấp lại quyền vì vừa đồng bộ mã nguồn.
 
-- Google Identity Services cấp ID token tại GitHub Pages.
-- Apps Script xác minh `aud`, `iss`, `exp`, `email_verified` và `sub` với Google.
-- Tab `Người dùng` trong database production là allowlist và nguồn role/center duy nhất.
-- `USERS_JSON` không còn được đọc. Có thể xóa property này sau khi deploy bản mới.
-- Web App triển khai `Execute as: Me`; người dùng không cần được share trực tiếp Google Sheet. Mọi lượt đọc/ghi đi qua backend và được lọc theo actor.
+## Xác thực
 
-## 2. Cột bắt buộc trong tab `Người dùng`
+- Google ID token hợp lệ với aud/iss/exp/email_verified/sub; tab Người dùng là nguồn role/center/trạng thái.
+- Email/GoogleSub trùng, account inactive hoặc định danh không khớp phải bị từ chối.
+- Phiên portal tuyệt đối8giờ, hash phía server, logout/expiry và retry không kéo dài phiên; quyền hiện hành tiếp tục được kiểm.
+- Không tự sửa GoogleSub đã khóa, không xóa session/property để xử lý lỗi upload.
 
-| Email Google | GoogleSub | Họ và tên | Vai trò | Trung tâm | Đang hoạt động |
-|---|---|---|---|---|---|
-| Email Google thật, không trùng | Để trống trước lần login đầu hoặc giữ nguyên giá trị đã khóa | Tên hiển thị | Một role hợp lệ | Tên center đúng tuyệt đối | `TRUE` / `Có` |
+## Ma trận quyền cần kiểm tra khi có thay đổi code liên quan
 
-Role hợp lệ: `Quản lý dịch vụ`, `Quản lý trung tâm`, `Nhân viên trung tâm`; hoặc mã tương ứng `service_manager`, `center_manager`, `center_staff`.
-
-Center hợp lệ: `Sungrow Service Center`, `XBSolar Center`, `DAT Center`, `BKE Center`, `JGP Center`.
-
-Không tự sửa `GoogleSub` sau khi đã khóa. Nếu cần chuyển tài khoản, vô hiệu hóa dòng cũ và tạo dòng mới để giữ audit rõ ràng.
-
-## 3. Ma trận kiểm thử bắt buộc
-
-| Tình huống | Kết quả mong đợi |
+| Tình huống | Kết quả |
 |---|---|
-| Quản lý dịch vụ đăng nhập | Thấy dashboard và toàn bộ platform |
-| Quản lý Sungrow đăng nhập | Thấy dashboard và toàn bộ platform |
-| Quản lý center khác | Chỉ thấy dữ liệu center; được chuyển center/giao trả trong phạm vi |
-| Nhân viên center | Không thấy dashboard; không được chủ động chuyển center/giao trả |
-| Center A sửa request thành Center B | Backend trả từ chối |
-| Account không có trong Sheet/inactive | Không vào được hệ thống |
-| Email hoặc GoogleSub active bị trùng | Đăng nhập bị từ chối; audit báo lỗi |
-| Token sai client ID/hết hạn/email chưa xác minh | Không nhận dữ liệu |
-| Center từng xử lý nhưng không còn giữ/tiếp nhận hồ sơ | Chỉ thấy lịch sử xử lý của mình; không nhận PII/link Drive |
+| Quản lý hệ thống gốc | Dashboard và quản lý toàn cục, sửa nguồn, xóa mềm mở rộng theo guard |
+| Quản lý Sungrow | Dashboard/quản lý toàn cục và sửa nguồn; không tự nhận quyền xóa mở rộng |
+| Quản lý center khác | Phạm vi được cấp; không sửa nguồn không giới hạn |
+| Nhân viên center | Theo center; không chủ động chuyển center, có thể nhận chuyển/giao trả khi đủ điều kiện |
+| Center cũ sau luân chuyển | Không cập nhật chặng đã đóng hoặc giao trả thay center đang giữ hàng |
+| Đổi center/case ID trên client | Server kiểm lại và từ chối ngoài quyền |
+| User không có quyền hoặc đã bị khóa | Không nhận dữ liệu dù biết URL/API |
+| Account lưu trữ chuyên dụng | Chỉ thực thi storage; không tự có quyền quản lý database/portal |
 
-## 4. Trình tự trước khi cấp link cho đại lý
+## Drive và kho riêng
 
-1. Cập nhật các dòng user thật trong tab `Người dùng`.
-2. Chạy `auditUserAccessConfiguration()` và lưu kết quả `ok: true`.
-3. Deploy Apps Script thành version mới.
-4. Nếu OAuth app còn ở `Testing`, thêm account vào Audience > Test users.
-5. Mở cửa sổ ẩn danh, thử đủ ba role và các ca từ chối trong bảng trên.
-6. Chỉ gửi link GitHub Pages: `https://taqhung95-cloud.github.io/sungrow-service/`.
-7. Sau lần login đầu, kiểm tra `GoogleSub` đã được điền và Nhật ký thay đổi ghi đúng email/center.
+Worker đúng Gmail sungrowservicecenter@gmail.com; preflight đủroot/private/quyền. Backend chính giữ executor/URL, clientID/Cloud và database. Yêu cầu/response có HMAC và nonce. Secret không vào code/log/Git hoặc URL.
+
+Kiểm Owner của file mới, không chỉ Owner của folder. Phiên upload đã mở trước cutover giữ đường cũ; dùng phiên mới khi thử. File cũ không tự chuyển owner.
+
+## Kiểm thử và trạng thái
+
+Chạy validator local trước thay code. Chỉ audit/repair thực tế khi đã có phạm vi riêng. Người dùng đã xác nhận upload bằng owner mới; điều đó không thay thế thử đủ account/center/lỗi/quota cho một release thay phân quyền khác.
+
+Website người dùng: https://sungrow-service.sungrowvietnam.com.vn . Không yêu cầu nhân viên mở Apps Script hoặc đăng nhập Gmail lưu trữ. Không gửi dữ liệu quyền/phiên/khách hàng lên GitHub để làm bằng chứng.

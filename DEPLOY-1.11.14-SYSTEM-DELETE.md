@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Quyền xóa hồ sơ của quản lý hệ thống — 1.11.14
 
 Tài khoản có vai trò gốc service_manager, Quản lý hệ thống hoặc Quản lý dịch vụ được xóa mềm hồ sơ của mọi center và mọi loại thiết bị, kể cả đã xác nhận bảo hành, đã hoàn tất, đã luân chuyển hoặc lô Fan có lịch sử xử lý.

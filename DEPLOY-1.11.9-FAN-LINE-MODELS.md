@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Cập nhật Fan nhiều Model — 1.11.9
 
 Frontend Pages triển khai riêng. Lưu và tổng hợp Model từng S/N cần backend mới trước khi tạo lô mới. Không migration, không đổi Spreadsheet/tên tab/cột/URL Web App.

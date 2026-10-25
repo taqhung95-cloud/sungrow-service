@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Báo cáo quản lý — 1.10.19-manager-reports
 
 Giao diện GitHub Pages có mục Báo cáo riêng, chỉ hiện cho actor.isGlobalManager === true. Backend kiểm tra cùng quyền trên cả getReportBootstrap và readReportPage; không cấp quyền mới cho tài khoản center.

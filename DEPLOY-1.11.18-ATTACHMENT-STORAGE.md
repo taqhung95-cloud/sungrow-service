@@ -1,6 +1,6 @@
 # Upload riêng — 1.11.18
 
-Trạng thái: code đã chuẩn bị; CHƯA bật production. Chỉ bật sau khi dịch vụ mới qua preflight và kiểm tra deployment thật. Không dùng hướng dẫn chuyển toàn bộ backend sang Gmail khác trước đây.
+Trạng thái ngày26/10/2026: backend chính đã triển khai Version73, worker riêng Version1; probe có chữ ký đã đạt và người dùng xác nhận file mới được upload bằng Gmail chuyên dụng. Các bước bên dưới dùng để bảo trì/đối soát, không yêu cầu chạy lại hệ thống đã hoạt động. Xem PRODUCTION-STATE.md về bằng chứng và giới hạn. Không dùng hướng dẫn chuyển toàn bộ backend sang Gmail khác trước đây.
 
 ## Hai project, không thay URL chính
 

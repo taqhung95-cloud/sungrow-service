@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # 1.11.2 — chuyển nhóm Fan cũ thành hồ sơ lô thực sự
 
 Hai hàm xemTruocNhomFanCu/apDungNhomFanCu của bản trước chỉ tạo liên kết nhóm. Bản này bổ sung FanLegacyMigration để chuyển các nhóm đã được chỉ định rõ, chưa có xử lý, sang hồ sơ lô vận hành được trên giao diện mới.

@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const ctx={clean_:v=>String(v??'').trim()};vm.createContext(ctx);vm.runInContext(fs.readFileSync(new URL('../ReplacementDeliveryRepair.gs',import.meta.url),'utf8'),ctx);
+const source={center:'DAT Center',prefix:'DAT',id:'source',tabs:{Receive:{name:'Copy of Receive',values:[]},Repair:{name:'Copy of Repair',values:[]},Test:{name:'Copy of Test',values:[['M','A0000000001',1,'','Đổi tương đương A0000000002']]},Delivery:{name:'Copy of Delivery',values:[['M','A0000000002',1]]}}};
+const original={'Mã hồ sơ':'O','Số sê-ri (S/N)':'A0000000001','Trung tâm tiếp nhận khách':'DAT Center','Trạng thái hồ sơ':'Đã hoàn tất'};
+const duplicate={'Mã hồ sơ':'D','Số sê-ri (S/N)':'A0000000002','Mã dòng dữ liệu cũ':'DAT|source|Copy of Delivery|1','Trung tâm tiếp nhận khách':'DAT Center','Trung tâm đang giữ hàng':'DAT Center','Trạng thái hồ sơ':'Mới tiếp nhận','Tình trạng bảo hành':'Chờ xác nhận','Người cập nhật gần nhất':'Đồng bộ DAT'};
+const work={'Mã công việc':'W','Mã hồ sơ':'D','Trạng thái xử lý':'Đã nhận hàng'};
+const plan=(sources=[source],cases=[original,duplicate],works=[work],transfers=[],children=[[],[],[]])=>ctx.rdrPlan_(sources,cases,works,transfers,children);
+assert.equal(plan().ready.length,1);
+assert.equal(plan([source],[original,duplicate,{...original,'Mã hồ sơ':'O2'}]).ready.length,0);
+assert.equal(plan([source],[{...original,'Mã dòng dữ liệu cũ':'DAT|source|Copy of Test|1'},duplicate,{...original,'Mã hồ sơ':'O2'}]).ready[0].original['Mã hồ sơ'],'O');
+assert.equal(plan([source],[original,{...duplicate,'Người cập nhật gần nhất':'manager@example.com'}]).ready.length,0);
+assert.equal(plan([source],[original,duplicate],[work],[{'Mã hồ sơ':'D'}]).ready.length,0);
+assert.equal(plan([source],[original,duplicate],[work],[],[[{'Mã công việc':'W'}]]).ready.length,0);
+const extra=structuredClone(source);extra.tabs.Repair.values=[['M','A0000000002',2]];assert.equal(plan([extra]).ready.length,0);
+const multi=structuredClone(source);multi.tabs.Test.values.push(['M','A0000000003',1,'','Đổi máy A0000000002']);assert.equal(plan([multi]).ready.length,0);
+const deliveries=structuredClone(source);deliveries.tabs.Delivery.values.push(['M','A0000000002',3]);assert.equal(plan([deliveries]).ready.length,0);
+assert.equal(plan([source],[original,{...duplicate,'Trạng thái hồ sơ':'Đã hủy','Lý do hủy':'[REPLACEMENT-DELIVERY:D] resume','Người cập nhật gần nhất':'manager@example.com'}]).ready.length,1);
+console.log('Replacement delivery guard: provenance, ambiguity, independent repairs, user edits, transfers, children and resumable cancellation passed.');
+let dbRows,done,writes,backups,revision,failSync;
+Object.assign(ctx,{console:{log(){}},DATABASE_SPREADSHEET_ID:'db',SHEETS:{cases:'cases'},rdrManager_:()=>({email:'manager@example.com'}),withSerializedWrite_:(n,f)=>f(),tableHeaders_:()=>[],digest_:v=>v,SpreadsheetApp:{flush(){}},PropertiesService:{getScriptProperties:()=>({getProperty:k=>done[k],setProperty:(k,v)=>done[k]=v})},DriveApp:{getFileById:()=>({getParents:()=>({hasNext:()=>false}),makeCopy:()=>{backups++;return{getId:()=> 'backup'};}})},audit_:()=>{},allowCancelledCaseStatus_:()=>{},updateObjectRow_:(t,h,n,changes)=>{writes++;Object.assign(dbRows.find(r=>r.__rowNumber===n),changes);},syncDashboardProjectionCase_:()=>({ok:!failSync}),syncPortalCaseIndexCase_:()=>({ok:true}),removeDashboardProjectionCase_:(id,record)=>{assert.equal(record,null,'Deletion must use case ID only');return{ok:true};},readTable_:()=>dbRows,bumpPortalDatabaseRevision_:()=>++revision});
+ctx.rdrReadPlan_=()=>{const p=ctx.rdrPlan_([source],dbRows,[work],[],[[],[],[]]);p.ready=p.ready.filter(g=>!done['RDR_DONE_'+g.duplicate['Mã hồ sơ']]);return JSON.parse(JSON.stringify(p));};
+const resetRuntime=()=>{dbRows=[{...original,__rowNumber:2},{...duplicate,__rowNumber:3}];done={};writes=backups=revision=0;failSync=false;};
+resetRuntime();ctx.repairReplacementDeliveries();assert.equal(dbRows[1]['Trạng thái hồ sơ'],'Đã hủy');assert.equal(writes,2);assert.equal(backups,1);const note=dbRows[0]['Ghi chú chung'];ctx.repairReplacementDeliveries();assert.equal(writes,2);assert.equal(backups,1);assert.equal(dbRows[0]['Ghi chú chung'],note);
+resetRuntime();failSync=true;assert.throws(()=>ctx.repairReplacementDeliveries(),/chạy lại/);assert.ok(revision>0);failSync=false;ctx.repairReplacementDeliveries();assert.equal(writes,2);assert.ok(done.RDR_DONE_D);assert.equal(dbRows[0]['Ghi chú chung'].split('[REPLACEMENT-DELIVERY:D]').length,2);
+console.log('Replacement repair runtime: backup, source-ID deletion, audit flow, revision, retry after failed projection and no-op replay passed.');
+

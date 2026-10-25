@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử theo phiên bản.** Đối chiếu [quy tắc hiện hành](../CURRENT-IMPLEMENTATION.md) và PRODUCTION-STATE.md trước khi dùng; không tự ghi đè backend hoặc chạy lại migration/repair từ hướng dẫn cũ.
+
 # Trang đăng nhập theo bố cục tham khảo
 
 09/10/2026 — JS94/theme v5: slogan “Clean Power For All” một hàng. Nền ngoài dùng ảnh ESS từ [trang Sungrow](https://www.sungrowpower.com/vt/vi/ess-utility-scale); [ảnh gốc](https://official-oversears-file.sungrowpower.com/page-assets/8356cc88-2f29-414e-8751-1d2d035a7b93.jpg) 2560×1440, 1711082 bytes giữ tại analysis/login-ess-source.jpg. Runtime docs/login-ess-background.jpg JPEG78/354977bytes, không sửa nội dung ảnh, không hotlink. Hero bên trái vẫn dùng login-solar.jpg, khác ảnh nền ngoài. Welcome logo+h1 và entry/popup classic giữ nguyên.
