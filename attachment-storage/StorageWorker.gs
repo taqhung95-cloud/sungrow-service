@@ -170,3 +170,13 @@ function swDispatch_(action,p) {
 }
 /** Run in this separate project's editor; reads permissions only. */
 function kiemTraDichVuLuuTru() { return swDispatch_('probe',{}); }
+/** Editor-only first-time key creation; never returns or logs the secret. */
+function khoiTaoKhoaKhoDinhKem() {
+  swOwner_();
+  swAssert_(String(Session.getActiveUser().getEmail()).toLowerCase()===SW_OWNER,'Chỉ khởi tạo từ Editor bằng chủ dịch vụ.');
+  const props=PropertiesService.getScriptProperties();
+  if(props.getProperty('ATTACHMENT_STORAGE_SECRET'))return {created:false};
+  const entropy=Utilities.getUuid()+Utilities.getUuid()+Utilities.getUuid();
+  props.setProperty('ATTACHMENT_STORAGE_SECRET',Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,entropy)).replace(/=+$/g,''));
+  return {created:true};
+}
