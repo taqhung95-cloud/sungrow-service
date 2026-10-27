@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sửa bố trí nút thêm khoảng SLA — 27/10/2026
+
+Frontend liveJS163/entry144: nút thêm nằm bên phải nút Xóa trên cùng hàng, rộng138px như phần lỗi/linh kiện. Sửa addHoldRow tìm danh sách .holds từ nút đã được enhanceActionForm chuyển vào hàng; không chèn HTML vào nút Xóa. Giữ logic SLA, API, schema và dữ liệu. Bản Index.html tương ứng được sửa trong source; sửa portal GitHub không yêu cầu deploy lại Apps Script. Kiểm thử trình duyệt kiểm tra thêm nhiều dòng, không lồng control, giữ nút khi xóa hàng và bố trí cùng hàng.
+
+
 ## SLA theo giai đoạn — 27/10/2026, bản 1.11.20 đã xác nhận deploy backend
 
 Đã chuẩn bị nhiều khoảng tạm dừng, nhóm lý do trước/sau sẵn sàng giao và ràng buộc ngày tại cập nhật công việc, sửa ngày hồ sơ, giao trả thường/Fan. Không tự trừ chờ giao. KPI dùng số ngày nhận–trả trừ hợp các khoảng hợp lệ để xét đạt≤7; khoảng nội bộ cũ bị giới hạn tại ngày sẵn sàng khi đọc, không ghi lại dữ liệu nguồn. Giữ ngày sẵn sàng đã chỉnh nếu không trước ngày hoàn tất mới. Fan theo lô vẫn dùng mốc sẵn sàng cấp hồ sơ, chưa có SLA riêng cho từng Fan/lần trả một phần. Chi tiết và thứ tự backend trước frontend: DEPLOY-1.11.20-SLA-HOLDS.md. Ngày27/10/2026 người dùng xác nhận đã deploy backend1.11.20 theo hướng dẫn; chưa có số deployment version mới hoặc kết quả thử hồ sơ thật. Frontend liveJS162/entry143 được phát hành qua main sau xác nhận này; kết quả kiểm tra/deploy Pages xem GitHub Actions. Giữ URL/Cloud/worker/Properties. Bộ cleanup1.11.19 đã dừng, không tái sử dụng.
