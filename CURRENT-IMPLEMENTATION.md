@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Lỗi xác nhận chung cho nhiều Fan — 27/10/2026
+
+Frontend liveJS165/entry146/sharedforms8/drafts6 gộp các lỗi đã lưu cùng mã, tên và ngày thành một dòng trên biểu mẫu lô Fan. Lỗi khác hoặc ngày xác nhận khác giữ riêng. Giữ nhóm ID gốc trong data-fan-issue-ids; khi gửi mở lại đúng các bản ghi cũ cùng ghi chú riêng để backend giữ liên kết từng inverter, không xóa/ghi lại lịch sử và không thay số Fan trong KPI. Lỗi mới nhập một lần áp dụng cho scope đã chọn; hàng lỗi mới trùng nhau trong cùng lần gửi được gộp trước RPC. Nháp giữ nhóm ID và khóa chỉnh sửa lịch sử khi khôi phục. Không thêm RPC đọc, không đổi schema/API/backend; không cần deploy Apps Script cho sửa này. Kiểm thử UI gồm gộp3lỗi giống, lỗi khác, lưu đủ ID/ghi chú, scope3inverter, thêm lỗi mới, retry cùngrequestId và khôi phục nháp.
+
+
 ## Trạng thái giao trả rõ ràng — 27/10/2026
 
 Frontend liveJS164/entry145/drafts5: hồ sơ có isClosed và returnedAt từ nguồn hiển thị Đã trả khách và ngày đã lưu. Mở lại biểu mẫu ở chế độ xem, chặn nháp cũ tự phục hồi; chỉ người có canReturn được bật Chỉnh sửa thông tin giao trả cho hồ sơ thường, sau đó nút Lưu điều chỉnh giao trả. Lô Fan trả một phần hiển thị Giao trả tiếp và số đã trả/còn lại, không nhận là đã trả toàn bộ và không cho sửa nhật ký Fan bằng xác nhận lại. Nút chỉ đổi trạng thái sau phản hồi ghi thành công và snapshot/readback getCaseDetail; lỗi lưu không đổi trạng thái, lỗi readback sau ghi chặn xác nhận lại và hướng dẫn Đồng bộ. Giữ quyền/API/backend, không tự nhập ngày hoặc xác nhận thay người dùng. Bộ UI headless kiểm tra đã trả, chỉnh sửa, gửi lặp, lỗi, fallback đọc lại và Fan một phần. Chỉ cần publish GitHub; không cần deploy lại Apps Script cho thay đổi UI này. Bản sửa dropdown Code1.11.21 vẫn cần người dùng xác nhận deploy riêng.

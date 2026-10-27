@@ -22,8 +22,19 @@ window.SungrowFanSharedForms=(()=>{
     if(item.fanLot.pendingSync){const notice=document.createElement('p');notice.className='notice error';notice.textContent='Hồ sơ cần đối soát đồng bộ trước khi cập nhật tiếp.';box.after(notice);}
     return box;
   }
+  const issueKey=p=>JSON.stringify([p.code,p.name,p.confirmedAt].map(v=>String(v??'').trim().replace(/\s+/g,' ').toLocaleLowerCase('vi')));
+  function groupWorkIssues(form,work){
+    const list=form.querySelector('.issues');if(!list)return;
+    form._fanSavedIssues=new Map((work.issues||[]).filter(p=>p.issueId).map(p=>[p.issueId,{...p}]));
+    const groups=new Map(),rows=[];
+    for(const p of work.issues||[]){if(!p.issueId){rows.push({...p});continue;}const key=issueKey(p);let group=groups.get(key);if(!group){group={...p,ids:[]};groups.set(key,group);rows.push(group);}if(!group.ids.includes(p.issueId))group.ids.push(p.issueId);}
+    const add=list.querySelector('.inline-add');list.innerHTML=(rows.length?rows:[{}]).map(p=>issueRow({...p,fanIssueIds:p.ids?JSON.stringify(p.ids):''})).join('');if(add)list.firstElementChild.append(add);
+    const lock=()=>list.querySelectorAll('.repeat-row[data-issue-id]').forEach(row=>{if(!row.dataset.issueId)return;row.querySelectorAll('input').forEach(e=>e.readOnly=true);const remove=row.querySelector('.danger');if(remove){remove.disabled=true;remove.title='Lỗi đã ghi nhận được giữ lại cho các inverter liên quan.';}});
+    lock();new MutationObserver(lock).observe(list,{childList:true});
+    const hint=document.createElement('p');hint.className='parts-date-help fan-issue-help';hint.textContent='Mỗi dòng là một lỗi. Lỗi nhập mới áp dụng cho các inverter đã chọn ở bảng trên; chỉ thêm dòng khi có lỗi khác.';list.before(hint);
+  }
   function attachWork(form,item,work){
-    enhanceActionForm(form);const box=scope(form,item,'work');
+    groupWorkIssues(form,work);enhanceActionForm(form);const box=scope(form,item,'work');
     form._fanWarrantyPending=()=>{const ids=form._fanSelections().map(s=>s.lineId);return !ids.length||item.fanLot.state.lines.some(l=>ids.includes(l.lineId)&&!approved(l.warrantyStatus||item.warrantyStatus));};
     let edited=false;form.addEventListener('input',e=>{if(e.target!==form&&!e.target.closest('.fan-work-scope'))edited=true;});
     const sync=fromScope=>{
@@ -51,6 +62,15 @@ window.SungrowFanSharedForms=(()=>{
     if(!form._fanSelections)return data;const selections=form._fanSelections();if(!selections.length)throw Error('Chọn ít nhất một inverter.');
     for(const key of Object.keys(data))if(/^fanScope-|^fanQuantity-|^fanExistingPart-/.test(key))delete data[key];
     delete data.requestId;data.fanSelections=selections;data.fanFingerprint=form._fanItem.fanLot.fingerprint;
+    if(form._fanOperation==='work'){
+      const visible=[...form.querySelectorAll('.issues .repeat-row')],expanded=[],seen=new Set(),fresh=new Set();
+      (data.issues||[]).forEach((p,index)=>{
+        if(p.issueId){let ids;try{ids=JSON.parse(visible[index]?.dataset.fanIssueIds||JSON.stringify([p.issueId]));}catch(_){throw Error('Danh sách lỗi đã thay đổi. Tải lại hồ sơ trước khi lưu.');}
+          if(!Array.isArray(ids)||!ids.length||ids[0]!==p.issueId)throw Error('Liên kết lỗi không hợp lệ. Tải lại hồ sơ.');
+          for(const id of ids){const saved=form._fanSavedIssues?.get(id);if(!saved||issueKey(saved)!==issueKey(p)||seen.has(id))throw Error('Lỗi đã ghi nhận cần được giữ nguyên. Tải lại hồ sơ trước khi lưu.');seen.add(id);expanded.push({...saved});}
+        }else{const key=issueKey(p);if(!fresh.has(key)){fresh.add(key);expanded.push(p);}}
+      });data.issues=expanded;
+    }
     if(form._fanOperation==='work')data.fanExistingPartIds=[...form.querySelectorAll('[data-fan-part-link]:checked')].map(c=>c.value);
     const signature=form._fanItem.caseId+'|'+form._fanOperation+'|'+JSON.stringify(data);data.requestId=requests.get(signature)||crypto.randomUUID();requests.set(signature,data.requestId);return data;
   }
