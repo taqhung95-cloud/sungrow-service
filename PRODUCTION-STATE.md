@@ -1,5 +1,10 @@
 # Trạng thái production và đồng bộ repository
 
+## Sửa danh sách lý do SLA — 27/10/2026, Code1.11.21 chưa deploy
+
+Đã đọc metadata/rule thực tế: cột Lý do tạm dừng còn danh sách6giá trị strict, thiếu hai lựa chọn mới. Lưu lựa chọn mới có thể bị Sheets từ chối sau khi đã ghi một phần. Code1.11.21 chuẩn bị rule của đúng ô đích trước mọi ghi hồ sơ/công việc, chỉ thêm lựa chọn SLA chính thức, giữ strict và các giá trị cũ; không xóa validation, không sửa hàng loạt sheet hoặc dữ liệu lịch sử. Dùng chung cho luồng thường và Fan qua assertSlaHoldsForCase_. Kiểm thử lưu hồ sơ đóng với quản lý, từ chối nhân viên, lỗi rule trước ghi và đối soát dòng con ghi dở khi lưu lại thành công. Chỉ Code.gs cần thay và Newversion cùngURL; frontend163/entry144, WorkOrderRules và KPI giữ nguyên. Chưa deploy bản1.11.21 và chưa ghi/sửa dòng nghiệp vụ trên production trong phiên kiểm tra. Hướng dẫn DEPLOY-1.11.21-SLA-DROPDOWN.md.
+
+
 ## Sửa bố trí nút thêm khoảng SLA — 27/10/2026
 
 Frontend liveJS163/entry144: nút thêm nằm bên phải nút Xóa trên cùng hàng, rộng138px như phần lỗi/linh kiện. Sửa addHoldRow tìm danh sách .holds từ nút đã được enhanceActionForm chuyển vào hàng; không chèn HTML vào nút Xóa. Giữ logic SLA, API, schema và dữ liệu. Bản Index.html tương ứng được sửa trong source; sửa portal GitHub không yêu cầu deploy lại Apps Script. Kiểm thử trình duyệt kiểm tra thêm nhiều dòng, không lồng control, giữ nút khi xóa hàng và bố trí cùng hàng.

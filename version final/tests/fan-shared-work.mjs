@@ -9,6 +9,7 @@ try{
  for(const key of ['Loại thiết bị đổi'])if(!headers.works.includes(key))headers.works.push(key);
  for(const key of ['Model','Số sê-ri (S/N)','Người xác nhận bảo hành','Ngày xác nhận bảo hành','Ghi chú xác nhận bảo hành','Tên công ty gửi hàng','Email gửi hàng'])if(!headers.cases.includes(key))headers.cases.push(key);
  props.clear();props.set('FAN_LOTS_ENABLED','1');let failProjection=false;ctx.syncDashboardProjectionCase_=()=>({ok:!failProjection});
+ ctx.prepareSlaHoldValidation_=()=>{};
  ctx.spreadsheet_=()=>({getId:()=> 'fixture',getSheetByName:n=>({getSheetId:()=>n})});
  ctx.LEGACY_DASHBOARD_API={...(ctx.LEGACY_DASHBOARD_API||{}),fanSharedFormsReady:true};ctx.readTableWithRows_=n=>({headers:headers[n],rows:(data[n]||[]).map((r,i)=>({...r,__rowNumber:i+2}))});ctx.emailOptional_=v=>String(v||'');ctx.parseDateOptional_=v=>v?new Date(v+'T00:00:00Z'):'';
  vm.runInContext(read('WorkOrderRules.gs'),ctx);vm.runInContext(read('FanWorkOrders.gs'),ctx);

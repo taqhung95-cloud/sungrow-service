@@ -28,7 +28,7 @@ assert.equal(c.metrics.slaDays_({...record,holds:[]}),11);
 // Date edits and delivery must check saved holds across every work order.
 const code=read('Code.gs'),a=code.indexOf('function assertSlaHoldsForCase_('),b=code.indexOf('\nfunction ',a+1);
 let saved=[{'Mã công việc':'OLD','Lý do tạm dừng':'Chờ linh kiện','Ngày bắt đầu':d('2026-10-17'),'Ngày kết thúc':d('2026-10-24')}];
-Object.assign(c,{SHEETS:{workOrders:'works',holds:'holds'},readScopedTable_:name=>({rows:name==='works'?[{'Mã hồ sơ':'CASE','Mã công việc':'OLD'},{'Mã hồ sơ':'CASE','Mã công việc':'NEW'}]:saved}),iso_:v=>v instanceof Date?v.toISOString().slice(0,10):v||'',Utilities:{formatDate:()=>context.today},publicError_:m=>Error(m)});
+Object.assign(c,{prepareSlaHoldValidation_(){},SHEETS:{workOrders:'works',holds:'holds'},readScopedTable_:name=>({rows:name==='works'?[{'Mã hồ sơ':'CASE','Mã công việc':'OLD'},{'Mã hồ sơ':'CASE','Mã công việc':'NEW'}]:saved}),iso_:v=>v instanceof Date?v.toISOString().slice(0,10):v||'',Utilities:{formatDate:()=>context.today},publicError_:m=>Error(m)});
 vm.runInContext(code.slice(a,b),c);
 const source={'Mã hồ sơ':'CASE','Ngày nhận từ khách':d(context.receivedAt)};
 assert.throws(()=>c.assertSlaHoldsForCase_(source,context.readyAt,context.returnedAt),/nội bộ/);

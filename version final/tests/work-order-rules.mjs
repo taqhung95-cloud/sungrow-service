@@ -21,7 +21,7 @@ const code=read('../Code.gs'),extract=name=>{const a=code.indexOf('function '+na
 let writes=0;
 const work={'Mã công việc':'W1','Mã hồ sơ':'C1','Trung tâm xử lý':'DAT','Ngày trung tâm nhận hàng':'2026-10-01','Trạng thái xử lý':'Đã nhận hàng',__rowNumber:2};
 const record={'Mã hồ sơ':'C1','Tình trạng bảo hành':'Trong bảo hành','Trạng thái hồ sơ':'Sẵn sàng trả khách','Trung tâm đang giữ hàng':'DAT','Trung tâm tiếp nhận khách':'DAT','Ngày sẵn sàng trả khách':'2026-10-10',__rowNumber:2};
-Object.assign(ctx,{SHEETS:{workOrders:'work',cases:'case'},PRE_WARRANTY_WORKFLOW_STATUSES:['Đã nhận hàng','Đang kiểm tra'],
+Object.assign(ctx,{prepareSlaHoldValidation_(){},SHEETS:{workOrders:'work',cases:'case'},PRE_WARRANTY_WORKFLOW_STATUSES:['Đã nhận hàng','Đang kiểm tra'],
  authenticate_:()=>({email:'staff',isGlobalManager:true}),assertCapability_(){},assertCenterAllowed_(){},assertCaseEditable_(){},
  clean_:v=>String(v??'').trim(),iso_:v=>v?String(v).slice(0,10):'',required_:(v,m)=>{if(!v)throw Error(m);return v;},parseDateOptional_:v=>v?new Date(v+'T00:00:00+07:00'):null,asDate_:v=>v?new Date(v):null,publicError_:m=>Error(m),
  Utilities:{formatDate:()=>context.today},readTableWithRows_:name=>({headers:[],rows:[name==='work'?work:record]}),

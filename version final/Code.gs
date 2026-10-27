@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.20-sla-holds';
+const APP_VERSION = '1.11.21-sla-dropdown';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -1928,6 +1928,27 @@ function assertSlaHoldsForCase_(record,readyAt,returnedAt,replacedWorkId,replace
   if(!holds.length)return;
   const errors=SungrowWorkOrderRules.validateHolds(holds,{receivedAt:iso_(record['Ngày nhận từ khách']),readyAt:readyAt,returnedAt:returnedAt,today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
   if(errors.length)throw publicError_(errors.join('\n'));
+  if(replacedWorkId&&replacementHolds&&replacementHolds.length)prepareSlaHoldValidation_(replacedWorkId,replacementHolds,rows);
+}
+
+// Preflight only official SLA choices, before any case/work/child values change.
+// Extend the target cell rule; retain strict validation and existing choices.
+function prepareSlaHoldValidation_(workOrderId,holds,currentRows) {
+  const allowed=SungrowWorkOrderRules.beforeReady.concat(SungrowWorkOrderRules.afterReady);
+  const selected=holds.filter(function(h){return clean_(h.reason)&&h.startAt;});
+  if(!selected.some(function(h){return allowed.indexOf(clean_(h.reason))>=0;}))return;
+  const sheet=spreadsheet_().getSheetByName(SHEETS.holds);
+  const headers=tableHeaders_(SHEETS.holds);
+  const current=(currentRows||[]).filter(function(h){return h['Mã công việc']===workOrderId;});
+  let nextRow=sheet.getLastRow()+1;
+  selected.forEach(function(h){
+    const old=h.holdId&&current.find(function(r){return r['Mã tạm dừng']===clean_(h.holdId);});
+    const row=old?old.__rowNumber:nextRow++;
+    if(allowed.indexOf(clean_(h.reason))<0)return;
+    if(row>sheet.getMaxRows())sheet.insertRowsAfter(sheet.getMaxRows(),row-sheet.getMaxRows());
+    try { allowListValidationValue_(SHEETS.holds,headers,row,'Lý do tạm dừng',clean_(h.reason),'Quy tắc Lý do tạm dừng không phải danh sách; cần quản lý kiểm tra.'); }
+    catch(error){if(error&&error.publicMessage)throw error;throw publicError_('Chưa đồng bộ được danh sách lý do tạm dừng SLA. Chưa ghi cập nhật công việc; vui lòng kiểm tra quy tắc cột Lý do tạm dừng.');}
+  });
 }
 
 function appendWorkOrderHolds_(actor, workOrderId, holds) {
