@@ -5,6 +5,31 @@ var SungrowWorkOrderRules=(()=>{
  const outcomes=['Đã sửa chữa','Không thể sửa chữa','Đổi thiết bị','Không phát hiện lỗi'];
  const replacements=['Inverter','Battery','Logger','Meter','Khác','Fan'];
  const clean=v=>String(v??'').trim();
+ const beforeReady=['Chờ linh kiện','Chờ phê duyệt bảo hành','Chờ khách hàng xác nhận','Yếu tố khách quan khác'];
+ const afterReady=['Khách hàng yêu cầu giữ hàng','Chờ vận chuyển','Chờ khách nhận hàng','Yếu tố khách quan sau sẵn sàng giao'];
+ function validateHolds(holds,c){
+  const errors=[],ready=clean(c.readyAt),returned=clean(c.returnedAt),today=clean(c.today);
+  if(!Array.isArray(holds))return ['Danh sách tạm dừng SLA không hợp lệ.'];
+  holds.forEach(x=>{
+   const reason=clean(x.reason),start=clean(x.startAt),end=clean(x.endAt);
+   if(!reason&&!start&&!end)return;
+   if(!reason||!start)errors.push('Tạm dừng SLA phải có lý do và ngày bắt đầu.');
+   for(const [v,label] of [[start,'bắt đầu'],[end,'kết thúc']]){
+    if(!v)continue;const d=new Date(v+'T00:00:00Z');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||isNaN(d)||d.toISOString().slice(0,10)!==v)errors.push('Ngày '+label+' tạm dừng không hợp lệ.');
+    if(today&&v>today)errors.push('Ngày '+label+' tạm dừng không được ở tương lai.');
+    if(c.receivedAt&&v<c.receivedAt)errors.push('Ngày '+label+' tạm dừng không được trước ngày nhận.');
+    if(returned&&v>returned)errors.push('Khoảng tạm dừng không được sau ngày trả khách.');
+   }
+   if(end&&start&&end<start)errors.push('Ngày kết thúc tạm dừng không được trước ngày bắt đầu.');
+   if(afterReady.includes(reason)){
+    if(!ready)errors.push('Tạm dừng do khách hàng/vận chuyển phải có ngày sẵn sàng trả khách.');
+    else if(start&&start<ready)errors.push('Khoảng dừng sau sẵn sàng giao không được bắt đầu trước ngày sẵn sàng trả khách.');
+   }else if(ready&&(!end||end>ready||start>ready))errors.push('Khoảng dừng nội bộ phải kết thúc chậm nhất vào ngày sẵn sàng trả khách; nhập riêng khoảng chờ giao.');
+   if(returned&&!end)errors.push('Phải kết thúc các khoảng tạm dừng trước khi xác nhận trả khách.');
+  });
+  return Array.from(new Set(errors));
+ }
  function validate(p,c){
   const errors=[],status=clean(p.workflowStatus),outcome=clean(p.outcome),completed=clean(p.technicalCompletedAt),replacement=clean(p.replacementType);
   if(![...active,'Hoàn tất kỹ thuật',...controlled].includes(status))errors.push('Chọn trạng thái xử lý hợp lệ.');
@@ -37,8 +62,8 @@ var SungrowWorkOrderRules=(()=>{
    date(x.receivedAt,'Ngày nhận linh kiện '+label);
    date(x.usedAt,'Ngày sử dụng linh kiện '+label,clean(x.receivedAt)||c.receivedAt);
   });
-  lists.holds.forEach(x=>{if(!clean(x.reason)&&!clean(x.startAt)&&!clean(x.endAt))return;if(!clean(x.reason)||!clean(x.startAt))errors.push('Tạm dừng SLA phải có lý do và ngày bắt đầu.');date(x.startAt,'Ngày bắt đầu tạm dừng',c.receivedAt);date(x.endAt,'Ngày kết thúc tạm dừng',clean(x.startAt)||c.receivedAt);});
+  errors.push(...validateHolds(lists.holds,c));
   return Array.from(new Set(errors));
  }
- return {active,controlled,outcomes,replacements,validate};
+ return {active,controlled,outcomes,replacements,beforeReady,afterReady,validateHolds,validate};
 })();

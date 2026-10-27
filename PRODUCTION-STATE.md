@@ -1,8 +1,17 @@
 # Trạng thái production và đồng bộ repository
 
+## SLA theo giai đoạn — 27/10/2026, bản 1.11.20 local chưa triển khai
+
+Đã chuẩn bị nhiều khoảng tạm dừng, nhóm lý do trước/sau sẵn sàng giao và ràng buộc ngày tại cập nhật công việc, sửa ngày hồ sơ, giao trả thường/Fan. Không tự trừ chờ giao. KPI dùng số ngày nhận–trả trừ hợp các khoảng hợp lệ để xét đạt≤7; khoảng nội bộ cũ bị giới hạn tại ngày sẵn sàng khi đọc, không ghi lại dữ liệu nguồn. Giữ ngày sẵn sàng đã chỉnh nếu không trước ngày hoàn tất mới. Fan theo lô vẫn dùng mốc sẵn sàng cấp hồ sơ, chưa có SLA riêng cho từng Fan/lần trả một phần. Chi tiết và thứ tự backend trước frontend: DEPLOY-1.11.20-SLA-HOLDS.md. Backend production gần nhất vẫn1.11.18/Version73; chưa đổi URL/Cloud/worker/Properties, chưa publish frontend liveJS162/entry143. Bộ cleanup1.11.19 đã dừng, không tái sử dụng.
+
+
 Cập nhật: **26/10/2026**, múi giờ Asia/Saigon. Phân biệt rõ mã nguồn đã push, main, Apps Script đã deploy và dữ liệu vận hành; không dùng trạng thái của một bước để suy ra tất cả các bước khác.
 
 ## Mốc đã có bằng chứng
+
+Người dùng đã yêu cầu dừng phương án thay/gỡ source Apps Script 1.11.19 ngày 26/10/2026. Backend giữ 1.11.18/Version73 theo bằng chứng hiện có; chưa deploy bộ dọn gọn. Mã đề xuất, test/công cụ và hướng dẫn đã chuyển vào `Khong-su-dung/AppsScript-cleanup-1.11.19-20261026` ở workspace cha, hai import test đã bỏ khỏi validator chính. Không tiếp tục triển khai từ các file lưu trữ.
+
+Phần đã thực hiện: người dùng gửi log dọn thành công 985 marker CCS/SRS DONE, có bản lưu Drive được xác minh và receipt; audit sau dọn còn 69 Properties, không ghi database nghiệp vụ. Giữ SCRIPT_MAINTENANCE_CCS_SRS_ARCHIVE cùng backup/journal/hash, không tự phục hồi marker hoặc dọn thêm. ScriptMaintenance.gs có thể vẫn còn trong Editor Google; chat này không xóa hay thay thêm source trên Google.
 
 | Thành phần | Trạng thái / bằng chứng |
 |---|---|
@@ -48,7 +57,7 @@ Bộ kiểm tra mặc định chạy từ root: node "version final/tests/valida
 3. Chuyen12CaseFan.gs từng xuất hiện trên runtime như helper migration một lần. Chưa có bản nguồn đối chiếu/sạch tham số ở repository này. Logic migration tổng quát ở FanLegacyMigration.gs đã có; không lấy dữ liệu/biên nhận migration cá nhân để đưa lên Git. Muốn lưu trọn helper phải xuất/rá/sanitise riêng, không cần chạy lại migration.
 4. Các checkout cũ ở root, production-auth-audit và fan-lots-release-20261017 có file sửa/chưa track, gồm bản cũ, bản thử và công cụ maintenance. Chúng được giữ nguyên; không gom toàn bộ vào main vì không phải bằng chứng là mã đang chạy mới nhất. Dữ liệu/analysis/ZIP/Excel và file đính kèm không thuộc source cần publish.
 5. Người dùng đã xác nhận happy-path upload mới. Chưa có bằng chứng thử lại mọi center/role/quota/kịch bản mất mạng trên Google thật. Không ghi PASS production cho các kịch bản chỉ có test local.
-6. Các file local ScriptMaintenance.gs, tests/runtime-cleanup.mjs và tools/build-clean-runtime.mjs chuẩn bị cho 1.11.19-runtime-cleanup được giữ ngoài lần đồng bộ này. Chưa có bằng chứng duyệt/deploy; không coi chúng là nguồn production Version73 và không tự chạy cleanup.
+6. Phương án local 1.11.19 đã dừng theo yêu cầu người dùng và được đưa vào Khong-su-dung ở workspace cha; không coi là source production hoặc tiếp tục triển khai từ đó. Phần dọn 985 marker đã thực thi được ghi riêng ở trên.
 
 ## Các tài liệu đang có hiệu lực
 

@@ -27,7 +27,7 @@ Object.assign(ctx,{SHEETS:{workOrders:'work',cases:'case'},PRE_WARRANTY_WORKFLOW
  Utilities:{formatDate:()=>context.today},readTableWithRows_:name=>({headers:[],rows:[name==='work'?work:record]}),
  ensureSheetColumns_:()=>writes++,tableHeaders_:()=>[],updateObjectRow_:(name,headers,row,changes)=>{writes++;Object.assign(name==='work'?work:record,changes);},
  replaceWorkOrderChildren_:()=>writes++,appendWorkOrderHolds_:()=>writes++,fillMissingPartUsageDates_(){},audit_(){},syncDashboardProjectionCase_(){},syncPortalCaseIndexCase_(){},bumpPortalDatabaseRevision_(){},getCaseDetailForActor_:()=>({})});
-for(const name of ['updateWorkOrderUnlocked_','updateCaseAfterWork_','validateTechnicalDates_'])vm.runInContext(extract(name),ctx);
+for(const name of ['assertSlaHoldsForCase_','updateWorkOrderUnlocked_','updateCaseAfterWork_','validateTechnicalDates_'])vm.runInContext(extract(name),ctx);
 for(const payload of [{...valid,workflowStatus:'Chờ linh kiện'},{...valid,parts:[{name:'Board',quantity:0}]},{...valid,holds:[{reason:'Chờ linh kiện',startAt:'2026-10-10',endAt:'2026-10-05'}]}]){writes=0;assert.throws(()=>ctx.updateWorkOrderUnlocked_('staff',{...payload,workOrderId:'W1'}));assert.equal(writes,0,'Reject contradictory fields before any writes');}
 ctx.updateWorkOrderUnlocked_('staff',{...valid,workOrderId:'W1'});assert.equal(record['Trạng thái hồ sơ'],'Sẵn sàng trả khách');
 ctx.updateWorkOrderUnlocked_('staff',{workOrderId:'W1',workflowStatus:'Chờ linh kiện'});assert.equal(record['Trạng thái hồ sơ'],'Đang xử lý');assert.equal(record['Ngày sẵn sàng trả khách'],'');

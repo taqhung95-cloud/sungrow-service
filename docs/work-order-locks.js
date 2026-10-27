@@ -13,7 +13,7 @@ window.SungrowWorkOrderLocks=(()=>{
    p.holds=[...form.querySelectorAll('.holds .repeat-row')].map(r=>({reason:r.children[0].value,startAt:r.children[1].value,endAt:r.children[2].value}));if(form._fanSelections)p.parts=p.parts.filter(x=>!x.partUsageId);return p;
   }
   function sync(){
-   context.today=today();if(form._fanWarrantyPending)context.warrantyPending=form._fanWarrantyPending();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
+   context.today=today();context.readyAt=c.isClosed||c.fanLot?(c.readyAt||''):(fields.technicalCompletedAt.value?[c.readyAt||'',fields.technicalCompletedAt.value].sort().pop():'');context.returnedAt=c.returnedAt||'';if(form._fanWarrantyPending)context.warrantyPending=form._fanWarrantyPending();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
    fields.workflowStatus.disabled=context.caseClosed;
    fields.outcome.disabled=working||pending;fields.technicalCompletedAt.disabled=working||pending;
    fields.outcome.required=fields.workflowStatus.value==='Hoàn tất kỹ thuật';fields.technicalCompletedAt.required=fields.outcome.required;
@@ -23,7 +23,7 @@ window.SungrowWorkOrderLocks=(()=>{
    form.querySelectorAll('.issues input[type=date],.holds input[type=date]').forEach(x=>{x.max=context.today;if(context.receivedAt)x.min=context.receivedAt;});
    form.querySelectorAll('.parts input,.parts .inline-add').forEach(x=>x.disabled=pending);
    form.querySelectorAll('.parts .repeat-row').forEach(r=>{const input=r.querySelector('.part-used-at');input.max=context.today;input.min=r.dataset.receivedAt||context.receivedAt||'';});
-   form.querySelectorAll('.holds .repeat-row').forEach(r=>{r.children[2].min=r.children[1].value||context.receivedAt||'';});
+   form.querySelectorAll('.holds .repeat-row').forEach(r=>{const after=SungrowWorkOrderRules.afterReady.includes(r.children[0].value);r.children[1].min=after?(context.readyAt||context.receivedAt||''):(context.receivedAt||'');r.children[2].min=r.children[1].value||r.children[1].min;r.children[2].max=(!after&&context.readyAt)?context.readyAt:(context.returnedAt||context.today);});
    const errors=SungrowWorkOrderRules.validate(values(),context),text=errors.length?errors.join(' '):working?'Kết quả cuối và ngày hoàn tất chỉ mở khi chọn Hoàn tất kỹ thuật.':'';
    if(notice.textContent!==text)notice.textContent=text;notice.hidden=!text;notice.classList.toggle('error',errors.length>0);
    reset.hidden=!(working||pending)&&!(fields.outcome.value!=='Đổi thiết bị'&&fields.replacementType.value)||!Boolean(fields.outcome.value||fields.technicalCompletedAt.value||fields.replacementType.value);

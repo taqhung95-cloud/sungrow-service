@@ -15,6 +15,8 @@ function buildManagerDashboardForActor_(actor, rawFilters) {
   const cases = revision && typeof readTableShared_ === 'function' ? readTableShared_(SHEETS.cases, revision, false) : readTable_(SHEETS.cases);
   const workOrders = revision && typeof readTableShared_ === 'function' ? readTableShared_(SHEETS.workOrders, revision, false) : readTable_(SHEETS.workOrders);
   const workByCase = groupBy_(workOrders, 'Mã hồ sơ');
+  const holds=SHEETS.holds?(revision&&typeof readTableShared_==='function'?readTableShared_(SHEETS.holds,revision,false):readTable_(SHEETS.holds)):[];
+  const holdsByWork=groupBy_(holds,'Mã công việc');
   const today = startOfDay_(new Date());
   const now = new Date();
   const periodEndForAge = filters.end < now ? filters.end : now;
@@ -44,6 +46,8 @@ function buildManagerDashboardForActor_(actor, rawFilters) {
       receivedAt: receivedAt,
       technicalCompletedAt: technicalCompletedAt,
       returnedAt: returnedAt,
+      readyAt: asDate_(item['Ngày sẵn sàng trả khách']),
+      holds: works.flatMap(function(w){return (holdsByWork[w['Mã công việc']]||[]).map(function(h){return {reason:clean_(h['Lý do tạm dừng']),start:h['Ngày bắt đầu'],end:h['Ngày kết thúc']};});}),
       outcome: clean_(latest['Kết quả xử lý']),
       workflowStatus: clean_(latest['Trạng thái xử lý']),
       updatedAt: asDate_(item['Ngày cập nhật gần nhất'])
@@ -59,7 +63,7 @@ function buildManagerDashboardForActor_(actor, rawFilters) {
     return item.receivedAt && item.receivedAt <= periodEndForAge && (!item.returnedAt || item.returnedAt > periodEndForAge) && !(item.caseStatus === 'Đã hoàn tất' && !item.returnedAt);
   });
   const overdue = openAtEnd.filter(function (item) {
-    return dashboardAgeDays_(item.receivedAt, periodEndForAge) > 7;
+    return managerSlaDays_(item,periodEndForAge) > 7;
   });
   const pendingWarranty = openAtEnd.filter(function (item) { return item.warrantyStatus === 'Chờ xác nhận'; });
   const slaPopulation = returned.filter(function (item) {
@@ -67,7 +71,7 @@ function buildManagerDashboardForActor_(actor, rawFilters) {
     return days >= 0;
   });
   const slaOnTime = slaPopulation.filter(function (item) {
-    return dashboardAgeDays_(item.receivedAt, item.returnedAt) <= 7;
+    return managerSlaDays_(item) <= 7;
   });
 
   const availableYears = Array.from(new Set(cases.map(function (item) {
@@ -186,3 +190,8 @@ function dashboardIso_(date) {
 }
 
 var FAN_MANAGER_LEGACY_KPI_READY_ = true;
+
+function managerSlaDays_(item,end) {
+  if(!item.holds||!item.holds.length)return dashboardAgeDays_(item.receivedAt,end||item.returnedAt);
+  return LEGACY_DASHBOARD_API.slaDays({quantity:1,receivedDate:item.receivedAt,returnDate:item.returnedAt,readyDate:item.readyAt,holds:item.holds},end);
+}

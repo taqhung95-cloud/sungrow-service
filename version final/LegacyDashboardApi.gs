@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.11-system-case-corrections';
+const LEGACY_API_VERSION = '1.11.20-sla-holds';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -199,7 +199,7 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
     works.forEach(function (work) {
       (issuesByWork[clean_(work['Mã công việc'])] || []).forEach(function (issue) { issues.push(issue); });
       (partsByWork[clean_(work['Mã công việc'])] || []).forEach(function (part) { parts.push(part); });
-      (holdsByWork[clean_(work['Mã công việc'])] || []).forEach(function (hold) { holds.push({start: iso_(date_(hold['Ngày bắt đầu'])), end: iso_(date_(hold['Ngày kết thúc']))}); });
+      (holdsByWork[clean_(work['Mã công việc'])] || []).forEach(function (hold) { holds.push({reason:clean_(hold['Lý do tạm dừng']),start: iso_(date_(hold['Ngày bắt đầu'])), end: iso_(date_(hold['Ngày kết thúc']))}); });
     });
     const confirmedIssues = issues.filter(function (issue) { return clean_(issue['Loại ghi nhận']) !== 'Hiện tượng ban đầu'; });
     const issueNames = confirmedIssues.map(function (issue) { return clean_(issue['Tên lỗi']); }).filter(Boolean);
@@ -463,7 +463,7 @@ function yearlyTotalFromRecords_(records, year) {
     if (inYear_(record.returnDate, year)) returned++;
     if (record.receivedDate && record.returnDate && record.returnDate >= record.receivedDate && inYear_(record.returnDate, year)) {
       slaEligible++;
-      if (ageDays_(record.receivedDate, record.returnDate) <= SLA_DAYS) slaMet++;
+      if (slaDays_(record) <= SLA_DAYS) slaMet++;
     }
   });
   const monthlyCumulative = [];
@@ -516,7 +516,7 @@ function buildYearlyTotalsFromRecords_(records, selectedYear) {
       if (validReturn_(record) && inYear_(record.returnDate, year) && record.returnDate <= new Date()) returned += deviceQuantity_(record);
       if (validReturn_(record) && inYear_(record.returnDate, year) && record.returnDate <= new Date()) {
         slaEligible += deviceQuantity_(record);
-        if (ageDays_(record.receivedDate, record.returnDate) <= SLA_DAYS) slaMet += deviceQuantity_(record);
+        if (slaDays_(record) <= SLA_DAYS) slaMet += deviceQuantity_(record);
       }
     });
     const monthlyCumulative = [];
@@ -630,8 +630,8 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     const durations = completed.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
     const centerSla = slaAverages_(completed);
     const slaEligible = sumDevices_(completed);
-    const slaMet = sumDevices_(completed.filter(function (r) { return ageDays_(r.receivedDate, r.returnDate) <= SLA_DAYS; }));
-    const slaBreachedOpen = sumDevices_(open.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }));
+    const slaMet = sumDevices_(completed.filter(function (r) { return slaDays_(r) <= SLA_DAYS; }));
+    const slaBreachedOpen = sumDevices_(open.filter(function (r) { return slaDays_(r, period.asOf) > SLA_DAYS; }));
     const coverage = dataCoverage_(currentReceived);
     const delta = sumDevices_(open) - sumDevices_(priorOpen);
     const volumeShare = sumDevices_(periodRows) ? sumDevices_(currentReceived) / sumDevices_(periodRows) : 0;
@@ -691,8 +691,8 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
   const slaDurations = returned.map(function (r) { return ageDays_(r.receivedDate, r.returnDate); }).filter(function (n) { return n >= 0; });
   const summarySla = slaAverages_(returned);
   const slaEligible = sumDevices_(returned);
-  const slaMet = sumDevices_(returned.filter(function (r) { return ageDays_(r.receivedDate, r.returnDate) <= SLA_DAYS; }));
-  const slaBreachedOpen = sumDevices_(openAll.filter(function (r) { return ageDays_(r.receivedDate, period.asOf) > SLA_DAYS; }));
+  const slaMet = sumDevices_(returned.filter(function (r) { return slaDays_(r) <= SLA_DAYS; }));
+  const slaBreachedOpen = sumDevices_(openAll.filter(function (r) { return slaDays_(r, period.asOf) > SLA_DAYS; }));
   const models = groupCount_(periodRows, function (r) { return r.model || (r.fanLot ? 'Fan theo lô' : r.deviceType ? r.deviceType + ' | chưa có model' : 'Chưa xác định'); });
   const modelDeviceStats = groupModelDeviceStats_(periodRows);
   const modelCatalog = Object.keys(records.reduce(function (catalog, r) {
@@ -1081,10 +1081,14 @@ function schemaForHeaders_(headers) {
   return schema;
 }
 
+function slaDays_(record,end) {
+  return slaAverages_([Object.assign({},record,{quantity:1,returnDate:end||record.returnDate})]).net;
+}
+
 function slaAverages_(rows) {
   let quantity=0,actualTotal=0,netTotal=0;
   rows.forEach(function(r){const q=deviceQuantity_(r);if(!validReturn_(r)||!q)return;const actual=ageDays_(r.receivedDate,r.returnDate),ranges=[];
-    (r.holds||[]).forEach(function(h){const a=date_(h.start),b=h.end?date_(h.end):r.returnDate;if(!a||!b||b<a)return;const lo=Math.max(time_(r.receivedDate),time_(a)),hi=Math.min(time_(r.returnDate),time_(b));if(hi>lo)ranges.push([lo,hi]);});
+    (r.holds||[]).forEach(function(h){const a=date_(h.start),b=h.end?date_(h.end):r.returnDate;if(!a||!b||b<a)return;const after=['Khách hàng yêu cầu giữ hàng','Chờ vận chuyển','Chờ khách nhận hàng','Yếu tố khách quan sau sẵn sàng giao'].indexOf(h.reason)>=0,ready=date_(r.readyDate);if(after&&!ready)return;const lo=Math.max(time_(r.receivedDate),time_(a),after?time_(ready):0),hi=Math.min(time_(r.returnDate),time_(b),!after&&ready?time_(ready):Infinity);if(hi>lo)ranges.push([lo,hi]);});
     ranges.sort(function(a,b){return a[0]-b[0];});const union=[];ranges.forEach(function(pair){const last=union[union.length-1];if(last&&pair[0]<=last[1])last[1]=Math.max(last[1],pair[1]);else union.push(pair.slice());});
     const paused=Math.min(actual,union.reduce(function(sum,p){return sum+ageDays_(new Date(p[0]),new Date(p[1]));},0));quantity+=q;actualTotal+=actual*q;netTotal+=(actual-paused)*q;
   });
@@ -1300,7 +1304,7 @@ function readReportData_(request, actor) {
   return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: Fan nhập thường tính 1 thiết bị; mỗi lô Fan tính 1 hồ sơ, kể cả lô chuyển đổi. Các loại thiết bị khác giữ số lượng đã biết. Số Fan thực tế ở chi tiết lô; hồ sơ nguồn đã nhập lô không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
 }
 if (typeof installReportReader_==='function') installReportReader_(readReportData_);
-return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_ };
+return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_, slaDays: slaDays_ };
 })();
 
 function doPost(e) {

@@ -1,5 +1,20 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## SLA theo giai đoạn — 27/10/2026, bản 1.11.20 local chưa triển khai
+
+Đã chuẩn bị nhiều khoảng tạm dừng, nhóm lý do trước/sau sẵn sàng giao và ràng buộc ngày tại cập nhật công việc, sửa ngày hồ sơ, giao trả thường/Fan. Không tự trừ chờ giao. KPI dùng số ngày nhận–trả trừ hợp các khoảng hợp lệ để xét đạt≤7; khoảng nội bộ cũ bị giới hạn tại ngày sẵn sàng khi đọc, không ghi lại dữ liệu nguồn. Giữ ngày sẵn sàng đã chỉnh nếu không trước ngày hoàn tất mới. Fan theo lô vẫn dùng mốc sẵn sàng cấp hồ sơ, chưa có SLA riêng cho từng Fan/lần trả một phần. Chi tiết và thứ tự backend trước frontend: DEPLOY-1.11.20-SLA-HOLDS.md. Backend production gần nhất vẫn1.11.18/Version73; chưa đổi URL/Cloud/worker/Properties, chưa publish frontend liveJS162/entry143. Bộ cleanup1.11.19 đã dừng, không tái sử dụng.
+
+
+## Phương án dọn Apps Script đã dừng — 26/10/2026
+
+Người dùng yêu cầu dừng và xác nhận sẽ không thay/gỡ các file backend theo phương án 1.11.19. Backend production giữ 1.11.18-attachment-storage; chưa deploy runtime 1.11.19, chưa thay Code.gs/TemporaryUploads.gs, chưa thêm MigrationGuards.gs hoặc gỡ các module production theo phương án này.
+
+Đã chuyển bộ đề xuất, ZIP có sẵn, ScriptMaintenance.gs local, test, công cụ và fixture vào thư mục workspace cha `Khong-su-dung/AppsScript-cleanup-1.11.19-20261026`. Hai import test của phương án đã được bỏ khỏi validator chính. Mã đề xuất chưa được commit/push bởi chat dọn gọn; không tự triển khai theo các hướng dẫn lưu trữ.
+
+Phần đã thực hiện trên Google vẫn có hiệu lực: người dùng chạy dọn 985 marker CCS/SRS DONE thành công, đã xác minh bản lưu Drive và giữ receipt SCRIPT_MAINTENANCE_CCS_SRS_ARCHIVE; audit sau đó còn 69 Properties, không ghi database nghiệp vụ. Giữ backup/journal/hash và bản lưu, không tự phục hồi marker hoặc dọn thêm. ScriptMaintenance.gs đã thêm trên Google có thể vẫn còn trong Editor; lưu trữ bản local không xóa file đó và không yêu cầu thao tác thêm trên Google.
+
+Các ghi nhận chi tiết và hướng dẫn cũ được giữ trong thư mục lưu trữ; chúng không phải kế hoạch đang thực hiện.
+
 ## Trạng thái đã xác nhận — 26/10/2026
 
 Backend chính `1.11.18-attachment-storage` đã triển khai Version73 trên cùng URL và cùng tài khoản thực thi cũ; worker lưu trữ riêng đã triển khai Version1 bằng sungrowservicecenter@gmail.com. Probe có HMAC đã hoàn tất không lỗi; người dùng xác nhận file đính kèm mới được upload bằng email mới. Không đổi Cloud/OAuth/ClientID/database/schema hoặc quyền nghiệp vụ. Frontend vẫn liveJS161/entry142/CSS36; release upload không sửa `docs/*`.

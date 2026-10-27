@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.18-attachment-storage';
+const APP_VERSION = '1.11.20-sla-holds';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -933,6 +933,7 @@ function correctCase(idToken, payload) {
     if ((Object.prototype.hasOwnProperty.call(input,'deviceType')||Object.prototype.hasOwnProperty.call(input,'serialNumber')) && clean_(next['Loại thiết bị'])!=='Fan' && !clean_(next['Số sê-ri (S/N)'])) throw publicError_('S/N bắt buộc, trừ thiết bị Fan.'); if (clean_(next['Nguồn dữ liệu']) === 'Quy trình mới' && !received) throw publicError_('Hồ sơ quy trình mới phải có ngày nhận.');
     if (received && ((ready && ready < received) || (returned && returned < received))) throw publicError_('Ngày sẵn sàng/trả không được trước ngày nhận.');
     if (ready && returned && returned < ready) throw publicError_('Ngày trả không được trước ngày sẵn sàng trả.');
+    if(dates.some(function(k){return Object.prototype.hasOwnProperty.call(input,k);}))assertSlaHoldsForCase_(next,iso_(ready),iso_(returned));
     changes['Người cập nhật gần nhất'] = actor.email;
     changes['Ngày cập nhật gần nhất'] = new Date();
     if(adminFanPlan)flAdminCommitCorrection_(actor,record,changes,adminFanPlan,reason,payload);
@@ -973,7 +974,8 @@ function updateWorkOrderUnlocked_(idToken, payload) {
   }
   assertCaseEditable_(actor, caseRecord);
   if(typeof flAssertOrdinary_==='function')flAssertOrdinary_(caseRecord);
-  const ruleErrors=SungrowWorkOrderRules.validate(payload,{currentStatus:clean_(record['Trạng thái xử lý']),previousReplacementType:clean_(record['Loại thiết bị đổi']),receivedAt:iso_(record['Ngày trung tâm nhận hàng']),warrantyPending:clean_(caseRecord['Tình trạng bảo hành'])==='Chờ xác nhận',caseClosed:clean_(caseRecord['Trạng thái hồ sơ'])==='Đã hoàn tất',today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
+  const slaReadyAt=clean_(caseRecord['Trạng thái hồ sơ'])==='Đã hoàn tất'?iso_(caseRecord['Ngày sẵn sàng trả khách']):(payload.technicalCompletedAt?[iso_(caseRecord['Ngày sẵn sàng trả khách']),payload.technicalCompletedAt].sort().pop():'');
+  const ruleErrors=SungrowWorkOrderRules.validate(payload,{readyAt:slaReadyAt,returnedAt:iso_(caseRecord['Ngày trả khách']),currentStatus:clean_(record['Trạng thái xử lý']),previousReplacementType:clean_(record['Loại thiết bị đổi']),receivedAt:iso_(record['Ngày trung tâm nhận hàng']),warrantyPending:clean_(caseRecord['Tình trạng bảo hành'])==='Chờ xác nhận',caseClosed:clean_(caseRecord['Trạng thái hồ sơ'])==='Đã hoàn tất',today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
   if(ruleErrors.length)throw publicError_(ruleErrors.join('\n'));
   const gsp = clean_(payload.gsp);
   const ma = clean_(payload.ma);
@@ -1005,6 +1007,7 @@ function updateWorkOrderUnlocked_(idToken, payload) {
     throw publicError_('Vui lòng chọn loại thiết bị đổi.');
   }
   validateTechnicalDates_(record, changes);
+  assertSlaHoldsForCase_(caseRecord,slaReadyAt,iso_(caseRecord['Ngày trả khách']),workOrderId,payload.holds||[]);
   if (['GSP', 'MA'].some(function (name) { return caseTable.headers.indexOf(name) < 0; })) {
     ensureSheetColumns_(SHEETS.cases, ['GSP', 'MA']);
     caseTable.headers = tableHeaders_(SHEETS.cases);
@@ -1200,6 +1203,9 @@ function returnToCustomerUnlocked_(idToken, payload) {
   if (readyAt && returnedAt < readyAt) throw publicError_('Ngày trả khách không được trước ngày sẵn sàng trả.');
   const handledAt=asDate_(currentWork['Ngày trung tâm nhận hàng']),completedAt=asDate_(currentWork['Ngày hoàn tất kỹ thuật']);
   if((handledAt&&returnedAt<handledAt)||(completedAt&&returnedAt<completedAt))throw publicError_('Ngày trả khách không được trước ngày center nhận hàng/hoàn tất kỹ thuật.');
+  if(!readyAt)throw publicError_('Nhập ngày sẵn sàng trả khách.');
+  if(readyAt<receivedAt||(completedAt&&readyAt<completedAt)||iso_(returnedAt)>Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd'))throw publicError_('Ngày sẵn sàng phải từ ngày hoàn tất kỹ thuật; ngày trả không được ở tương lai.');
+  assertSlaHoldsForCase_(record,iso_(readyAt),iso_(returnedAt));
   const changes = {
     'Ngày sẵn sàng trả khách': readyAt,
     'Ngày trả khách': returnedAt,
@@ -1914,6 +1920,16 @@ function fillMissingPartUsageDates_(workOrderId, usedAt) {
   });
 }
 
+function assertSlaHoldsForCase_(record,readyAt,returnedAt,replacedWorkId,replacementHolds) {
+  const works=readScopedTable_(SHEETS.workOrders,'Mã hồ sơ',[record['Mã hồ sơ']]).rows.filter(function(w){return w['Mã hồ sơ']===record['Mã hồ sơ'];});
+  const ids=works.map(function(w){return w['Mã công việc'];});
+  const rows=ids.length?readScopedTable_(SHEETS.holds,'Mã công việc',ids).rows:[];
+  const holds=rows.filter(function(h){return ids.indexOf(h['Mã công việc'])>=0&&h['Mã công việc']!==replacedWorkId;}).map(function(h){return {reason:h['Lý do tạm dừng'],startAt:iso_(h['Ngày bắt đầu']),endAt:iso_(h['Ngày kết thúc'])};}).concat(replacementHolds||[]);
+  if(!holds.length)return;
+  const errors=SungrowWorkOrderRules.validateHolds(holds,{receivedAt:iso_(record['Ngày nhận từ khách']),readyAt:readyAt,returnedAt:returnedAt,today:Utilities.formatDate(new Date(),'Asia/Ho_Chi_Minh','yyyy-MM-dd')});
+  if(errors.length)throw publicError_(errors.join('\n'));
+}
+
 function appendWorkOrderHolds_(actor, workOrderId, holds) {
   const table = readScopedTable_(SHEETS.holds, 'Mã công việc', [workOrderId]);
   const current = table.rows.filter(function (row) { return row['Mã công việc'] === workOrderId; });
@@ -1974,7 +1990,7 @@ function updateCaseAfterWork_(caseId, actor, changes, suppliedTable, extraChange
   const closed=clean_(record['Trạng thái hồ sơ'])==='Đã hoàn tất';
   updateObjectRow_(SHEETS.cases, table.headers, record.__rowNumber, changedRowValues_(record, Object.assign({}, extraChanges || {}, {
     'Trạng thái hồ sơ': closed?'Đã hoàn tất':terminal ? 'Sẵn sàng trả khách' : 'Đang xử lý',
-    'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal ? changes['Ngày hoàn tất kỹ thuật'] : '',
+    'Ngày sẵn sàng trả khách': closed?record['Ngày sẵn sàng trả khách']:terminal ? (asDate_(record['Ngày sẵn sàng trả khách'])>=asDate_(changes['Ngày hoàn tất kỹ thuật'])?record['Ngày sẵn sàng trả khách']:changes['Ngày hoàn tất kỹ thuật']) : '',
     'Người cập nhật gần nhất': actor.email,
     'Ngày cập nhật gần nhất': new Date()
   })));
