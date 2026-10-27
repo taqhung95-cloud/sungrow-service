@@ -1,6 +1,6 @@
 # Kết nối và đồng bộ đang dùng
 
-Cập nhật: 26/10/2026, backend `1.11.18-attachment-storage`, deployment chính Version 73. Tài liệu này thay hướng dẫn thiết lập `apps-script/`, `SOURCE_SPREADSHEET_ID`, `USERS_JSON` và `CENTERS_JSON` trước đây; không dùng các cấu hình cũ để dựng lại production.
+Cập nhật: **27/10/2026**. Backend `1.11.20-sla-holds` đã được người dùng xác nhận deploy; số deployment version mới chưa được cung cấp. Frontend liveJS162/entry143 phát hành qua main sau backend. Xem [PRODUCTION-STATE.md](PRODUCTION-STATE.md) để phân biệt xác nhận triển khai, kiểm thử local và thử dữ liệu thật.
 
 ## Thành phần
 

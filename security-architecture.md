@@ -1,6 +1,6 @@
 # Kiến trúc bảo mật hiện hành
 
-Cập nhật: 26/10/2026, backend 1.11.18. Tài liệu mô tả code đang dùng, thay bản thiết kế registry/`ticket.create` cũ. Quy tắc chi tiết nằm trong CURRENT-IMPLEMENTATION.md; trạng thái triển khai nằm trong PRODUCTION-STATE.md.
+Cập nhật: **27/10/2026**. Backend `1.11.20-sla-holds` đã được người dùng xác nhận deploy; số deployment version mới chưa được cung cấp. Frontend liveJS162/entry143 phát hành qua main sau backend. Xem [PRODUCTION-STATE.md](PRODUCTION-STATE.md) để phân biệt xác nhận triển khai, kiểm thử local và thử dữ liệu thật.
 
 ## Ranh giới tin cậy
 

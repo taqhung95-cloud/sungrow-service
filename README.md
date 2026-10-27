@@ -1,6 +1,6 @@
 # Sungrow Service Center Dashboard
 
-Trạng thái tài liệu: 26/10/2026. Backend đang chạy `1.11.18-attachment-storage`, Apps Script deployment chính **Version 73**. Người dùng đã xác nhận file đính kèm mới được upload bằng `sungrowservicecenter@gmail.com`.
+Cập nhật: **27/10/2026**. Backend `1.11.20-sla-holds` đã được người dùng xác nhận deploy; số deployment version mới chưa được cung cấp. Frontend liveJS162/entry143 phát hành qua main sau backend. Xem [PRODUCTION-STATE.md](PRODUCTION-STATE.md) để phân biệt xác nhận triển khai, kiểm thử local và thử dữ liệu thật.
 
 ## Bắt đầu từ đâu
 

@@ -1,6 +1,6 @@
 # SLA theo khoảng dừng và ngày sẵn sàng giao — 27/10/2026
 
-Trạng thái: mã local đã chuẩn bị và kiểm thử, **chưa deploy Apps Script, chưa publish frontend**. Production đã xác nhận gần nhất vẫn là 1.11.18/Version73. Không dùng bộ cleanup 1.11.19 đã dừng.
+Trạng thái27/10/2026: người dùng xác nhận **đã deploy Apps Script** theo hướng dẫn1.11.20; chưa cung cấp số deployment version mới. Frontend liveJS162/entry143 được phát hành qua GitHub main sau xác nhận backend. Test local đã đạt; trạng thái kiểm tra/deploy Pages xem GitHub Actions. Chưa có xác nhận thử hồ sơ thật sau release. Không dùng bộ cleanup1.11.19 đã dừng.
 
 ## Quy tắc
 

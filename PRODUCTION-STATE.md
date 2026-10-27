@@ -1,11 +1,11 @@
 # Trạng thái production và đồng bộ repository
 
-## SLA theo giai đoạn — 27/10/2026, bản 1.11.20 local chưa triển khai
+## SLA theo giai đoạn — 27/10/2026, bản 1.11.20 đã xác nhận deploy backend
 
-Đã chuẩn bị nhiều khoảng tạm dừng, nhóm lý do trước/sau sẵn sàng giao và ràng buộc ngày tại cập nhật công việc, sửa ngày hồ sơ, giao trả thường/Fan. Không tự trừ chờ giao. KPI dùng số ngày nhận–trả trừ hợp các khoảng hợp lệ để xét đạt≤7; khoảng nội bộ cũ bị giới hạn tại ngày sẵn sàng khi đọc, không ghi lại dữ liệu nguồn. Giữ ngày sẵn sàng đã chỉnh nếu không trước ngày hoàn tất mới. Fan theo lô vẫn dùng mốc sẵn sàng cấp hồ sơ, chưa có SLA riêng cho từng Fan/lần trả một phần. Chi tiết và thứ tự backend trước frontend: DEPLOY-1.11.20-SLA-HOLDS.md. Backend production gần nhất vẫn1.11.18/Version73; chưa đổi URL/Cloud/worker/Properties, chưa publish frontend liveJS162/entry143. Bộ cleanup1.11.19 đã dừng, không tái sử dụng.
+Đã chuẩn bị nhiều khoảng tạm dừng, nhóm lý do trước/sau sẵn sàng giao và ràng buộc ngày tại cập nhật công việc, sửa ngày hồ sơ, giao trả thường/Fan. Không tự trừ chờ giao. KPI dùng số ngày nhận–trả trừ hợp các khoảng hợp lệ để xét đạt≤7; khoảng nội bộ cũ bị giới hạn tại ngày sẵn sàng khi đọc, không ghi lại dữ liệu nguồn. Giữ ngày sẵn sàng đã chỉnh nếu không trước ngày hoàn tất mới. Fan theo lô vẫn dùng mốc sẵn sàng cấp hồ sơ, chưa có SLA riêng cho từng Fan/lần trả một phần. Chi tiết và thứ tự backend trước frontend: DEPLOY-1.11.20-SLA-HOLDS.md. Ngày27/10/2026 người dùng xác nhận đã deploy backend1.11.20 theo hướng dẫn; chưa có số deployment version mới hoặc kết quả thử hồ sơ thật. Frontend liveJS162/entry143 được phát hành qua main sau xác nhận này; kết quả kiểm tra/deploy Pages xem GitHub Actions. Giữ URL/Cloud/worker/Properties. Bộ cleanup1.11.19 đã dừng, không tái sử dụng.
 
 
-Cập nhật: **26/10/2026**, múi giờ Asia/Saigon. Phân biệt rõ mã nguồn đã push, main, Apps Script đã deploy và dữ liệu vận hành; không dùng trạng thái của một bước để suy ra tất cả các bước khác.
+Cập nhật: **27/10/2026**, múi giờ Asia/Saigon. Phân biệt rõ mã nguồn đã push, main, Apps Script đã deploy và dữ liệu vận hành; không dùng trạng thái của một bước để suy ra tất cả các bước khác.
 
 ## Mốc đã có bằng chứng
 
@@ -15,12 +15,12 @@ Phần đã thực hiện: người dùng gửi log dọn thành công 985 marke
 
 | Thành phần | Trạng thái / bằng chứng |
 |---|---|
-| Backend chính | APP_VERSION `1.11.18-attachment-storage`, deployment Version73; giao diện Google báo cập nhật thành công ngày26/10/2026 lúc01:14 |
+| Backend chính | APP_VERSION `1.11.20-sla-holds`; người dùng xác nhận đã deploy ngày27/10/2026, chưa cung cấp số deployment version mới. Mốc quan sát trước là1.11.18/Version73 |
 | URL/tài khoản backend chính | Giữ đúng deployment/URL trước đây trong docs/config.js; thực thi bằng tài khoản cũ, không chuyển sang Gmail lưu trữ |
 | Worker đính kèm | Project riêng, Version1; thực thi bằng sungrowservicecenter@gmail.com; endpoint nhận POST, lệnh/response bắt buộc HMAC |
 | Quyền storage và kết nối | Preflight worker hoàn tất không lỗi; probe ký từ backend chính hoàn tất không lỗi |
 | Upload thực tế | Người dùng xác nhận file đính kèm mới đã được upload bằng email mới |
-| Website | docs/ trên GitHub Pages; live-data161, entry142, visual-polish36; release upload không sửa các asset frontend |
+| Website | docs/ trên GitHub Pages; live-data162, entry143, rules4, locks5, visual-polish36; phát hành SLA qua main sau xác nhận backend |
 | Cloud/OAuth/database | Giữ cấu hình chính, Client ID và database/schema/quyền nghiệp vụ; worker dùng project/scopes riêng |
 
 Không ghi URL worker, khóa HMAC, token, danh sách user hoặc Script Properties dump vào tài liệu này. Người kiểm tra ownership phải xem file mới, không chỉ xem owner của folder.
