@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Trợ lý đọc dữ liệu thực tế 1.3.0 — 29/10/2026
+
+Bản nguồn bổ sung QuickAssistantActions.gs, cập nhật QuickAssistant.gs và QuickAssistantKnowledge.gs (26 nhóm/41 file nguồn). Trợ lý chọn trong 7 nhóm API đọc hiện có: hồ sơ, chi tiết công việc, bảo hành, nhật ký Fan, thông báo, danh mục nhập liệu và báo cáo center. Giữ phân quyền API gốc; báo cáo cần quản lý toàn bộ center và viewDashboard. Kết quả dữ liệu chỉ dựng nội bộ, không gửi Gemini; thao tác ghi vẫn thực hiện qua giao diện. Không tuyên bố hỗ trợ mọi câu hỏi hoặc mọi API.
+
+Tối đa một lượt Gemini cho câu hỏi tự nhiên thay vì hai; lời chào và tra bảo hành có SN rõ không gọi Gemini. Kho hướng dẫn chọn theo chủ đề/quyền, có kiểm tra drift nguồn. Chưa đo tốc độ runtime. Full validate và kiểm thử adapter/phân quyền/không xuất dữ liệu pass với fixture. Hướng dẫn DEPLOY-ASSISTANT-ACTIONS-20261029.md: thay QuickAssistant.gs, QuickAssistantKnowledge.gs, thêm QuickAssistantActions.gs; Save và New version cùng URL. Không thay key/Code/Setup/frontend. Bản 1.3.0 chưa được người dùng xác nhận deploy hoặc thử dữ liệu thật; trạng thái nguồn GitHub được ghi riêng bên dưới.
+
 ## Nguồn hướng dẫn website cho trợ lý — 28/10/2026
 
 Frontend đã vào main tại cf4151e, Pages run40715691240 success; website công khai đã kiểm tra assistantJS3/live169. Backend QuickAssistant1.2.0 + Knowledge vẫn chờ người dùng thay file và New version.

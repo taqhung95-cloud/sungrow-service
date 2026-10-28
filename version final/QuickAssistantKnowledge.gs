@@ -1,7 +1,9 @@
 /* Generic guidance reviewed against source. No records, identities, links or secrets. */
-var QUICK_ASSISTANT_KNOWLEDGE_VERSION_='2026-10-28.1';
+var QUICK_ASSISTANT_KNOWLEDGE_VERSION_='2026-10-29.1';
 function qaWebsiteKnowledge_(){
   return [
+    ['live_capabilities','Tra dữ liệu qua chức năng thật của website','entry','tra cứu|thời hạn bảo hành|model theo sn|dữ liệu thực tế',['version final/QuickAssistantActions.gs','version final/Code.gs','version final/Notifications.gs','version final/EntrySuggestions.gs','version final/FanLots.gs'],
+      'Trợ lý có thể gọi API đọc hồ sơ, bảo hành/Model theo S/N, lịch sử công việc và khoảng dừng, nhật ký lô Fan, thông báo và danh mục lỗi/linh kiện. Câu hỏi về kết quả hiện tại phải dùng công cụ đọc, không suy từ hướng dẫn. Bảo hành lấy cùng nguồn lookupWarranty của màn hình tiếp nhận; kết quả nguồn không thay thế duyệt bảo hành của hồ sơ. Hồ sơ tiếp tục theo quyền center. Trợ lý không lưu, duyệt, xóa, luân chuyển hoặc giao trả thay người dùng.'],
     ['customers','Danh bạ khách hàng khi tiếp nhận','entry','danh bạ|khách hàng|số điện thoại|lưu khách',['docs/entry.html','version final/CustomerDirectory.gs'],
       'Trong Tiếp nhận, nhập ít nhất hai ký tự tên hoặc số điện thoại để tìm khách theo center được phép. Chọn khách để điền thông tin; kiểm tra lại trước khi tạo hồ sơ. Tích lưu khách vào danh bạ nếu muốn tái sử dụng. Thông tin khách trên hồ sơ là bản chụp khi chọn, cập nhật danh bạ không tự thay mọi hồ sơ cũ. Trợ lý không gửi thông tin liên hệ khách sang AI.'],
     ['navigation','Màn hình và điều hướng','entry','menu|màn hình|chức năng|tab|sử dụng website',['docs/entry.html','docs/workspace-tabs.js','docs/entry-workspace.js'],
@@ -49,7 +51,7 @@ function qaWebsiteKnowledge_(){
     ['reports','Báo cáo và xuất Excel','management','báo cáo|excel|xuất|cột',['docs/reports.js','docs/report-xlsx.js','version final/ReportExport.gs','version final/LegacyDashboardApi.gs'],
       'Chọn Báo cáo → tổng hợp center hoặc chi tiết hồ sơ → khoảng ngày, center và cột → xem trước/xuất Excel. Chi tiết chọn cơ sở ngày tiếp nhận/hoàn tất kỹ thuật/giao trả/tồn tại ngày chốt. Mỗi dòng là một lượt tiếp nhận, không gộp S/N. Trạng thái/center là hiện tại/chặng gần nhất, không tái dựng mọi thời điểm. Ngày tạo không phải một cơ sở ngày đang hỗ trợ.'],
     ['quality','Kiểm tra dữ liệu và lệch số liệu','management','kiểm tra dữ liệu|lệch|thiếu ngày|thiếu số lượng',['docs/live-data.js','version final/LegacyDashboardApi.gs'],
-      'Đối chiếu kỳ, center, đơn vị hồ sơ/thiết bị/Fan, các ngày nhận/hoàn tất/trả, số lượng thiếu và trạng thái giao. Thiếu ngày hợp lệ có thể chưa đủ điều kiện KPI. Đồng bộ rồi mở hồ sơ nguồn. Không kết luận KPI sai từ vài kết quả tìm kiếm; trợ lý chưa có số tổng hợp thực tế để tự tính lại toàn hệ thống.'],
+      'Đối chiếu kỳ, center, đơn vị hồ sơ/thiết bị/Fan, các ngày nhận/hoàn tất/trả, số lượng thiếu và trạng thái giao. Thiếu ngày hợp lệ có thể chưa đủ điều kiện KPI. Đồng bộ rồi mở hồ sơ nguồn. Không kết luận KPI sai từ vài kết quả tìm kiếm; khi hỏi số liệu thực tế, trợ lý dùng API báo cáo trong quyền quản lý; không tự suy từ vài hồ sơ.'],
     ['appearance','Giao diện, tab và trợ lý','entry','trong suốt|transparency|robot|kéo icon|giao diện',['docs/glass-theme.js','docs/compact-sidebar.js','docs/mobile-ui.js','docs/workspace-tabs.js'],
       'Các tùy chọn giao diện và tab làm việc không đổi dữ liệu hoặc quyền. Robot kéo bằng chuột/chạm, click mở/thu chat; nút vòng tạo hội thoại mới. Trợ lý chỉ đọc và hướng dẫn, không lưu/duyệt/trả hàng thay người dùng.']
   ].map(function(x){var body=x[5];if(body.indexOf('\n')<0){var lines=body.split(/\.\s+/);body=lines.shift()+'.'+(lines.length?'\n\n- '+lines.join('.\n- '):'');}return {id:x[0],title:x[1],scope:x[2],keywords:x[3],sourceFiles:x[4],body:body};});
