@@ -2,6 +2,8 @@
 
 ## Trợ lý kéo thả và trả lời có cấu trúc — 28/10/2026
 
+Frontend đã push main và nhánh codex/quick-assistant-20261028 tại 8a17ca2; GitHub Pages run 40648324801 success. Đã kiểm tra website công khai nạp assistant JS/CSS v2 và liveJS168. Full validate, kiểm thử UI và git diff --check đều pass. Backend hai file mới vẫn chờ người dùng cập nhật và deploy; chưa xác nhận chạy thực tế.
+
 Frontend assistant2/liveJS168/entry149 bổ sung kéo thả chuột/chạm, lưu riêng tọa độ tương đối, di chuyển bằng phím mũi tên, tự đặt chat trong viewport và mở/thu từ icon bằng animation co giãn. Nền chat blur/transparency, có fallback giảm chuyển động/trong suốt. Định dạng heading/bullet/numbered/strong an toàn bằng text nodes; cuộn đến đầu trả lời, nguồn và giờ đọc tách riêng, giữ font hệ thống và icon nhỏ không nhãn.
 
 Backend cần người dùng thay QuickAssistant.gs1.1.0 và LegacyDashboardApi.gs cùng deploy New version. Trợ lý đọc fresh danh sách/chi tiết có phân quyền; getter assistantRules của dashboard lấy ngưỡng SLA từ SLA_DAYS và tính ví dụ bằng slaDays thực tế, nhóm lý do dùng chung với hàm tính; danh mục lấy từ WorkOrderRules đang nạp. Không đổi công thức/weight KPI, schema hay dữ liệu. Không chốt ngưỡng từ AI nếu thiếu hợp đồng runtime. Cache phân biệt version/fingerprint rules. Gemini tiếp tục chỉ nhận câu hỏi đã che mã và hướng dẫn chung, không nhận hồ sơ. Hướng dẫn DEPLOY-ASSISTANT-MOTION-20261028.md. Code.gs/Setup.gs và key giữ nguyên. Đây là mã nguồn/bộ cập nhật, chưa xác nhận người dùng đã deploy hai file backend mới.
