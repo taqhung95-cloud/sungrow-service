@@ -2,6 +2,8 @@
 
 ## Nguồn hướng dẫn website cho trợ lý — 28/10/2026
 
+Frontend đã vào main tại cf4151e, Pages run40715691240 success; website công khai đã kiểm tra assistantJS3/live169. Backend QuickAssistant1.2.0 + Knowledge vẫn chờ người dùng thay file và New version.
+
 QuickAssistant1.2.0 yêu cầu module QuickAssistantKnowledge.gs: 25 nhóm chức năng đối chiếu39 file source có manifest hash kiểm tra drift. Phân biệt định nghĩa/thao tác/lỗi; fallback theo chủ đề và hỏi rõ khi thiếu bằng chứng; ngữ cảnh nguồn trong cache theo quyền. Center chỉ nhận tài liệu nhập liệu; KPI/dashboard/báo cáo bị lọc ở backend, quản lý cần isGlobalManager + viewDashboard. Gemini vẫn chỉ nhận câu hỏi che mã và hướng dẫn chung, không nhận hồ sơ. Không coi kho hướng dẫn là tự đọc mọi code/hội thoại hoặc bằng chứng deployment thực tế. Kiểm thử auth/scope, dữ liệu không gửi ra ngoài, câu hỏi ý nghĩa, bộ lọc chưa có, khóa form, phân quyền, full validate và UI đã pass. Frontend assistantJS3/live169/entry150 hiển thị nhãn Gemini/hướng dẫn/tra cứu và lời chào theo quyền. Người dùng đã xác nhận lưu key; chưa xác nhận Gemini trả lời thành công. Backend mới cần thay QuickAssistant.gs, thêm QuickAssistantKnowledge.gs và New version cùng URL; Setup/Code và key giữ nguyên. Hướng dẫn DEPLOY-ASSISTANT-KNOWLEDGE-20261028.md. Trạng thái lúc chuẩn bị commit: local đã kiểm thử, chưa xác nhận deploy backend.
 
 
