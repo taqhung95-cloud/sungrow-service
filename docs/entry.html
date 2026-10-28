@@ -206,6 +206,7 @@
     }
 
     function onCredential(response){
+      window.SungrowQuickAssistant?.configure(null);
       const generation=state.authSequence=(state.authSequence||0)+1,credential=response.credential;
       state.token=credential;
       state.caseAbort?.abort();state.caseSequence=(state.caseSequence||0)+1;state.caseLoading=false;state.caseCache={};state.caseDataRevision='';
@@ -218,6 +219,10 @@
         state.token=adopted;sessionStorage.setItem('sungrow_id_token',state.token);
         applyDeviceTypes(data);state.entrySuggestions=data.entrySuggestions===true;state.warrantyBatchLookup=data.warrantyBatchLookup===true;state.fanLotModels=data.fanLotModels===true;state.systemCaseCorrections=data.systemCaseCorrections===true;state.caseLatestResultFilter=data.caseLatestResultFilter===true;$('#caseLatestResult').disabled=!state.caseLatestResultFilter;
         state.actor=data.actor;state.centers=data.centers;state.allCenters=data.allCenters;state.customerDirectory=!!data.customerDirectory;state.temporaryUploads=!!data.temporaryUploads;state.fanSharedForms=data.fanSharedForms===true;state.fanLots=!!data.fanLots;state.fanLotReader=!!data.fanLotReader;state.fanLotPartsWithTechnical=!!data.fanLotPartsWithTechnical;window.SungrowFanLots?.configure();state.uploadCategories=!!data.uploadCategories;state.supplementalAttachments=!!data.supplementalAttachments;state.customerPicker?.sync();
+        if(!EMBEDDED)window.SungrowQuickAssistant?.configure({actor:state.actor,
+          request:(payload,signal)=>call('quickAssistantChat',[state.token,payload],0,signal),
+          openCase:async(caseId,options)=>{if(window.SungrowEntryWorkspace){const opened=await SungrowEntryWorkspace.activate(caseId,options?.history?'Lịch sử xử lý':'');if(!opened)throw new Error('Chưa mở được hồ sơ.');}else openCaseDrawer(JSON.stringify({caseId}));}
+        });
         applyActorCapabilities();
         state.notifications= data.notifications===true;
         if(!EMBEDDED)window.SungrowNotifications?.configure({anchor:$('#caseSync'),available:state.notifications,request:(name,options,signal)=>call(name,[state.token,options],0,signal),openCase:caseId=>openCaseDrawer(JSON.stringify({caseId}))});
@@ -238,6 +243,7 @@
     }
 
     async function signOutEntry(){
+      window.SungrowQuickAssistant?.configure(null);
       const previous=state.token;state.authSequence=(state.authSequence||0)+1;state.token='';state.actor=null;state.caseAbort?.abort();window.SungrowNotifications?.configure(null);
       sessionStorage.removeItem('sungrow_id_token');sessionStorage.removeItem('sungrow_portal_actor');closeCaseDrawer();$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden');
       try{window.google?.accounts?.id?.disableAutoSelect()}catch(_){}
@@ -698,7 +704,7 @@
     async function call(name,args,attempt=0,signal){
       const syncRead=['getBootstrap','getPortalSyncState','listCases'].includes(name);
       if(syncRead)updateSyncActivity(1);
-      const readOnly=['getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','lookupWarrantyBatch','getCreationStatus','searchCustomers','getCaseUploadSession','getCaseAttachmentReceipt','getFanLotHistory','previewFanGroup','listFanGroups','getFanGroup','listNotifications','markNotificationsRead'].includes(name);
+      const readOnly=['quickAssistantChat','getBootstrap','createPortalSession','revokePortalSession','getPortalSyncState','listCases','getCaseDetail','searchCases','lookupWarranty','lookupWarrantyBatch','getCreationStatus','searchCustomers','getCaseUploadSession','getCaseAttachmentReceipt','getFanLotHistory','previewFanGroup','listFanGroups','getFanGroup','listNotifications','markNotificationsRead'].includes(name);
       const uploadOnly=['beginCaseUpload','uploadCaseFile','removeCaseUploadFile','setCaseUploadCategory'].includes(name);
       const mutation=!readOnly&&!uploadOnly;
       if(mutation&&document.getElementById('mutationProgress'))throw new Error('Một thao tác đang được lưu. Vui lòng chờ kết quả trước khi gửi tiếp.');
@@ -710,7 +716,7 @@
         const body=new URLSearchParams({payload:JSON.stringify(payload)});
         const controller=new AbortController();
         let timeout,abort;
-        const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},name==='uploadCaseFile'?120000:['createCase','commitCaseAttachments'].includes(name)?90000:name==='listCases'?30000:45000)});
+        const interrupted=new Promise((_,reject)=>{abort=()=>{controller.abort();const error=new Error('Đã hủy yêu cầu đọc cũ.');error.name='AbortError';reject(error)};if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});timeout=setTimeout(()=>{controller.abort();const error=new Error('Hết thời gian tải dữ liệu. Bấm Đồng bộ để thử lại.');error.name='TimeoutError';reject(error)},['quickAssistantChat','uploadCaseFile'].includes(name)?120000:['createCase','commitCaseAttachments'].includes(name)?90000:name==='listCases'?30000:45000)});
         let result;
         try{result=await Promise.race([(async()=>{const response=await (globalThis.SungrowTransport?.fetch || fetch)(CONFIG.appsScriptUrl,{method:'POST',body,redirect:'follow',cache:'no-store',signal:controller.signal});if(!response.ok){const error=new Error('Không kết nối được hệ thống (HTTP '+response.status+').');error.code='HTTP_'+response.status;throw error}return await response.json()})(),interrupted])}
         finally{clearTimeout(timeout);signal?.removeEventListener('abort',abort)}
@@ -720,7 +726,7 @@
         return result.data;
       }catch(error){
         const retryable=readOnly&&!isAuthError(error)&&(/INTERNAL|HTTP_429|HTTP_5/i.test(error.code||'')||/Không thể xử lý yêu cầu|Không kết nối được hệ thống|đang được chuẩn bị|Failed to fetch|NetworkError|AbortError/i.test(error.message||'')||error.name==='AbortError');
-        if(retryable&&attempt<1&&!signal?.aborted&&!['listCases','getPortalSyncState'].includes(name)){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1,signal)}
+        if(retryable&&attempt<1&&!signal?.aborted&&!['quickAssistantChat','listCases','getPortalSyncState'].includes(name)){await new Promise(resolve=>setTimeout(resolve,2000+Math.random()*2000));return call(name,args,attempt+1,signal)}
         throw error;
       }finally{if(syncRead)updateSyncActivity(-1);if(mutation)document.getElementById('mutationProgress')?.remove();}
     }
@@ -921,5 +927,5 @@
     }).observe(document.body,{childList:true,subtree:true,characterData:true});
   })();
   </script>
-<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=6"></script><script src="work-order-rules.js?v=4"></script><script src="work-order-locks.js?v=5"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=6"></script><script src="fan-lots.js?v=9"></script><script src="fan-lot-native.js?v=8"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=8"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script><script src="entry-workspace.js?v=4"></script><script src="fan-warranty.js?v=3"></script><link rel="stylesheet" href="fan-warranty.css?v=9"></body>
+<link rel="stylesheet" href="case-uploads.css?v=5"><script src="exact-case-search.js?v=2"></script><script src="form-drafts.js?v=6"></script><script src="work-order-rules.js?v=4"></script><script src="work-order-locks.js?v=5"></script><script src="mobile-ui.js?v=4"></script><script src="attachment-ui.js?v=2"></script><script src="case-uploads.js?v=9"></script><script src="supplement-attachments.js?v=1"></script><link rel="stylesheet" href="glass-controls.css?v=2"><link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css?v=3" media="not all"><script src="glass-theme.js?v=2"></script><link rel="stylesheet" href="notifications.css?v=6"><script src="notifications.js?v=8"></script><script src="entry-notifications.js?v=1"></script><script src="session-client.js?v=1"></script><link rel="stylesheet" href="mobile-ui.css?v=4"><link rel="stylesheet" href="fan-lots.css?v=4"><script src="fan-lot-rules.js?v=6"></script><script src="fan-lots.js?v=9"></script><script src="fan-lot-native.js?v=8"></script><link rel="stylesheet" href="fan-shared-forms.css?v=2"><script src="fan-shared-forms.js?v=8"></script><script src="issue-catalog.js?v=1"></script><script src="entry-suggestions.js?v=1"></script><script src="entry-workspace.js?v=5"></script><script src="fan-warranty.js?v=3"></script><link rel="stylesheet" href="fan-warranty.css?v=9"><link rel="stylesheet" href="quick-assistant.css?v=1"><script src="quick-assistant.js?v=1"></script></body>
 </html>

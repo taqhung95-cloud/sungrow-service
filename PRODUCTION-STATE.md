@@ -1,5 +1,14 @@
 # Trạng thái production và đồng bộ repository
 
+## Trợ lý hỏi nhanh — 28/10/2026, backend 1.11.24 cần cập nhật thủ công
+
+Portal liveJS167/entry148 thêm quick-assistant.js/css1, robot 48px có neon cam; không có chữ dưới icon/thẻ gợi ý. Mọi vai trò đăng nhập được sử dụng, dữ liệu tiếp tục theo quyền center/case. Cùng SN nhiều hồ sơ không tự gộp hoặc chọn một; mở hồ sơ/lịch sử theo caseId qua workspace hiện có. Trang entry độc lập có trợ lý; iframe dùng trợ lý của shell. Không lưu chat ở localStorage; xóa khi đăng xuất/đổi tài khoản, bỏ phản hồi trễ. Nhãn giữ một dòng và mã dài có vùng cuộn riêng.
+
+RPC quickAssistantChat trong Code.gs + module QuickAssistant.gs chỉ đọc qua listCases/getCaseDetail. Gemini Free Tier chỉ nhận câu hỏi đã che mã/email/URL/số dài/khóa phổ biến và tối đa4câu hỏi trước đã che, cùng hướng dẫn chung. Không gửi hồ sơ, trạng thái, mốc ngày, khoảng SLA hay thông tin khách/ghi chú/Drive/token từ database sang Google; kết quả hồ sơ được ghép nội bộ sau phân quyền. AI chỉ bật khi ASSISTANT_AI_ENABLED=true, ASSISTANT_FREE_TIER_CONFIRMED=true và đã lưu ASSISTANT_GEMINI_KEY trong Script Properties. Mặc định model gemini-3.5-flash-lite, không tự chuyển dịch vụ/model trả phí; admin phải dùng project Free Tier không Cloud Billing. Hết quota/lỗi AI về hướng dẫn nội bộ; tra mã trực tiếp không gọi AI. Không ghi dữ liệu nghiệp vụ hoặc đổi schema. Hướng dẫn từng file, tạo key và deploy: DEPLOY-1.11.24-QUICK-ASSISTANT.md.
+
+Mã Code.gs dựa trên main 1.11.21, không mang các bản Fan1.11.22/nhãn1.11.23 ở nhánh riêng. Người dùng tự cập nhật Code.gs và thêm QuickAssistant.gs rồi New version cùng deployment URL. Trạng thái này ghi nhận mã nguồn/bộ cập nhật, không xác nhận backend đã deploy hoặc đã gọi Gemini bằng key thật. Frontend GitHub được phát hành độc lập, backend cũ hiển thị thông báo cần kích hoạt thay vì dùng dữ liệu giả.
+
+
 ## Lỗi xác nhận chung cho nhiều Fan — 27/10/2026
 
 Frontend liveJS165/entry146/sharedforms8/drafts6 gộp các lỗi đã lưu cùng mã, tên và ngày thành một dòng trên biểu mẫu lô Fan. Lỗi khác hoặc ngày xác nhận khác giữ riêng. Giữ nhóm ID gốc trong data-fan-issue-ids; khi gửi mở lại đúng các bản ghi cũ cùng ghi chú riêng để backend giữ liên kết từng inverter, không xóa/ghi lại lịch sử và không thay số Fan trong KPI. Lỗi mới nhập một lần áp dụng cho scope đã chọn; hàng lỗi mới trùng nhau trong cùng lần gửi được gộp trước RPC. Nháp giữ nhóm ID và khóa chỉnh sửa lịch sử khi khôi phục. Không thêm RPC đọc, không đổi schema/API/backend; không cần deploy Apps Script cho sửa này. Kiểm thử UI gồm gộp3lỗi giống, lỗi khác, lưu đủ ID/ghi chú, scope3inverter, thêm lỗi mới, retry cùngrequestId và khôi phục nháp.

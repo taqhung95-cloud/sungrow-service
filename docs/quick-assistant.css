@@ -1,0 +1,34 @@
+/* Deliberately isolated from portal/form controls; inherits the portal font. */
+.sgqa{font-family:'Sungrow Montserrat',Montserrat,Arial,sans-serif;font-size:13px;line-height:1.5;color:#34424d;position:fixed;right:22px;bottom:78px;z-index:9900}
+.sgqa *{box-sizing:border-box}.sgqa [hidden]{display:none!important}
+.sgqa button,.sgqa input{font:inherit}.sgqa button,.sgqa a{cursor:pointer;touch-action:manipulation}
+.sgqa button:focus-visible,.sgqa a:focus-visible,.sgqa input:focus-visible{outline:2px solid #ff7900;outline-offset:3px}
+.sgqa-launch{position:relative;isolation:isolate;width:52px;height:60px;display:grid;place-items:center;padding:0;border:0;background:transparent;border-radius:6px}
+.sgqa-robot{display:block;position:relative;width:48px;height:56px;overflow:hidden;z-index:2;filter:drop-shadow(0 3px 4px #58432835)}
+.sgqa-robot img{position:absolute;width:149px;height:auto;max-width:none;left:-51px;top:-3px}
+.sgqa-launch:before{content:'';position:absolute;inset:8px -5px 0;border-radius:50%;z-index:0;background:radial-gradient(ellipse at center,#fff1bfba 0%,#ffab4599 24%,#ff79005c 45%,#ff790000 72%);filter:blur(7px);animation:sgqa-glow 4s ease-in-out infinite;pointer-events:none}
+.sgqa-launch:after{content:'';position:absolute;left:5px;right:5px;bottom:0;height:10px;border-radius:50%;z-index:1;background:radial-gradient(ellipse,#ffe2a5 0%,#ff9710a6 35%,#ff79004d 58%,#ff790000 75%);filter:blur(2px);box-shadow:0 0 15px 2px #ff8a0055;pointer-events:none}
+@keyframes sgqa-glow{0%,100%{opacity:.55;transform:scale(.91)}50%{opacity:1;transform:scale(1.11)}}
+.sgqa-panel{position:absolute;right:0;bottom:74px;width:395px;height:min(560px,calc(100dvh - 190px));min-height:260px;display:flex;flex-direction:column;background:#fff;border:1px solid #e1e9ef;border-top:3px solid #ff7900;border-radius:16px;box-shadow:0 12px 48px #213d5140;overflow:hidden}
+.sgqa-head{display:flex;align-items:center;gap:9px;padding:11px 14px;border-bottom:1px solid #e9edf0;flex-shrink:0}
+.sgqa-head .sgqa-robot{width:35px;height:40px}.sgqa-head .sgqa-robot img{width:120px;left:-42px;top:-2px}
+.sgqa-title{font-size:14px;font-weight:600;margin:0}.sgqa-subtitle{font-size:11px;color:#788791}.sgqa-subtitle:before{content:'●';color:#ff7900;margin-right:5px}
+.sgqa-tools{margin-left:auto;display:flex;gap:4px}.sgqa-tools button{border:0;background:transparent;color:#74838e;border-radius:5px;width:30px;height:32px;font-size:20px;padding:0}.sgqa-tools button:hover{background:#f0f4f7}
+.sgqa-log{flex:1;overflow:auto;padding:14px;min-height:0;background:#f3f7fa;overscroll-behavior:contain}
+.sgqa-message{background:#fff;border:1px solid #e5ebef;border-radius:3px 12px 12px;margin:0 0 12px;padding:13px;overflow-wrap:break-word;word-break:normal}
+.sgqa-message p{margin:0 0 9px;white-space:pre-wrap}.sgqa-message p:last-child{margin-bottom:0}
+.sgqa-user{background:#fff0e1;border-color:#ffe0c2;border-radius:12px 3px 12px 12px;max-width:90%;width:fit-content;margin-left:auto;padding:8px 12px;white-space:pre-wrap}
+.sgqa-error{border-color:#edc3bd;color:#9c3b2c}.sgqa-pending{color:#73838e}
+.sgqa-record{border-top:1px solid #e6edf0;padding-top:10px;margin-top:10px}.sgqa-record h3{font:600 13px/1.5 'Sungrow Montserrat',Montserrat,Arial,sans-serif;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sgqa-badge{font-size:10px;color:#9a5720;background:#fff1e0;padding:4px 7px;border-radius:4px;font-weight:400;white-space:nowrap;max-width:100%}
+.sgqa-facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 14px;font-size:12px;margin:8px 0}
+.sgqa-facts dt{color:#7b8b96;white-space:nowrap;word-break:normal}.sgqa-facts dd{margin:0;min-width:0;word-break:normal;overflow-wrap:break-word}
+.sgqa-facts .sgqa-key{white-space:nowrap;overflow:auto;overflow-wrap:normal;scrollbar-width:thin}
+.sgqa-links{display:flex;flex-wrap:wrap;gap:8px 15px;padding-top:8px}.sgqa-links a{font-size:12px;color:#c45c00;text-decoration:none;white-space:nowrap}.sgqa-links a:hover{text-decoration:underline}
+.sgqa-sources{padding-top:8px;margin-top:10px;border-top:1px solid #edf0f2;font-size:10px;color:#7b8b96}
+.sgqa-form{padding:11px;background:#fff;border-top:1px solid #e6edf1;display:flex;gap:7px;flex-shrink:0}
+.sgqa-form input{width:100%;min-width:0;border:1px solid #dfe7ed;background:#f7f9fb;padding:11px 10px;font-size:12px;border-radius:9px;color:#33454f}
+.sgqa-form button{border:0;background:#ff7900;color:#fff;border-radius:9px;padding:0 12px;white-space:nowrap;font-size:12px;font-weight:600;min-height:42px}
+.sgqa button:disabled{cursor:wait;opacity:.65}
+@media(max-width:600px){.sgqa{right:12px;bottom:max(16px,env(safe-area-inset-bottom))}.sgqa-panel{width:calc(100vw - 24px);height:min(560px,calc(100dvh - 115px));bottom:70px}.sgqa-form input{font-size:16px}.sgqa-facts{gap:5px 10px}}
+@media(prefers-reduced-motion:reduce){.sgqa-launch:before{animation:none;opacity:.8}}

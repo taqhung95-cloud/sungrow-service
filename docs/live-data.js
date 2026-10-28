@@ -149,7 +149,7 @@
     frame.dataset.portalView = view;
     if (!frame.getAttribute('src')) {
       const entryPage = cfg.dataEntryPage || 'entry.html';
-      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=146#' + view;
+      frame.src = entryPage + (entryPage.includes('?') ? '&' : '?') + 'v=148#' + view;
     }
     else if (frame.dataset.ready === 'true') frame.contentWindow.postMessage({type:'sungrow-portal-view',view:view,refresh},window.location.origin);
     root.querySelectorAll('button[data-page]').forEach(button => button.removeAttribute('aria-current'));
@@ -220,7 +220,7 @@
       const stopped = new Promise((_, reject) => {
         forwardAbort = () => { requestController.abort(); const error = new Error('Đã hủy yêu cầu đọc cũ.'); error.name = 'AbortError'; reject(error); };
         if (signal?.aborted) forwardAbort(); else signal?.addEventListener('abort', forwardAbort, {once:true});
-        timeout = setTimeout(() => { requestController.abort(); const error = new Error('Hết thời gian kết nối dữ liệu. Bấm Đồng bộ để thử lại.'); error.code = 'READ_TIMEOUT'; reject(error); }, 45000);
+        timeout = setTimeout(() => { requestController.abort(); const error = new Error('Hết thời gian kết nối dữ liệu. Bấm Đồng bộ để thử lại.'); error.code = 'READ_TIMEOUT'; reject(error); }, payload.functionName==='quickAssistantChat'?120000:45000);
       });
       try {
         const result = await Promise.race([(async () => {
@@ -1018,6 +1018,7 @@
   }
 
   async function handleCredential(response) {
+    window.SungrowQuickAssistant?.configure(null);
     const generation=++authSequence,credential=response?.credential||'';
     token = credential;
     if (!token) return;
@@ -1047,6 +1048,14 @@
       });
       window.SungrowReports?.configure({actor:bootstrap.actor,available:bootstrap.reportExports===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1)});
       window.SungrowNotifications?.configure({anchor:q('#sg-refresh'),available:bootstrap.notifications===true,request:(name,options,signal)=>fetchDashboard({action:'portal.call',functionName:name,args:[token,options]},signal,1),openCase:caseId=>{if(window.SungrowWorkspace){window.SungrowWorkspace.open({kind:'case',id:caseId});return;}window.SungrowReports?.close();openEntryView('cases',false);const frame=q('.sg-portal-frame');frame.dataset.notificationCase=caseId;if(frame.dataset.ready==='true'){frame.contentWindow.postMessage({type:'sungrow-portal-notification-case',caseId},window.location.origin);delete frame.dataset.notificationCase;}}});
+      window.SungrowQuickAssistant?.configure({actor:bootstrap.actor,
+        request:(payload,signal)=>fetchDashboard({action:'portal.call',functionName:'quickAssistantChat',args:[token,payload]},signal,1),
+        openCase:async(caseId,options)=>{
+          if(window.SungrowWorkspace){const opened=await window.SungrowWorkspace.open({kind:'case',id:caseId,action:options?.history?'Lịch sử xử lý':''});if(!opened)throw new Error('Chưa chuyển được hồ sơ. Kiểm tra thao tác đang nhập.');return;}
+          openEntryView('update',false);const frame=q('.sg-portal-frame');frame.dataset.workspaceCase=caseId;frame.dataset.workspaceAction=options?.history?'Lịch sử xử lý':'';
+          if(frame.dataset.ready==='true')frame.contentWindow.postMessage({type:'sungrow-workspace-case',caseId,action:frame.dataset.workspaceAction},location.origin);
+        }
+      });
       if (!bootstrap.actor?.isGlobalManager) {
         renderIdentity(bootstrap.actor);
         [q('.sg-dashboard-parent'),q('.sg-dashboard-subnav')].forEach(element => {
@@ -1072,6 +1081,7 @@
     } catch (error) {
       if(generation!==authSequence)return;
       token = '';
+      window.SungrowQuickAssistant?.configure(null);
       window.SungrowReports?.configure(null);
       window.SungrowNotifications?.configure(null);
       sessionStorage.removeItem('sungrow_id_token');
@@ -1117,6 +1127,7 @@
   }
 
   async function signOut() {
+    window.SungrowQuickAssistant?.configure(null);
     const previous=token;authSequence++;
     window.SungrowWorkspace?.configure(null);
     token = '';entryBootstrap=null;

@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.21-sla-dropdown';
+const APP_VERSION = '1.11.24-quick-assistant';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -153,6 +153,7 @@ function handlePortalApi_(request) {
   const allowed = {
     getReportBootstrap: function(){if(typeof getReportBootstrap!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return getReportBootstrap.apply(null,arguments);},
     readReportPage: function(){if(typeof readReportPage!=='function')throw publicError_('Chưa cài đặt Báo cáo.');return readReportPage.apply(null,arguments);},
+    quickAssistantChat: function(){if(typeof quickAssistantChat!=='function')throw publicError_('Cần cập nhật QuickAssistant.gs.');return quickAssistantChat.apply(null,arguments);},
     getBootstrap: getBootstrap,
     getEntrySuggestions: function(){if(typeof getEntrySuggestions!=='function')throw publicError_('Cần cập nhật EntrySuggestions.gs.');return getEntrySuggestions.apply(null,arguments);},
     createPortalSession: function(){if(typeof createPortalSession!=='function')throw publicError_('Chưa cài đặt phiên đăng nhập 8 giờ.');return createPortalSession.apply(null,arguments);},
