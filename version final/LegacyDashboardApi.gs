@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.20-sla-holds';
+const LEGACY_API_VERSION = '1.11.23-dashboard-issue-labels';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -824,6 +824,17 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
   };
 }
 
+// Presentation only: keep source rows and Fan issue quantities for analytics/history.
+function dashboardIssueLabels_(issues) {
+  const seen = new Set();
+  return (issues || []).reduce(function (labels, value) {
+    const label = clean_(value).replace(/\s+/g, ' ');
+    const key = label.toLocaleLowerCase('vi');
+    if (label && !seen.has(key)) { seen.add(key); labels.push(label); }
+    return labels;
+  }, []);
+}
+
 function publicTicket_(r) {
   const deliveredWithoutReturn = /đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate;
   const processingState = r.returnDate ? 'completed' : (deliveredWithoutReturn ? 'missing_return_date' : 'open');
@@ -841,7 +852,7 @@ function publicTicket_(r) {
     receivedDate: iso_(r.receivedDate),
     returnDate: iso_(r.returnDate),
     center: r.center,
-    error: r.issues.join(', ') || r.errorCode || 'Chưa ghi nhận',
+    error: dashboardIssueLabels_(r.issues).join(', ') || r.errorCode || 'Chưa ghi nhận',
     warranty: r.warrantyConfirmation,
     warrantyStatus: r.warrantyStatus,
     deliveryStatus: r.deliveryStatus,
