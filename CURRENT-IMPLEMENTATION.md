@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sửa nút lưu cấu hình 1.2.1 — 28/10/2026
+
+Đã tái hiện trong Chrome: biến status toàn cục bị window.status chuyển thành chuỗi, khiến callback không hiển thị thông báo. Đưa script trang setup vào phạm vi hàm riêng strict để tránh xung đột global. Kiểm thử trình duyệt bản cũ thất bại, bản mới pass lưu/readback/reload/lỗi và retry. Full validate pass. Thay QuickAssistantSetup.gs rồi deploy New version; người dùng chưa xác nhận runtime. Không khẳng định lỗi này là nguyên nhân key mất; nó che thông báo cần để chẩn đoán. Bản nguồn được phát hành qua main, không đổi frontend portal.
+
+
 ## Xác minh lưu cấu hình trợ lý — 28/10/2026
 
 QuickAssistantSetup.gs 1.2 đọc lại mọi property sau ghi trước khi báo thành công. Trang có nút kiểm tra trực tiếp, chỉ hiển thị có key/bật AI/xác nhận Free Tier và 10 ký tự cuối ID project; không trả key. Lỗi được phân loại bằng thông báo an toàn. Kiểm thử gồm ghi bị mất, retry, phân quyền owner và giữ properties khác. Chưa kết luận nguyên nhân ở runtime; người dùng cần thay duy nhất QuickAssistantSetup.gs và deploy New version trên Web App hiện tại. Đây là bản nguồn, backend chưa được xác nhận cập nhật.
