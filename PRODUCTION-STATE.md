@@ -1,5 +1,10 @@
 # Trạng thái production và đồng bộ repository
 
+## Xác minh lưu cấu hình trợ lý — 28/10/2026
+
+QuickAssistantSetup.gs 1.2 đọc lại mọi property sau ghi trước khi báo thành công. Trang có nút kiểm tra trực tiếp, chỉ hiển thị có key/bật AI/xác nhận Free Tier và 10 ký tự cuối ID project; không trả key. Lỗi được phân loại bằng thông báo an toàn. Kiểm thử gồm ghi bị mất, retry, phân quyền owner và giữ properties khác. Chưa kết luận nguyên nhân ở runtime; người dùng cần thay duy nhất QuickAssistantSetup.gs và deploy New version trên Web App hiện tại. Đây là bản nguồn, backend chưa được xác nhận cập nhật.
+
+
 ## Trợ lý kéo thả và trả lời có cấu trúc — 28/10/2026
 
 Frontend đã push main và nhánh codex/quick-assistant-20261028 tại 8a17ca2; GitHub Pages run 40648324801 success. Đã kiểm tra website công khai nạp assistant JS/CSS v2 và liveJS168. Full validate, kiểm thử UI và git diff --check đều pass. Backend hai file mới vẫn chờ người dùng cập nhật và deploy; chưa xác nhận chạy thực tế.

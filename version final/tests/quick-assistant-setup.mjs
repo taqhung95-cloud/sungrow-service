@@ -4,11 +4,12 @@ import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 const read=f=>fs.readFileSync(new URL('../'+f,import.meta.url),'utf8');
 const props=new Map(),cache=new Map(),key='fixture-key-'+ 'x'.repeat(30),owner='taqhung.95@gmail.com';
-let active=owner,effective=owner,sets=0;
+let active=owner,effective=owner,sets=0,discardWrites=false;
 const c={console,JSON,Number,Error,Date,
+ ScriptApp:{getScriptId:()=> 'fixture-project-1234567890'},
  Session:{getEffectiveUser:()=>({getEmail:()=>effective}),getActiveUser:()=>({getEmail:()=>active})},
  Utilities:{getUuid:()=>crypto.randomUUID()},CacheService:{getScriptCache:()=>({put:(k,v)=>cache.set(k,v),get:k=>cache.get(k),remove:k=>cache.delete(k)})},
- PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperties:(values,remove)=>{assert.equal(remove,false,'Must retain other properties');sets++;Object.entries(values).forEach(([k,v])=>props.set(k,v));}})},
+ PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperties:(values,remove)=>{assert.equal(remove,false,'Must retain other properties');sets++;if(!discardWrites)Object.entries(values).forEach(([k,v])=>props.set(k,v));}})},
  HtmlService:{createHtmlOutput:html=>({html,setTitle(){return this;}})},LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>{}})}
 };
 vm.createContext(c);vm.runInContext(read('AttachmentStorage.gs'),c);vm.runInContext(read('QuickAssistantSetup.gs'),c);
@@ -31,6 +32,15 @@ assert.throws(()=>c.configureQuickAssistantForOwner(second,{...values,daily:-1})
 assert.throws(()=>c.configureQuickAssistantForOwner(second,{...values,freeConfirmed:false}),/Free Tier/);
 assert.equal(sets,1,'Invalid input must not write');
 const disabled=c.configureQuickAssistantForOwner(second,{...values,enabled:false,freeConfirmed:false,daily:0});assert.equal(disabled.aiEnabled,false);assert.equal(props.get('ASSISTANT_GEMINI_KEY'),key);
+assert.equal(c.readQuickAssistantConfigurationForOwner().keyConfigured,true);
+assert.equal(c.readQuickAssistantConfigurationForOwner().project,'1234567890');
+assert.ok(!JSON.stringify(c.readQuickAssistantConfigurationForOwner()).includes(key));
+active='staff@example.invalid';assert.throws(()=>c.readQuickAssistantConfigurationForOwner(),/Chỉ chủ/);active=owner;
+c.qaSetupPage_();const third=[...cache.keys()][0].slice('QA_SETUP:'.length);discardWrites=true;
+assert.throws(()=>c.configureQuickAssistantForOwner(third,{...values,key:'new-fixture-key-123456789012345'}),/Không xác minh/);
+discardWrites=false;
+assert.equal(c.configureQuickAssistantForOwner(third,{...values,key:'new-fixture-key-123456789012345'}).keyConfigured,true);
+assert.equal(props.get('ASSISTANT_GEMINI_KEY'),'new-fixture-key-123456789012345');
 const scripts=[...page.html.matchAll(/<script>([\s\S]*?)<\/script>/g)];for(const m of scripts)new vm.Script(m[1]);
 assert.match(read('Code.gs'),/assistant_setup==='1'/);
 assert.doesNotMatch(read('QuickAssistantSetup.gs'),/deleteAllProperties|deleteProperty|setProperties\([^;]+true\)/);

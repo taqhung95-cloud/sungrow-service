@@ -1,4 +1,9 @@
 /* Owner-only HTMLService setup for projects with >50 read-only editor properties. */
+function readQuickAssistantConfigurationForOwner(){
+  qaSetupOwner_();
+  var p=PropertiesService.getScriptProperties();
+  return {keyConfigured:!!p.getProperty('ASSISTANT_GEMINI_KEY'),aiEnabled:p.getProperty('ASSISTANT_AI_ENABLED')==='true',freeConfirmed:p.getProperty('ASSISTANT_FREE_TIER_CONFIRMED')==='true',project:ScriptApp.getScriptId().slice(-10),setupVersion:'1.2'};
+}
 function qaSetupOwner_(){
   if(typeof asOwner_!=='function')throw Error('Chưa có kiểm tra chủ backend. Kiểm tra module AttachmentStorage.gs trong project chính.');
   try{return asOwner_();}
@@ -21,19 +26,23 @@ function qaSetupPage_(){
 <div class="row"><label>Lượt gọi AI/ngày toàn hệ thống<input id="daily" type="number" min="0" max="10000" step="1" required></label><label>Lượt gọi AI/giờ/tài khoản<input id="hourly" type="number" min="0" max="200" step="1" required></label></div>
 <div class="checks"><label><input id="free" type="checkbox"><span>Tôi đã kiểm tra API key thuộc project Gemini Free Tier, không liên kết Cloud Billing.</span></label>
 <label><input id="enabled" type="checkbox"><span>Bật Gemini để hiểu câu hỏi tự nhiên. Khi tắt, vẫn dùng tra cứu và hướng dẫn nội bộ.</span></label></div>
-<button id="save" type="submit">Lưu cấu hình trợ lý</button></form><p id="status" role="status" aria-live="polite"></p></main>
+<button id="save" type="submit">Lưu cấu hình trợ lý</button></form><button id="verify" type="button">Kiểm tra cấu hình đã lưu</button><p id="stored" role="status"></p><p id="status" role="status" aria-live="polite"></p></main>
 <script>
 var cfg=${json};
 var key=document.getElementById('key'),save=document.getElementById('save'),status=document.getElementById('status');
+function showStored(result){document.getElementById('stored').textContent='Cấu hình 1.2 · Project …'+result.project+' · Key: '+(result.keyConfigured?'Đã lưu':'Chưa có')+' · AI: '+(result.aiEnabled?'Bật':'Tắt')+' · Free Tier: '+(result.freeConfirmed?'Đã xác nhận':'Chưa xác nhận');document.getElementById('keyHelp').textContent=result.keyConfigured?'Đã có key. Để trống để giữ key hiện tại.':'Chưa có key trong project này.';}
+function failed(error){save.disabled=false;status.className='error';var m=String(error&&error.message||'');var known=['Phiên cấu hình đã hết hạn','Chỉ chủ backend','API key không hợp lệ','Cấu hình trợ lý không hợp lệ','Cần API key và xác nhận Free Tier','Không xác minh được cấu hình vừa lưu','Hệ thống đang cập nhật'];var reason=known.find(function(s){return m.indexOf(s)>=0;});status.textContent='Chưa xác nhận lưu thành công. '+(reason||(/quota|limit|storage/i.test(m)?'Apps Script báo giới hạn dịch vụ hoặc dung lượng Properties.':'Không nhận được xác nhận từ máy chủ. Kiểm tra Executions của project.'))+'. Tải lại trang nếu phiên đã quá 10 phút.';}
+document.getElementById('verify').onclick=function(){document.getElementById('stored').textContent='Đang đọc trực tiếp cấu hình trên máy chủ…';google.script.run.withSuccessHandler(showStored).withFailureHandler(failed).readQuickAssistantConfigurationForOwner();};
 document.getElementById('model').value=cfg.model;
 document.getElementById('daily').value=cfg.daily;document.getElementById('hourly').value=cfg.hourly;
 document.getElementById('enabled').checked=cfg.enabled;document.getElementById('free').checked=cfg.free;
 document.getElementById('keyHelp').textContent=cfg.configured?'Đã có key. Để trống để giữ key hiện tại; nhập key mới nếu muốn thay.':'Chưa có key. Nhập key từ Google AI Studio để bật Gemini.';
 document.getElementById('setup').onsubmit=function(e){e.preventDefault();save.disabled=true;status.className='';status.textContent='Đang lưu cấu hình…';
 var values={key:key.value.trim(),model:document.getElementById('model').value,daily:Number(document.getElementById('daily').value),hourly:Number(document.getElementById('hourly').value),enabled:document.getElementById('enabled').checked,freeConfirmed:document.getElementById('free').checked};
-google.script.run.withSuccessHandler(function(result){key.value='';status.textContent=result.aiEnabled?'Đã lưu và bật Gemini. Quay lại website và thử câu hỏi.':'Đã lưu. Trợ lý đang dùng tra cứu/hướng dẫn nội bộ.';save.textContent='Đã lưu';})
-.withFailureHandler(function(){key.value='';save.disabled=false;status.className='error';status.textContent='Chưa lưu được. Kiểm tra key, hạn mức, xác nhận Free Tier và tài khoản chủ backend. Nếu trang đã mở hơn 10 phút, tải lại rồi thử lại.';})
+google.script.run.withSuccessHandler(function(result){key.value='';showStored(result);status.textContent='Đã ghi và đọc lại cấu hình thành công. '+(result.aiEnabled?'AI đã bật. Chưa kiểm tra kết nối Gemini.':'AI đang tắt.');save.textContent='Đã lưu';})
+.withFailureHandler(failed)
 .configureQuickAssistantForOwner(cfg.nonce,values);};
+document.getElementById('verify').click();
 </script></body></html>`;
   return HtmlService.createHtmlOutput(html).setTitle('Cấu hình trợ lý Sungrow');
 }
@@ -54,7 +63,9 @@ function configureQuickAssistantForOwner(nonce,values){
     var updates={ASSISTANT_GEMINI_MODEL:model,ASSISTANT_AI_DAILY_LIMIT:String(daily),ASSISTANT_AI_USER_HOURLY_LIMIT:String(hourly),ASSISTANT_AI_ENABLED:String(values.enabled),ASSISTANT_FREE_TIER_CONFIRMED:String(values.freeConfirmed)};
     if(key)updates.ASSISTANT_GEMINI_KEY=key;
     props.setProperties(updates,false);
+    var persisted=PropertiesService.getScriptProperties();
+    if(Object.keys(updates).some(function(k){return persisted.getProperty(k)!==updates[k];}))throw Error('Không xác minh được cấu hình vừa lưu');
     cache.remove('QA_SETUP:'+nonce);
-    return{ok:true,aiEnabled:values.enabled,keyConfigured:!!(key||props.getProperty('ASSISTANT_GEMINI_KEY'))};
+    var result=readQuickAssistantConfigurationForOwner();result.ok=true;return result;
   }finally{lock.releaseLock();}
 }
