@@ -3,6 +3,7 @@ const LEGACY_API_VERSION = '1.11.20-sla-holds';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
+const SLA_AFTER_READY_REASONS = ['Khách hàng yêu cầu giữ hàng','Chờ vận chuyển','Chờ khách nhận hàng','Yếu tố khách quan sau sẵn sàng giao'];
 const FIRST_REPORT_YEAR = 2024;
 const DEFAULT_SPREADSHEET_ID = '1EoYBTSAPPOne1VCUMTLQ7W_1jjDOQnQloDWdZyXM5xI';
 const DEFAULT_CENTERS = [
@@ -1088,7 +1089,7 @@ function slaDays_(record,end) {
 function slaAverages_(rows) {
   let quantity=0,actualTotal=0,netTotal=0;
   rows.forEach(function(r){const q=deviceQuantity_(r);if(!validReturn_(r)||!q)return;const actual=ageDays_(r.receivedDate,r.returnDate),ranges=[];
-    (r.holds||[]).forEach(function(h){const a=date_(h.start),b=h.end?date_(h.end):r.returnDate;if(!a||!b||b<a)return;const after=['Khách hàng yêu cầu giữ hàng','Chờ vận chuyển','Chờ khách nhận hàng','Yếu tố khách quan sau sẵn sàng giao'].indexOf(h.reason)>=0,ready=date_(r.readyDate);if(after&&!ready)return;const lo=Math.max(time_(r.receivedDate),time_(a),after?time_(ready):0),hi=Math.min(time_(r.returnDate),time_(b),!after&&ready?time_(ready):Infinity);if(hi>lo)ranges.push([lo,hi]);});
+    (r.holds||[]).forEach(function(h){const a=date_(h.start),b=h.end?date_(h.end):r.returnDate;if(!a||!b||b<a)return;const after=SLA_AFTER_READY_REASONS.indexOf(h.reason)>=0,ready=date_(r.readyDate);if(after&&!ready)return;const lo=Math.max(time_(r.receivedDate),time_(a),after?time_(ready):0),hi=Math.min(time_(r.returnDate),time_(b),!after&&ready?time_(ready):Infinity);if(hi>lo)ranges.push([lo,hi]);});
     ranges.sort(function(a,b){return a[0]-b[0];});const union=[];ranges.forEach(function(pair){const last=union[union.length-1];if(last&&pair[0]<=last[1])last[1]=Math.max(last[1],pair[1]);else union.push(pair.slice());});
     const paused=Math.min(actual,union.reduce(function(sum,p){return sum+ageDays_(new Date(p[0]),new Date(p[1]));},0));quantity+=q;actualTotal+=actual*q;netTotal+=(actual-paused)*q;
   });
@@ -1304,7 +1305,10 @@ function readReportData_(request, actor) {
   return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: Fan nhập thường tính 1 thiết bị; mỗi lô Fan tính 1 hồ sơ, kể cả lô chuyển đổi. Các loại thiết bị khác giữ số lượng đã biết. Số Fan thực tế ở chi tiết lô; hồ sơ nguồn đã nhập lô không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
 }
 if (typeof installReportReader_==='function') installReportReader_(readReportData_);
-return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_, slaDays: slaDays_ };
+return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_, slaDays: slaDays_, assistantRules: function(){
+  const example={quantity:1,receivedDate:date_('2026-10-15'),readyDate:date_('2026-10-21'),returnDate:date_('2026-10-26'),holds:[{reason:'Chờ linh kiện',start:'2026-10-17',end:'2026-10-21'}]};
+  return {version:LEGACY_API_VERSION,slaTargetDays:SLA_DAYS,afterReady:SLA_AFTER_READY_REASONS.slice(),exampleNetDays:slaDays_(example)};
+} };
 })();
 
 function doPost(e) {

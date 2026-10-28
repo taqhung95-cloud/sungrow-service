@@ -21,7 +21,7 @@ function harness(){
   UrlFetchApp:{fetch:(url,options)=>{assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');const payload=JSON.parse(options.payload);network.push(payload);let answer=!!payload.generationConfig.responseJsonSchema.properties.intent?context.route:{answer:'Giải thích dựa trên bằng chứng.',sourceIds:['sla','not-a-real-source']};return{getResponseCode:()=>http,getContentText:()=>bad?'invalid json':JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(answer)}]}}]})};}},
   route:{intent:'kpi',query:'',usePrevious:true}
  };
- vm.createContext(context);vm.runInContext(code,context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../WorkOrderRules.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../LegacyDashboardApi.gs',import.meta.url),'utf8'),context);vm.runInContext(code,context);
  let seq=0;const ask=(message,extra={})=>context.quickAssistantChat('valid-session',{message,conversationId:'conversation-00000001',requestId:'request-'+String(++seq).padStart(16,'0'),...extra});
  return{context,ask,props,memory,network,reads,details,setActor:a=>actor=a,setStatus:n=>http=n,setBad:()=>bad=true,actor:()=>actor};
 }
@@ -49,9 +49,15 @@ assert.ok(masked.text.includes('[MA_1]'));assert.equal(masked.queries['[MA_1]'],
 for(const rawValue of ['A2652808299','RW2610270195','demo@example.invalid','0901234567','private.example.invalid'])assert.ok(!masked.text.includes(rawValue));
 const natural=harness();natural.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');natural.props.set('ASSISTANT_AI_ENABLED','true');natural.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');natural.context.route={intent:'lookup',query:'[MA_1]',usePrevious:false};
 const naturalResult=natural.ask('Kiểm tra giúp máy SAME123456');assert.equal(naturalResult.cases[0].caseId,'DAT-001');
-for(const p of natural.network){const serialized=JSON.stringify(p);for(const privateValue of ['SAME123456','DAT-001','RW123456','MA123456','Chờ linh kiện','staff@example.invalid','PRIVATE_'])assert.ok(!serialized.includes(privateValue),'External payload leaked '+privateValue);}
+for(const p of natural.network){const serialized=JSON.stringify(p);for(const privateValue of ['SAME123456','DAT-001','RW123456','MA123456','staff@example.invalid','PRIVATE_'])assert.ok(!serialized.includes(privateValue),'External payload leaked '+privateValue);}
 assert.doesNotMatch(code,/api\.openai\.com|qaEvidence_/);
 
+assert.equal(h.reads[0].refresh,true);
+assert.equal(h.context.qaRuleContext_().slaTargetDays,7);
+assert.equal(h.context.qaRuleContext_().exampleNetDays,7);
+const current=h.context.qaKnowledge_().find(d=>d.id==='sla');assert.ok(current.body.includes('11 − 4 = 7 ngày'));assert.ok(current.body.includes('## Cách tính'));
+vm.runInContext("LEGACY_DASHBOARD_API.assistantRules=function(){return {version:'test-new-rules',slaTargetDays:9,afterReady:[],exampleNetDays:6};}",h.context);
+const changed=h.context.qaKnowledge_().find(d=>d.id==='sla');assert.ok(changed.body.includes('không quá 9 ngày'));assert.ok(changed.body.includes('11 − 5 = 6 ngày'));
 assert.match(raw,/quickAssistantChat: function/);
 assert.doesNotMatch(code,/SpreadsheetApp|appendRow|setValues|eval\(|new Function/);
 console.log('Quick assistant passed: authenticated/scoped reads, all roles, multi-case SN, free direct lookup, masked Gemini questions only, no case/contacts/tokens exported, follow-up, role changes, replay, limits and provider failures.');

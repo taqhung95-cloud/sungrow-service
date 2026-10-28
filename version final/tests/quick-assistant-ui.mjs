@@ -10,7 +10,7 @@ const page=await browser.newPage({viewport:{width:1024,height:800}}),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 await page.route('https://assistant-fixture.invalid/**',async route=>{
   const pathname=new URL(route.request().url()).pathname.slice(1);
-  if(!pathname){await route.fulfill({contentType:'text/html',body:'<!doctype html><html><head><link rel="stylesheet" href="/quick-assistant.css"></head><body><script src="/quick-assistant.js"></script></body></html>'});return;}
+  if(!pathname){await route.fulfill({contentType:'text/html',body:'<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/quick-assistant.css"></head><body><script src="/quick-assistant.js"></script></body></html>'});return;}
   if(!['quick-assistant.css','quick-assistant.js','assistant-robot.png'].includes(pathname)){await route.fulfill({status:404,body:''});return;}
   await route.fulfill({contentType:pathname.endsWith('.js')?'text/javascript':pathname.endsWith('.css')?'text/css':'image/png',body:fs.readFileSync(path.join(docs,pathname))});
 });
@@ -27,7 +27,7 @@ try{
   await page.locator('.sgqa-record').waitFor();assert.equal(await page.locator('.sgqa-links a').count(),2);
   await page.locator('.sgqa-links a').nth(1).click();
   assert.deepEqual(await page.evaluate(()=>window.opened[0]),{id:'HS-TEST-001',options:{history:true}});
-  assert.equal(await page.locator('.sgqa-panel').isVisible(),false);
+  await page.locator('.sgqa-panel').waitFor({state:'hidden'});assert.equal(await page.locator('.sgqa-panel').isVisible(),false);
  }
  await page.locator('.sgqa-launch').click();
  await page.evaluate(()=>window.SungrowQuickAssistant.configure({actor:{email:'service_manager@example.invalid',role:'service_manager',centers:['DAT']},request:async()=>({answer:'<img src=x onerror=alert(1)>',cases:[]}),openCase:()=>{}}));

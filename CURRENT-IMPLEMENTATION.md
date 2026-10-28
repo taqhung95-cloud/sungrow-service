@@ -1,5 +1,12 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Trợ lý kéo thả và trả lời có cấu trúc — 28/10/2026
+
+Frontend assistant2/liveJS168/entry149 bổ sung kéo thả chuột/chạm, lưu riêng tọa độ tương đối, di chuyển bằng phím mũi tên, tự đặt chat trong viewport và mở/thu từ icon bằng animation co giãn. Nền chat blur/transparency, có fallback giảm chuyển động/trong suốt. Định dạng heading/bullet/numbered/strong an toàn bằng text nodes; cuộn đến đầu trả lời, nguồn và giờ đọc tách riêng, giữ font hệ thống và icon nhỏ không nhãn.
+
+Backend cần người dùng thay QuickAssistant.gs1.1.0 và LegacyDashboardApi.gs cùng deploy New version. Trợ lý đọc fresh danh sách/chi tiết có phân quyền; getter assistantRules của dashboard lấy ngưỡng SLA từ SLA_DAYS và tính ví dụ bằng slaDays thực tế, nhóm lý do dùng chung với hàm tính; danh mục lấy từ WorkOrderRules đang nạp. Không đổi công thức/weight KPI, schema hay dữ liệu. Không chốt ngưỡng từ AI nếu thiếu hợp đồng runtime. Cache phân biệt version/fingerprint rules. Gemini tiếp tục chỉ nhận câu hỏi đã che mã và hướng dẫn chung, không nhận hồ sơ. Hướng dẫn DEPLOY-ASSISTANT-MOTION-20261028.md. Code.gs/Setup.gs và key giữ nguyên. Đây là mã nguồn/bộ cập nhật, chưa xác nhận người dùng đã deploy hai file backend mới.
+
+
 ## Cấu hình trợ lý khi hơn 50 Properties — 28/10/2026, bản 1.11.24.1 cần cập nhật thủ công
 
 Ảnh người dùng xác nhận màn hình Properties hiển thị 50 mục đầu và read-only; không phải yêu cầu dọn/xóa marker. Code.gs thêm nhánh doGet assistant_setup=1, module mới QuickAssistantSetup.gs dùng kiểm tra chủ backend asOwner_ hiện có, nonce 10phút một lần và lock để lưu đúng6property trợ lý bằng setProperties(updates,false). Không hiển thị key cũ, không đưa key vào source/URL/HTML/log; để trống giữ key cũ. Giữ RDR_DONE, bản lưu bảo trì, HMAC/upload, session và database; không reset quota ngày. Module QuickAssistant.gs hiện có giữ nguyên. Hướng dẫn: DEPLOY-1.11.24.1-ASSISTANT-SETUP.md. Người dùng tự cập nhật Code.gs, thêm QuickAssistantSetup.gs và New version cùng URL; chưa xác nhận bước này hoặc key thật.

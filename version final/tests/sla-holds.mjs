@@ -44,7 +44,7 @@ const tables={
  'Tạm dừng SLA':[['PASS',internal],['MULTI',internal],['MULTI',customer],['MULTI',carrier]].map(([id,h])=>({'Mã công việc':'W-'+id,'Lý do tạm dừng':h.reason,'Ngày bắt đầu':h.startAt,'Ngày kết thúc':h.endAt}))
 };
 const cache=new Map(),apiContext={console,Date,DATABASE_SPREADSHEET_ID:'fixture',Session:{getScriptTimeZone:()=> 'Asia/Saigon'},Utilities:{formatDate:d=>d.toISOString().slice(0,10),newBlob:s=>({getBytes:()=>Buffer.from(s)})},PropertiesService:{getScriptProperties:()=>({getProperty:k=>k==='SOURCE_SPREADSHEET_ID'?'fixture':null})},CacheService:{getScriptCache:()=>({get:k=>cache.get(k),put:(k,v)=>cache.set(k,v),getAll:ks=>Object.fromEntries(ks.map(k=>[k,cache.get(k)])),putAll:e=>Object.entries(e).forEach(([k,v])=>cache.set(k,v))})},getPortalDatabaseRevision_:()=> 'sla-test',readTableShared_:name=>tables[name]||[]};
-vm.createContext(apiContext);vm.runInContext(read('LegacyDashboardApi.gs').replace('return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_, slaDays: slaDays_ };','return {getDashboard_};'),apiContext);
+vm.createContext(apiContext);vm.runInContext(read('LegacyDashboardApi.gs').replace('return { handlePost:', 'return {getDashboard_,handlePost:'),apiContext);
 const dashboard=vm.runInContext('LEGACY_DASHBOARD_API',apiContext).getDashboard_({period:'2026-10',center},{role:'service_manager',email:'fixture',centers:[]});
 assert.equal(dashboard.summary.slaEligible,3);assert.equal(dashboard.summary.slaMet,2,'Actual dashboard rate must use net days.');
 assert.equal(dashboard.centers.find(x=>x.name===center||x.center===center).slaMet,2,'Center and overview use the same eligibility.');
