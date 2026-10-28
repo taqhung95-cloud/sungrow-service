@@ -20,11 +20,11 @@ try{
  for(const role of ['center_staff','center_manager','service_manager']){
   await page.evaluate(role=>{
    window.requests=[];window.opened=[];
-   window.SungrowQuickAssistant.configure({actor:{email:role+'@example.invalid',role,centers:['DAT']},request:async payload=>{window.requests.push(payload);return{answer:'Tìm thấy hồ sơ.',cases:[{caseId:'HS-TEST-001',model:'SG110CX',serialNumber:'SN12345',center:'DAT',receivedAt:'2026-10-15',status:'Chờ linh kiện',issues:'Lỗi quạt'}]};},openCase:async(id,options)=>window.opened.push({id,options})});
+   window.SungrowQuickAssistant.configure({actor:{email:role+'@example.invalid',role,centers:['DAT']},request:async payload=>{window.requests.push(payload);return{mode:'lookup',answer:'Tìm thấy hồ sơ.',cases:[{caseId:'HS-TEST-001',model:'SG110CX',serialNumber:'SN12345',center:'DAT',receivedAt:'2026-10-15',status:'Chờ linh kiện',issues:'Lỗi quạt'}]};},openCase:async(id,options)=>window.opened.push({id,options})});
   },role);
   assert.equal(await page.locator('.sgqa').count(),1);assert.equal(await page.locator('.sgqa-launch').textContent(),'');
   await page.locator('.sgqa-launch').click();await page.locator('.sgqa-form input').fill('SN12345');await page.locator('.sgqa-form button').click();
-  await page.locator('.sgqa-record').waitFor();assert.equal(await page.locator('.sgqa-links a').count(),2);
+  await page.locator('.sgqa-record').waitFor();assert.equal(await page.getByText('Tra cứu hệ thống',{exact:true}).count(),1);assert.equal(await page.locator('.sgqa-links a').count(),2);
   await page.locator('.sgqa-links a').nth(1).click();
   assert.deepEqual(await page.evaluate(()=>window.opened[0]),{id:'HS-TEST-001',options:{history:true}});
   await page.locator('.sgqa-panel').waitFor({state:'hidden'});assert.equal(await page.locator('.sgqa-panel').isVisible(),false);

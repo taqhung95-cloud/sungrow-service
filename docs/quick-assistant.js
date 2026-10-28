@@ -58,7 +58,8 @@
   function welcome() {
     conversation=uuid();pendingId='';
     const log=root.querySelector('.sgqa-log');log.replaceChildren();
-    const box=el('div','sgqa-message');box.append(el('p','', 'Chào bạn, tôi có thể giúp gì?'),el('p','','Gửi S/N hoặc mã hồ sơ để xem thông tin và mở đúng hồ sơ. Bạn cũng có thể hỏi tự nhiên về KPI, nhập liệu và cách xem dashboard.'));log.append(box);
+    const management=config?.actor?.isGlobalManager&&config?.actor?.capabilities?.viewDashboard;
+    const box=el('div','sgqa-message');box.append(el('p','', 'Chào bạn, tôi có thể giúp gì?'),el('p','','Gửi S/N hoặc mã hồ sơ để xem thông tin và mở đúng hồ sơ. '+(management?'Bạn có thể hỏi về chức năng, nhập liệu, KPI, dashboard và báo cáo.':'Bạn có thể hỏi cách nhập liệu, điều kiện khóa và thao tác với hồ sơ trong phạm vi center.')));log.append(box);
   }
   function textMessage(text,cls) {
     const box=el('div','sgqa-message'+(cls?' '+cls:''));
@@ -105,6 +106,7 @@
       const result=await config.request({message,conversationId:conversation,requestId:pendingId},controller.signal);
       if(seq!==generation||root!==localRoot)return;
       pending.remove();const box=textMessage(result.answer||'Chưa có câu trả lời. Vui lòng thử diễn đạt lại.');
+      const mode=el('div','sgqa-read-time',({ai:'Trả lời bằng Gemini',guide:'Hướng dẫn nội bộ',lookup:'Tra cứu hệ thống'})[result.mode]||'Phản hồi hệ thống');if(result.fallbackReason)mode.title=result.fallbackReason;box.append(mode);
       (Array.isArray(result.cases)?result.cases:[]).slice(0,5).forEach(c=>{if(c.caseId)box.append(record(c));});
       if(result.sources?.length)box.append(el('div','sgqa-sources','Tham chiếu: '+result.sources.map(s=>s.title).join(' · ')));
       if(result.generatedAt){const at=new Date(result.generatedAt);if(!isNaN(at)){const stamp=el('div','sgqa-read-time','Đọc lúc '+at.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}));if(result.rulesVersion)stamp.title='Phiên bản backend: '+result.rulesVersion;box.append(stamp);}}

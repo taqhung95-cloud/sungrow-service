@@ -18,10 +18,10 @@ function harness(){
   authenticate_:token=>{if(token!=='valid-session')throw Error('Unauthorized');return actor;},assertCapability_:(a,c)=>{if(!a.capabilities[c])throw Error('Forbidden');},
   listCases:(token,filter)=>{assert.equal(token,'valid-session');reads.push(filter);const allowed=data.filter(c=>actor.isGlobalManager||actor.centers.includes(c.currentCenter));const items=allowed.filter(c=>[c.caseId,c.serialNumber,c.gsp,c.ma,c.model].join(' ').toLowerCase().includes(filter.query.toLowerCase()));return{items,total:items.length};},
   getCaseDetail:(token,id)=>{assert.equal(token,'valid-session');details.push(id);const c=data.find(c=>c.caseId===id);if(!c||!actor.isGlobalManager&&!actor.centers.includes(c.currentCenter))throw Error('Forbidden');return c;},
-  UrlFetchApp:{fetch:(url,options)=>{assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');const payload=JSON.parse(options.payload);network.push(payload);let answer=!!payload.generationConfig.responseJsonSchema.properties.intent?context.route:{answer:'Giải thích dựa trên bằng chứng.',sourceIds:['sla','not-a-real-source']};return{getResponseCode:()=>http,getContentText:()=>bad?'invalid json':JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(answer)}]}}]})};}},
+  UrlFetchApp:{fetch:(url,options)=>{assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');const payload=JSON.parse(options.payload);network.push(payload);let answer=!!payload.generationConfig.responseJsonSchema.properties.intent?context.route:{answer:'Giải thích dựa trên bằng chứng.',sourceIds:['entry','not-a-real-source']};return{getResponseCode:()=>http,getContentText:()=>bad?'invalid json':JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(answer)}]}}]})};}},
   route:{intent:'kpi',query:'',usePrevious:true}
  };
- vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../WorkOrderRules.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../LegacyDashboardApi.gs',import.meta.url),'utf8'),context);vm.runInContext(code,context);
+ vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../WorkOrderRules.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../LegacyDashboardApi.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../QuickAssistantKnowledge.gs',import.meta.url),'utf8'),context);vm.runInContext(code,context);
  let seq=0;const ask=(message,extra={})=>context.quickAssistantChat('valid-session',{message,conversationId:'conversation-00000001',requestId:'request-'+String(++seq).padStart(16,'0'),...extra});
  return{context,ask,props,memory,network,reads,details,setActor:a=>actor=a,setStatus:n=>http=n,setBad:()=>bad=true,actor:()=>actor};
 }
@@ -30,8 +30,8 @@ assert.throws(()=>h.context.quickAssistantChat('',{}),/Unauthorized/);
 const first=h.ask('SAME123456');assert.equal(first.total,1);assert.equal(first.cases[0].caseId,'DAT-001');assert.equal(h.network.length,0);assert.ok(!JSON.stringify(first).includes('PRIVATE_'));
 assert.equal(h.ask('Vì sao chưa hoàn tất?').mode,'guide');assert.equal(h.network.length,0);
 h.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');h.props.set('ASSISTANT_AI_ENABLED','true');h.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');
-const reply=h.ask('Vậy SLA của máy này tính sao?',{history:[{text:'fake'}],caseIds:['BKE-001']});
-assert.equal(h.network.length,2);assert.equal(reply.cases[0].caseId,'DAT-001');assert.deepEqual(Array.from(reply.sources,s=>s.id),['sla']);assert.ok(h.details.includes('DAT-001'));assert.ok(!h.details.includes('BKE-001'));
+const reply=h.ask('Vậy nhập khoảng tạm dừng SLA của máy này thế nào?',{history:[{text:'fake'}],caseIds:['BKE-001']});
+assert.equal(h.network.length,2);assert.equal(reply.cases[0].caseId,'DAT-001');assert.deepEqual(Array.from(reply.sources,s=>s.id),['entry']);assert.ok(h.details.includes('DAT-001'));assert.ok(!h.details.includes('BKE-001'));
 for(const p of h.network){assert.equal(p.generationConfig.responseMimeType,'application/json');assert.ok(!JSON.stringify(p).includes('PRIVATE_'));assert.ok(!JSON.stringify(p).includes('valid-session'));assert.ok(!JSON.stringify(p).includes('staff@example.invalid'));}
 const duplicate={conversationId:'conversation-00000001',requestId:'fixed-request-00000001'};
 h.ask('SAME123456',duplicate);const before=h.network.length;h.ask('SAME123456',duplicate);assert.equal(h.network.length,before);assert.throws(()=>h.ask('OTHER123',duplicate),/đã dùng/);
@@ -40,9 +40,9 @@ h.setActor({...h.actor(),isGlobalManager:true});const multi=h.ask('SAME123456');
 for(const role of ['center_staff','center_manager','service_manager']){h.setActor({...h.actor(),role});assert.ok(h.ask('SAME123456').cases.length);}
 h.props.set('ASSISTANT_ENABLED','false');assert.throws(()=>h.ask('SAME123456'),/tạm dừng/);h.props.delete('ASSISTANT_ENABLED');
 assert.throws(()=>h.ask('x'.repeat(1201)),/1.200/);
-const q=harness();q.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');q.props.set('ASSISTANT_AI_ENABLED','true');q.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');q.props.set('ASSISTANT_AI_DAILY_LIMIT','1');assert.match(q.ask('KPI tính ra sao?').answer,/hạn mức/);assert.equal(q.network.length,1);assert.equal(q.ask('SAME123456').total,1);
+const q=harness();q.setActor({...q.actor(),isGlobalManager:true,capabilities:{viewCases:true,viewDashboard:true}});q.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');q.props.set('ASSISTANT_AI_ENABLED','true');q.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');q.props.set('ASSISTANT_AI_DAILY_LIMIT','1');assert.match(q.ask('KPI tính ra sao?').answer,/hạn mức/);assert.equal(q.network.length,1);assert.equal(q.ask('SAME123456').total,2);
 const failed=harness();failed.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');failed.props.set('ASSISTANT_AI_ENABLED','true');failed.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');failed.setStatus(401);assert.match(failed.ask('Giúp tôi tra hồ sơ').answer,/cấu hình/);assert.equal(failed.ask('SAME123456').total,1);
-const malformed=harness();malformed.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');malformed.props.set('ASSISTANT_AI_ENABLED','true');malformed.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');malformed.setBad();assert.match(malformed.ask('Cách xem dashboard').answer,/chưa hoàn chỉnh/);
+const malformed=harness();malformed.setActor({...malformed.actor(),isGlobalManager:true,capabilities:{viewCases:true,viewDashboard:true}});malformed.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');malformed.props.set('ASSISTANT_AI_ENABLED','true');malformed.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');malformed.setBad();assert.match(malformed.ask('Cách xem dashboard').answer,/chưa hoàn chỉnh/);
 
 const masked=h.context.qaMask_('Tra S/N A2652808299, GSP RW2610270195, gửi demo@example.invalid, 0901234567 https://private.example.invalid/x');
 assert.ok(masked.text.includes('[MA_1]'));assert.equal(masked.queries['[MA_1]'],'A2652808299');
@@ -61,3 +61,18 @@ const changed=h.context.qaKnowledge_().find(d=>d.id==='sla');assert.ok(changed.b
 assert.match(raw,/quickAssistantChat: function/);
 assert.doesNotMatch(code,/SpreadsheetApp|appendRow|setValues|eval\(|new Function/);
 console.log('Quick assistant passed: authenticated/scoped reads, all roles, multi-case SN, free direct lookup, masked Gemini questions only, no case/contacts/tokens exported, follow-up, role changes, replay, limits and provider failures.');
+
+const guide=harness();
+assert.match(guide.ask('Hoàn tất kỹ thuật nghĩa là gì?').answer,/chưa phải xác nhận trả khách/);
+assert.doesNotMatch(guide.ask('Hoàn tất kỹ thuật nghĩa là gì?').answer,/nguyên văn thông báo/);
+assert.match(guide.ask('Cách lọc các hồ sơ mới tạo trong ngày?').answer,/chưa có bộ lọc riêng theo ngày tạo/);
+assert.match(guide.ask('Tại sao ô kết quả bị khóa?').answer,/chọn Hoàn tất kỹ thuật/i);
+assert.match(guide.ask('Cách xuất báo cáo Excel?').answer,/dành cho tài khoản/);
+assert.match(guide.ask('Cách nhập tạm dừng SLA?').answer,/Khoảng nội bộ/);
+const scoped=guide.context.qaKnowledge_(guide.actor());assert.ok(!scoped.some(d=>d.scope==='management'||d.id==='sla'||d.id==='dashboard'));
+guide.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');guide.props.set('ASSISTANT_AI_ENABLED','true');guide.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');guide.context.route={intent:'entry_help',query:'',usePrevious:false};guide.ask('Bảo hành chờ duyệt là gì?');
+const external=guide.network.find(p=>!p.generationConfig.responseJsonSchema.properties.intent);assert.ok(external);const payloadData=JSON.parse(external.contents[0].parts[0].text);assert.ok(!payloadData.knowledge.some(d=>['dashboard_cards','kpi_sla','reports','sla'].includes(d.id)));
+guide.setActor({...guide.actor(),isGlobalManager:true,capabilities:{viewCases:true,viewDashboard:true}});guide.props.set('ASSISTANT_AI_ENABLED','false');
+assert.match(guide.ask('Thẻ hoàn tất kỹ thuật ý nghĩa là gì?').answer,/ngày hoàn tất hợp lệ trong kỳ/);
+assert.match(guide.ask('Xuất Excel thế nào?').answer,/xem trước\/xuất Excel/);
+console.log('Knowledge behavior passed: definitions vs errors, unsupported date filter, locks, entry SLA, role-filtered Gemini evidence and management guides.');
