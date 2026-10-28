@@ -1,5 +1,10 @@
 # Trạng thái production và đồng bộ repository
 
+## Định dạng key 1.2.2 — 28/10/2026
+
+Người dùng đã xác nhận setup1.2.1 hoạt động và thấy lỗi validation key. Bỏ regex tự giới hạn chữ/số và 200 ký tự; coi key là chuỗi opaque ASCII không khoảng trắng/control, tối đa4096 ký tự. Google xác thực key khi gọi API qua x-goog-api-key hiện có. Tham chiếu https://ai.google.dev/gemini-api/docs/api-key (auth keys mặc định trong AI Studio). Không coi lưu thành công là kết nối Gemini thành công. Kiểm thử key có dấu chấm và dài hơn200, giữ nguyên giá trị, chặn CR/LF/space, UI readback. Backend1.2.2 chờ người dùng thay QuickAssistantSetup.gs và deploy New version.
+
+
 ## Sửa nút lưu cấu hình 1.2.1 — 28/10/2026
 
 Đã tái hiện trong Chrome: biến status toàn cục bị window.status chuyển thành chuỗi, khiến callback không hiển thị thông báo. Đưa script trang setup vào phạm vi hàm riêng strict để tránh xung đột global. Kiểm thử trình duyệt bản cũ thất bại, bản mới pass lưu/readback/reload/lỗi và retry. Full validate pass. Thay QuickAssistantSetup.gs rồi deploy New version; người dùng chưa xác nhận runtime. Không khẳng định lỗi này là nguyên nhân key mất; nó che thông báo cần để chẩn đoán. Bản nguồn được phát hành qua main, không đổi frontend portal.

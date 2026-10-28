@@ -42,6 +42,22 @@ discardWrites=false;
 assert.equal(c.configureQuickAssistantForOwner(third,{...values,key:'new-fixture-key-123456789012345'}).keyConfigured,true);
 assert.equal(props.get('ASSISTANT_GEMINI_KEY'),'new-fixture-key-123456789012345');
 const scripts=[...page.html.matchAll(/<script>([\s\S]*?)<\/script>/g)];for(const m of scripts)new vm.Script(m[1]);
+for(const candidate of ['AQ.fixture.part_'+ 'x'.repeat(300),'AIza'+ 'x'.repeat(35)]){
+ c.qaSetupPage_();const n=[...cache.keys()].at(-1).slice('QA_SETUP:'.length);
+ const saved=c.configureQuickAssistantForOwner(n,{...values,key:candidate});assert.equal(saved.keyConfigured,true);assert.equal(props.get('ASSISTANT_GEMINI_KEY'),candidate);assert.ok(!JSON.stringify(saved).includes(candidate));
+}
+for(const candidate of ['abc def','abc\r\ndef','x'.repeat(4097)]){
+ c.qaSetupPage_();const n=[...cache.keys()].at(-1).slice('QA_SETUP:'.length);const prior=sets;
+ assert.throws(()=>c.configureQuickAssistantForOwner(n,{...values,key:candidate}),/API key không hợp lệ/);assert.equal(sets,prior);
+}
+for(const candidate of ['AQ.fixture.part_'+ 'x'.repeat(300),'AIza'+ 'x'.repeat(35)]){
+ c.qaSetupPage_();const n=[...cache.keys()].at(-1).slice('QA_SETUP:'.length);
+ const saved=c.configureQuickAssistantForOwner(n,{...values,key:candidate});assert.equal(saved.keyConfigured,true);assert.equal(props.get('ASSISTANT_GEMINI_KEY'),candidate);assert.ok(!JSON.stringify(saved).includes(candidate));
+}
+for(const candidate of ['abc def','abc\r\ndef','x'.repeat(4097)]){
+ c.qaSetupPage_();const n=[...cache.keys()].at(-1).slice('QA_SETUP:'.length);const prior=sets;
+ assert.throws(()=>c.configureQuickAssistantForOwner(n,{...values,key:candidate}),/API key không hợp lệ/);assert.equal(sets,prior);
+}
 assert.match(read('Code.gs'),/assistant_setup==='1'/);
 assert.doesNotMatch(read('QuickAssistantSetup.gs'),/deleteAllProperties|deleteProperty|setProperties\([^;]+true\)/);
 console.log('Assistant setup passed: >50 existing properties retained, pinned owner, nonce/replay, no key in HTML/result, validated quotas, key preservation and no writes on invalid input.');
