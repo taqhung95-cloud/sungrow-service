@@ -1,5 +1,12 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Cấu hình trợ lý khi hơn 50 Properties — 28/10/2026, bản 1.11.24.1 cần cập nhật thủ công
+
+Ảnh người dùng xác nhận màn hình Properties hiển thị 50 mục đầu và read-only; không phải yêu cầu dọn/xóa marker. Code.gs thêm nhánh doGet assistant_setup=1, module mới QuickAssistantSetup.gs dùng kiểm tra chủ backend asOwner_ hiện có, nonce 10phút một lần và lock để lưu đúng6property trợ lý bằng setProperties(updates,false). Không hiển thị key cũ, không đưa key vào source/URL/HTML/log; để trống giữ key cũ. Giữ RDR_DONE, bản lưu bảo trì, HMAC/upload, session và database; không reset quota ngày. Module QuickAssistant.gs hiện có giữ nguyên. Hướng dẫn: DEPLOY-1.11.24.1-ASSISTANT-SETUP.md. Người dùng tự cập nhật Code.gs, thêm QuickAssistantSetup.gs và New version cùng URL; chưa xác nhận bước này hoặc key thật.
+
+Bản giao diện trước đã vào GitHub main tại bc97863 và GitHub Pages run40640030513 đã success; đã kiểm tra web công khai nạp liveJS167/entry148/assistant1/workspace5. Việc này không phải bằng chứng Apps Script1.11.24 đã deploy. Bản bổ sung setup chỉ đổi backend và tài liệu, không đổi frontend.
+
+
 ## Trợ lý hỏi nhanh — 28/10/2026, backend 1.11.24 cần cập nhật thủ công
 
 Portal liveJS167/entry148 thêm quick-assistant.js/css1, robot 48px có neon cam; không có chữ dưới icon/thẻ gợi ý. Mọi vai trò đăng nhập được sử dụng, dữ liệu tiếp tục theo quyền center/case. Cùng SN nhiều hồ sơ không tự gộp hoặc chọn một; mở hồ sơ/lịch sử theo caseId qua workspace hiện có. Trang entry độc lập có trợ lý; iframe dùng trợ lý của shell. Không lưu chat ở localStorage; xóa khi đăng xuất/đổi tài khoản, bỏ phản hồi trễ. Nhãn giữ một dòng và mã dài có vùng cuộn riêng.

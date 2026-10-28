@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.24-quick-assistant';
+const APP_VERSION = '1.11.24.1-assistant-setup';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;
@@ -58,6 +58,7 @@ const ROLE_CAPABILITIES = Object.freeze({
 });
 
 function doGet(e) {
+  if(e&&e.parameter&&e.parameter.assistant_setup==='1')return qaSetupPage_();
   if(e&&e.parameter&&e.parameter.attachment_storage_setup==='1')return asSetupPage_();
   if (e && e.parameter && e.parameter.portal_bridge === '1') return renderPortalBridge_(e.parameter);
   const template = HtmlService.createTemplateFromFile('Index');

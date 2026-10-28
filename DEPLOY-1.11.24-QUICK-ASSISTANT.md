@@ -27,7 +27,9 @@ Lưu hai file. Khi chưa cấu hình AI, nhập SN/mã hồ sơ vẫn tra cứu 
 3. Xem hạn mức thực tế của project tại AI Studio. Free Tier có giới hạn theo model, khu vực và project; không phải miễn phí vô hạn.
 4. Không gửi API key trong chat, không đặt vào GitHub, `config.js` hoặc mã frontend.
 
-Trong Apps Script chính → **Project Settings → Script Properties**, thêm:
+Nếu Apps Script báo **hơn 50 Properties và read-only**, dùng [trang cấu hình riêng ở bản 1.11.24.1](DEPLOY-1.11.24.1-ASSISTANT-SETUP.md). Không xóa các property cũ để mở khóa giao diện.
+
+Nếu giao diện còn cho chỉnh sửa, trong Apps Script chính → **Project Settings → Script Properties**, thêm các mục dưới đây. Bảng cũng là tài liệu tham chiếu cho trang cấu hình riêng:
 
 | Property | Value |
 |---|---|
