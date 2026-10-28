@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Quyền sửa thông tin lô Fan đã hoàn tất — 28/10/2026, bản1.11.22 chưa deploy
+
+Phát hiện nhánh fwBegin_ chặn Đã hoàn tất cho mọi actor dù publicCase cho quản lý canUpdate. Bản1.11.22 cho quản lý toàn bộ center (bao gồm quản lý hệ thống/quản lý Sungrow đã chuẩn hóa) thực hiện work metadata trên lô đóng; nhân viên/quản lý center thường vẫn bị chặn. Giữ CAS, receipt, audit và atomic batch. Không mở lại case, đổi ngày giao, ghi thêm technical/return event hoặc tăng số Fan. Các trường kết quả/ngày hoàn tất/loại đổi đã chốt giữ nguyên trong luồng metadata; thao tác số lượng/nguồn dùng chức năng correction/đối soát hiện có. Cho sửa ghi chú/GSP/MA/chẩn đoán/lỗi mới/SLA và ghi nhận linh kiện mới nhập rõ, không tự nhân lại linh kiện cũ. Giữ kết quả tổng hợp trống của lô có nhiều kết quả khác nhau khi chỉ sửa metadata. Frontend166/entry147/sharedforms9/rules5/locks6 giữ trạng thái đã lưu khi mở lô đóng, chọn scope không có ô hoàn tất thêm và gửi quantity0. Backend cần thay Code.gs, FanWorkOrders.gs, WorkOrderRules.gs rồi người dùng xác nhận trước khi publish frontend. Xem DEPLOY-1.11.22-FAN-CLOSED-EDITS.md. Không ghi hoặc sửa case production khi kiểm tra.
+
+
 ## Lỗi xác nhận chung cho nhiều Fan — 27/10/2026
 
 Frontend liveJS165/entry146/sharedforms8/drafts6 gộp các lỗi đã lưu cùng mã, tên và ngày thành một dòng trên biểu mẫu lô Fan. Lỗi khác hoặc ngày xác nhận khác giữ riêng. Giữ nhóm ID gốc trong data-fan-issue-ids; khi gửi mở lại đúng các bản ghi cũ cùng ghi chú riêng để backend giữ liên kết từng inverter, không xóa/ghi lại lịch sử và không thay số Fan trong KPI. Lỗi mới nhập một lần áp dụng cho scope đã chọn; hàng lỗi mới trùng nhau trong cùng lần gửi được gộp trước RPC. Nháp giữ nhóm ID và khóa chỉnh sửa lịch sử khi khôi phục. Không thêm RPC đọc, không đổi schema/API/backend; không cần deploy Apps Script cho sửa này. Kiểm thử UI gồm gộp3lỗi giống, lỗi khác, lưu đủ ID/ghi chú, scope3inverter, thêm lỗi mới, retry cùngrequestId và khôi phục nháp.

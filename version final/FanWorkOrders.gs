@@ -9,7 +9,9 @@ function fwBegin_(actor,row,payload,kind){
   var id=flRequest_(payload),digest=digest_(JSON.stringify(payload)),receipt=findTableRowsByField_(FL_EVENT_SHEET_,'Mã thao tác',[id])[0];
   if(receipt){var detail=parseJson_(receipt['Nội dung'])||{};if(receipt['Mã hồ sơ']!==row['Mã hồ sơ']||receipt['Người thực hiện']!==actor.email||detail.payloadDigest!==digest||detail.operation!==kind)throw publicError_('Mã thao tác đã dùng cho nội dung hoặc tài khoản khác.');return {replayed:true,result:fwFinish_(row['Mã hồ sơ'])};}
   assertCaseEditable_(actor,row);assertCenterAllowed_(actor,row['Trung tâm đang giữ hàng']);
-  if(['Đã hủy','Đã hoàn tất','Đang luân chuyển'].indexOf(clean_(row['Trạng thái hồ sơ']))>=0)throw publicError_('Hồ sơ không ở trạng thái cho phép cập nhật.');
+  var closed=clean_(row['Trạng thái hồ sơ'])==='Đã hoàn tất';
+  if(closed&&kind==='work'&&!actor.isGlobalManager)throw publicError_('Hồ sơ đã hoàn tất. Chỉ quản lý hệ thống hoặc quản lý Sungrow Center được điều chỉnh.');
+  if(['Đã hủy','Đang luân chuyển'].indexOf(clean_(row['Trạng thái hồ sơ']))>=0||(closed&&kind!=='work'))throw publicError_(closed?'Lô đã hoàn tất; không xác nhận giao trả hoặc xử lý lại.':'Hồ sơ đã hủy hoặc đang luân chuyển, không thể cập nhật.');
   if(PropertiesService.getScriptProperties().getProperty('FAN_PENDING_'+row['Mã hồ sơ']))throw publicError_('Hồ sơ cần đối soát đồng bộ trước khi cập nhật tiếp.');
   var state=flState_(row);if(!state||digest_(SungrowFanLotRules.pack(state))!==clean_(payload.fanFingerprint))throw publicError_('Hồ sơ đã thay đổi. Mở lại biểu mẫu trước khi lưu.');
   var selection=payload.fanSelections,seen={};
@@ -78,10 +80,23 @@ function fwChildren_(tx,row,work,actor,payload){
 function fwUpdateWorkOrder_(actor,row,work,payload){
   var tx=fwBegin_(actor,row,payload,'work');if(tx.replayed)return tx.result;
   if(work['Trung tâm xử lý']!==row['Trung tâm đang giữ hàng']||['Chờ nhận hàng','Đã chuyển hàng đi','Đã đóng công việc'].indexOf(clean_(work['Trạng thái xử lý']))>=0)throw publicError_('Công việc không còn mở tại center đang giữ hàng.');
+  var closed=clean_(row['Trạng thái hồ sơ'])==='Đã hoàn tất';
   var parts=fwParts_(work,payload),status=clean_(payload.workflowStatus),pending=tx.selected.some(function(s){return WARRANTY_STATUSES.indexOf(s.line.warrantyStatus||clean_(row['Tình trạng bảo hành']))<0;}),input=Object.assign({},payload,{parts:parts.fresh});
-  var errors=SungrowWorkOrderRules.validate(input,{currentStatus:clean_(work['Trạng thái xử lý']),previousReplacementType:clean_(work['Loại thiết bị đổi']),receivedAt:iso_(work['Ngày trung tâm nhận hàng']),warrantyPending:pending,caseClosed:false,today:tx.today});
+  if(closed&&(clean_(payload.outcome)!==clean_(work['Kết quả xử lý'])||clean_(payload.technicalCompletedAt)!==iso_(work['Ngày hoàn tất kỹ thuật'])||clean_(payload.replacementType)!==clean_(work['Loại thiết bị đổi'])))throw publicError_('Lô đã hoàn tất: giữ nguyên kết quả/ngày hoàn tất/loại đổi khi cập nhật thông tin. Dùng chức năng sửa hồ sơ để đối soát thay đổi nghiệp vụ.');
+  var errors=SungrowWorkOrderRules.validate(input,{currentStatus:clean_(work['Trạng thái xử lý']),previousReplacementType:clean_(work['Loại thiết bị đổi']),receivedAt:iso_(work['Ngày trung tâm nhận hàng']),warrantyPending:pending,caseClosed:closed,fanClosedMetadata:closed,previousOutcome:clean_(work['Kết quả xử lý']),previousTechnicalCompletedAt:iso_(work['Ngày hoàn tất kỹ thuật']),readyAt:iso_(row['Ngày sẵn sàng trả khách']),returnedAt:iso_(row['Ngày trả khách']),today:tx.today});
   if(errors.length)throw publicError_(errors.join('\n'));if(['Đã chuyển hàng đi','Đã đóng công việc'].indexOf(status)>=0)throw publicError_('Dùng chức năng Luân chuyển hoặc Giao trả để đóng công việc.');
   var note=clean_(payload.note),gsp=clean_(payload.gsp),ma=clean_(payload.ma);if(note.length>20000||gsp.length>100||ma.length>100)throw publicError_('Ghi chú hoặc GSP/MA quá dài.');
+  if(closed){
+    if(tx.selected.some(function(s){return s.quantity!==0;}))throw publicError_('Lô đã hoàn tất: chỉ điều chỉnh thông tin, không ghi thêm số Fan hoàn tất.');
+    if(payload.diagnosisCompletedAt&&iso_(row['Ngày trả khách'])&&payload.diagnosisCompletedAt>iso_(row['Ngày trả khách']))throw publicError_('Ngày chẩn đoán không được sau ngày trả khách.');
+    assertSlaHoldsForCase_(row,iso_(row['Ngày sẵn sàng trả khách']),iso_(row['Ngày trả khách']),work['Mã công việc'],payload.holds||[]);
+    parts.fresh.forEach(function(p){p.usedAt=p.usedAt||payload.technicalCompletedAt;if(p.usedAt&&iso_(row['Ngày trả khách'])&&p.usedAt>iso_(row['Ngày trả khách']))throw publicError_('Ngày sử dụng linh kiện không được sau ngày trả khách.');});
+    var closedUsage=flPartUsageRequests_(work,{parts:parts.fresh,partUsageIds:payload.fanExistingPartIds||[]},tx.id,tx.selected.map(function(s){return s.line.lineId;}).join(','),iso_(row['Ngày trả khách'])||tx.today);tx.requests=tx.requests.concat(closedUsage.requests);
+    fwChildren_(tx,row,work,actor,payload);
+    var metadata={'Ngày hoàn tất chẩn đoán':payload.diagnosisCompletedAt?parseDateRequired_(payload.diagnosisCompletedAt,'Ngày chẩn đoán'):'','Ghi chú nội bộ':note,'Người cập nhật':actor.email,'Ngày cập nhật':tx.now};
+    tx.workExpected={id:work['Mã công việc'],keys:Object.keys(metadata),digest:digest_(JSON.stringify(fwValues_(metadata)))};tx.requests=tx.requests.concat(flUpdateRequest_(SHEETS.workOrders,work.__rowNumber,metadata));
+    return fwCommit_(tx,row,actor,'work',{'GSP':gsp,'MA':ma},{workOrderId:work['Mã công việc'],workflowStatus:status,note:note,parts:closedUsage.entries,closedCaseMetadata:true});
+  }
   var upper=payload.technicalCompletedAt||tx.today;
   parts.fresh.forEach(function(p){p.usedAt=p.usedAt||payload.technicalCompletedAt;if(!p.usedAt)throw publicError_('Nhập ngày sử dụng linh kiện khi chưa hoàn tất kỹ thuật.');});
   var usage=flPartUsageRequests_(work,{parts:parts.fresh,partUsageIds:payload.fanExistingPartIds||[]},tx.id,tx.selected.map(function(s){return s.line.lineId;}).join(','),upper);tx.requests=tx.requests.concat(usage.requests);

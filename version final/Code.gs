@@ -1,4 +1,4 @@
-const APP_VERSION = '1.11.21-sla-dropdown';
+const APP_VERSION = '1.11.22-fan-closed-edits';
 var PORTAL_RUNTIME_TIMEZONE_ = null;
 var PORTAL_RUNTIME_SPREADSHEET_ = null;
 var PORTAL_WRITE_TIMING_ = null;

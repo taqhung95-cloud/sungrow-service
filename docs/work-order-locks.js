@@ -2,7 +2,7 @@ window.SungrowWorkOrderLocks=(()=>{
  function attach(form,c,w){
   if(form._workLock)return;
   const fields=form.elements,today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const context={currentStatus:w.workflowStatus,previousReplacementType:w.replacementType,receivedAt:w.receivedAt,warrantyPending:c.warrantyStatus==='Chờ xác nhận',caseClosed:c.isClosed===true,today:today()};
+  const context={fanClosedMetadata:!!c.fanLot&&c.isClosed===true,previousOutcome:w.outcome,previousTechnicalCompletedAt:w.technicalCompletedAt,currentStatus:w.workflowStatus,previousReplacementType:w.replacementType,receivedAt:w.receivedAt,warrantyPending:c.warrantyStatus==='Chờ xác nhận',caseClosed:c.isClosed===true,today:today()};
   const notice=document.createElement('div');notice.className='notice work-rule-notice';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');form.querySelector('.grid').after(notice);
   const reset=document.createElement('button');reset.type='button';reset.className='secondary';reset.textContent='Xóa dữ liệu hoàn tất trong biểu mẫu';notice.after(reset);
   let priorStatus=fields.workflowStatus.value,priorOutcome=fields.outcome.value;
@@ -16,7 +16,7 @@ window.SungrowWorkOrderLocks=(()=>{
    context.today=today();context.readyAt=c.isClosed||c.fanLot?(c.readyAt||''):(fields.technicalCompletedAt.value?[c.readyAt||'',fields.technicalCompletedAt.value].sort().pop():'');context.returnedAt=c.returnedAt||'';if(form._fanWarrantyPending)context.warrantyPending=form._fanWarrantyPending();const working=SungrowWorkOrderRules.active.includes(fields.workflowStatus.value),pending=context.warrantyPending;
    fields.workflowStatus.disabled=context.caseClosed;
    fields.outcome.disabled=working||pending;fields.technicalCompletedAt.disabled=working||pending;
-   fields.outcome.required=fields.workflowStatus.value==='Hoàn tất kỹ thuật';fields.technicalCompletedAt.required=fields.outcome.required;
+   fields.outcome.required=fields.workflowStatus.value==='Hoàn tất kỹ thuật'&&!context.fanClosedMetadata;fields.technicalCompletedAt.required=fields.outcome.required;
    fields.replacementType.disabled=working||pending||fields.outcome.value!=='Đổi thiết bị';fields.replacementType.required=!fields.replacementType.disabled;
    for(const name of ['diagnosisCompletedAt','technicalCompletedAt']){fields[name].max=context.today;if(context.receivedAt)fields[name].min=context.receivedAt;}
    if(fields.diagnosisCompletedAt.value)fields.technicalCompletedAt.min=fields.diagnosisCompletedAt.value;

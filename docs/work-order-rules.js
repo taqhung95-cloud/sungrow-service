@@ -37,7 +37,8 @@ var SungrowWorkOrderRules=(()=>{
   if(c.caseClosed&&status!==c.currentStatus)errors.push('Hồ sơ đã hoàn tất: không đổi trạng thái công việc qua biểu mẫu cập nhật kỹ thuật.');
   if(outcome&&!outcomes.includes(outcome))errors.push('Kết quả xử lý không hợp lệ.');
   if(active.includes(status)&&(outcome||completed||replacement))errors.push('Trạng thái đang xử lý chưa được có kết quả cuối, ngày hoàn tất kỹ thuật hoặc loại thiết bị đổi.');
-  if(status==='Hoàn tất kỹ thuật'&&(!outcome||!completed))errors.push('Hoàn tất kỹ thuật phải có kết quả xử lý và ngày hoàn tất kỹ thuật.');
+  const preservedFinal=c.fanClosedMetadata===true&&c.caseClosed===true&&status===c.currentStatus&&outcome===clean(c.previousOutcome)&&completed===clean(c.previousTechnicalCompletedAt)&&replacement===clean(c.previousReplacementType);
+  if(status==='Hoàn tất kỹ thuật'&&(!outcome||!completed)&&!preservedFinal)errors.push('Hoàn tất kỹ thuật phải có kết quả xử lý và ngày hoàn tất kỹ thuật.');
   if(controlled.includes(status)&&Boolean(outcome)!==Boolean(completed))errors.push('Kết quả xử lý và ngày hoàn tất kỹ thuật phải đi cùng nhau.');
   if(outcome==='Đổi thiết bị'&&!replacement)errors.push('Chọn loại thiết bị đổi.');
   if(replacement&&outcome!=='Đổi thiết bị')errors.push('Chỉ nhập loại thiết bị đổi khi kết quả là Đổi thiết bị.');
