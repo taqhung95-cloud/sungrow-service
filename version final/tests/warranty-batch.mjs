@@ -8,5 +8,9 @@ const context=vm.createContext({console,Date,authenticate_(){auth++;if(denied)th
 vm.runInContext(source.slice(begin,end),context);
 const initial=context.lookupWarrantyBatch('fixture',['SN-A','sn.b+','SN-A','MISSING']);
 assert.equal(initial.items.length,4);assert.equal(initial.items[0].result.status,'valid');assert.equal(initial.items[0].result.model,'SG125CX-P2');assert.equal(initial.items[1].result.status,'expired');assert.equal(initial.items[1].result.model,'SG110CX');assert.equal(initial.items[3].result.status,'no_information');assert.equal(scans,1);assert.equal(reads,2,'Duplicate inputs must not cause duplicate source row reads');
+const enriched=context.warrantyLookupResult_(['2030-01-01','Standard','PN-123','Example Company'],{startColumn:1,packageColumn:2,partNumberColumn:3,companyNameColumn:4});
+assert.equal(enriched.partNumber,'PN-123');assert.equal(enriched.companyName,'Example Company');
+const incomplete=context.warrantyLookupResult_(['','Standard','PN-123','Example Company'],{startColumn:1,packageColumn:2,partNumberColumn:3,companyNameColumn:4});
+assert.equal(incomplete.status,'insufficient');assert.equal(incomplete.companyName,'Example Company');
 context.lookupWarrantyBatch('fixture',['SN-A','SN.B+','MISSING']);assert.equal(scans,1,'Warm batch must not scan the source');assert.equal(auth,2,'Auth runs before shared cache');denied=true;assert.throws(()=>context.lookupWarrantyBatch('denied',['SN-A']),/AUTH/);denied=false;assert.throws(()=>context.lookupWarrantyBatch('fixture',Array(21).fill('X')),/20/);assert.equal(context.lookupWarranty('fixture','SN.B+').status,'expired');
 console.log('Warranty batch passed: single source search, duplicate SN coalescing, literal regex characters, valid/expired/unknown, auth before cache, bounded batch and compatible single lookup; no writes.');

@@ -1007,3 +1007,7 @@ Cập nhật cùng commit khi thay đổi một trong các mục sau:
 - cache/revision/concurrency;
 - các bước deploy/migration;
 - cache key frontend hoặc kiến trúc hosting.
+
+## Ngữ cảnh bảo hành và thông tin nguồn — 29/10/2026
+
+QuickAssistant1.3.1 lưu tác vụ đọc cuối trong hội thoại có scope tài khoản. Câu tiếp nối trung tính có mã mới dùng mã mới; tra bảo hành xong có thể gửi riêng SN. Query mới được ưu tiên hơn __previous__ của model. Không tự huấn luyện model hoặc dùng câu trả lời làm quy tắc nghiệp vụ. Câu hỏi mới về chức năng khác vẫn qua bộ chọn tác vụ. API lookupWarranty bổ sung partNumber/companyName từ cột Part Number/Company Name hiện có; thiếu thì không suy diễn, không đổi schema/nguồn/quyền. Cache bảo hành tăng v3. Thông tin bổ sung chỉ hiển thị nội bộ, không gửi Gemini. Kiểm thử chuỗi hỏi trong ảnh, SN riêng, nguồn thiếu ngày và đầy đủ metadata; full validate/diff check đạt. Bộ cập nhật gồm Code.gs, QuickAssistant.gs, QuickAssistantActions.gs; người dùng thay thủ công và New version cùng URL. Backend chưa được xác nhận deploy; không đổi frontend. Nguồn chuẩn bị push main trong commit này.

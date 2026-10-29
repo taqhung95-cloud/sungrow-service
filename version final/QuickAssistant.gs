@@ -1,5 +1,5 @@
 /* Read-only assistant. Gemini receives masked questions and generic guides only. */
-var QUICK_ASSISTANT_VERSION_ = '1.3.0';
+var QUICK_ASSISTANT_VERSION_ = '1.3.1';
 
 function quickAssistantChat(idToken, request) {
   var startedAt=Date.now();
@@ -35,6 +35,9 @@ function quickAssistantChat(idToken, request) {
     // Local routing only controls scoped lookup. Gemini interprets and answers in one call.
     var greeting=qaGreeting_(message,actor);if(greeting)useAI=false;
     var liveResult=null,normalized=qaNormalize_(message),directAction=null;
+    // A new identifier replaces the old object while a neutral follow-up keeps the task.
+    var warrantyFollowup=state.lastAction==='warranty'&&/^(?:[a-z0-9._!\/-]+\s*)?(?:(?:con|va)\s+)?(?:(?:cai|may|sn|thiet bi)\s*)?(?:nay|do)?\s*(?:thi sao|the nao|con han khong)?\s*[?!.]*$/.test(normalized);
+    if(!greeting&&warrantyFollowup&&(plan.query||state.lastSerial))directAction={action:'warranty',query:plan.query||'__previous__'};
     if(!simple&&!/cach|huong dan|quy trinh|nghia la/.test(normalized)&&/bao hanh|warranty/.test(normalized)&&(plan.query||state.lastSerial&&/nay|do|tren/.test(normalized)))directAction={action:'warranty',query:plan.query||'__previous__'};
     if(directAction){liveResult=qaRunAction_(idToken,actor,directAction,message,state);useAI=false;plan.query='';plan.usePrevious=false;}
     var docs=qaKnowledge_(actor),cards=[],total=0,stale=false,ambiguous=false,query=String(plan.query||'').trim().slice(0,150);
@@ -82,6 +85,7 @@ function quickAssistantChat(idToken, request) {
         data:{question:message,history:state.history.slice(-6),topicIds:plan.topicIds,hasPrevious:!!(state.caseIds.length||state.lastSerial),knowledge:docs}
       });}catch(error){useAI=false;fallbackNote=error.publicMessage||error.message||'AI chưa sẵn sàng.';var guide=qaLocalAnswer_(message,plan,docs,cards,total);result={answer:guide.answer,sourceIds:guide.sources.map(function(s){return s.id;})};}
       if(result.action&&result.action!=='guide'){
+        if(result.query==='__previous__'&&plan.query)result.query=plan.query;
         liveResult=qaRunAction_(idToken,actor,result,message,state);answer=liveResult.answer;cards=liveResult.cases;total=liveResult.total;sources=liveResult.sources;
       }else{
         answer=String(result.answer||'').trim().slice(0,7000);
@@ -100,6 +104,7 @@ function quickAssistantChat(idToken, request) {
     if(total>cards.length)answer+='\nĐang hiển thị '+cards.length+'/'+total+' hồ sơ; nhập mã cụ thể hơn để thu hẹp kết quả.';
     var response={answer:answer,cases:cards,total:total,sources:sources,mode:simple||liveResult?'lookup':useAI?'ai':'guide',fallbackReason:fallbackNote||(!simple&&!liveResult&&!useAI&&!restricted?'Đang dùng hướng dẫn nội bộ.':''),elapsedMs:Date.now()-startedAt,generatedAt:new Date().toISOString(),version:QUICK_ASSISTANT_VERSION_,rulesVersion:qaRuleContext_().version};
     if(!greeting)state.topicIds=sources.map(function(s){return s.id;});
+    if(!liveResult&&!greeting)state.lastAction='';
     state.history=state.history.concat([{role:'user',text:qaMask_(message).text}]).slice(-4);
     if(cards.length||query)state.caseIds=cards.map(function(c){return c.caseId;});
     if(cards.length===1)state.lastSerial=cards[0].serialNumber||'';

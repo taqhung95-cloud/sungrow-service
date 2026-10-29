@@ -18,6 +18,7 @@ function qaRunAction_(token,actor,action,message,state){
   if(!available[name])throw publicError_('Chức năng tra cứu này chưa được nạp trong deployment hiện tại. Quản trị cần kiểm tra module tương ứng.');
   // Identifiers must be supplied by the user or resolve from server-side conversation state.
   if(query&&query!=='__previous__'&&String(message).toLowerCase().indexOf(query.toLowerCase())<0)throw publicError_('Bạn gửi lại mã cần tra để xác nhận đúng đối tượng.');
+  state.lastAction=name;
   if(query==='__previous__'&&!state.caseIds?.length&&!state.lastSerial)return qaActionResult_('Bạn gửi mã hồ sơ hoặc S/N cần tra.','Tra cứu');
   if(name==='warranty'){
     var sn=query==='__previous__'?state.lastSerial:query;
@@ -27,7 +28,7 @@ function qaRunAction_(token,actor,action,message,state){
     if(!sn)return qaActionResult_('Hồ sơ chưa có S/N để tra nguồn bảo hành.','Tra bảo hành');
     var warranty=lookupWarranty(token,sn);state.lastSerial=sn;state.caseIds=[];
     var lines=['## Bảo hành của '+sn,'- Kết quả: '+(warranty.label||'Chưa có thông tin')];
-    [['Model',warranty.model],['Gói bảo hành',warranty.package],['Ngày bắt đầu',warranty.startDate],['Ngày hết hạn',warranty.expiryDate]].forEach(function(p){if(p[1])lines.push('- '+p[0]+': '+p[1]);});
+    [['Model',warranty.model],['Part Number',warranty.partNumber||'Chưa có thông tin'],['Company Name',warranty.companyName||'Chưa có thông tin'],['Gói bảo hành',warranty.package],['Ngày bắt đầu',warranty.startDate],['Ngày hết hạn',warranty.expiryDate]].forEach(function(p){if(p[1])lines.push('- '+p[0]+': '+p[1]);});
     lines.push('\nKết quả tra nguồn bảo hành không thay thế bước duyệt bảo hành của hồ sơ sửa chữa.');
     return qaActionResult_(lines.join('\n'),'lookupWarranty — nguồn bảo hành của website');
   }

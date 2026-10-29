@@ -409,8 +409,10 @@ function warrantyLookupSource_() {
   const packageColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'warranty package'; }) + 1;
   const modelColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'model'; }) + 1;
   const standardModelColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'model chuẩn'; }) + 1;
+  const partNumberColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'part number'; }) + 1;
+  const companyNameColumn = headers.findIndex(function (value) { return value.toLowerCase() === 'company name'; }) + 1;
   if (!serialColumn || !startColumn || !packageColumn) throw publicError_('Nguồn bảo hành thiếu cột SN, Start date hoặc Warranty package.');
-  return {sheet:sheet,headers:headers,startColumn:startColumn,packageColumn:packageColumn,modelColumn:modelColumn,standardModelColumn:standardModelColumn,serialColumn:serialColumn};
+  return {sheet:sheet,headers:headers,startColumn:startColumn,packageColumn:packageColumn,modelColumn:modelColumn,standardModelColumn:standardModelColumn,serialColumn:serialColumn,partNumberColumn:partNumberColumn,companyNameColumn:companyNameColumn};
 }
 function warrantyLookupResult_(row, source) {
   const startColumn=source.startColumn,packageColumn=source.packageColumn,modelColumn=source.modelColumn,standardModelColumn=source.standardModelColumn;
@@ -420,12 +422,13 @@ function warrantyLookupResult_(row, source) {
   const modelStatus = modelNeedsReview ? 'needs_review' : (model ? 'found' : 'missing');
   const start = warrantyDate_(row[startColumn - 1]);
   const packageName = clean_(row[packageColumn - 1]);
+  const extra = {partNumber:source.partNumberColumn?clean_(row[source.partNumberColumn-1]):'',companyName:source.companyNameColumn?clean_(row[source.companyNameColumn-1]):''};
   const years = /extended/i.test(packageName) ? 10 : (/standard/i.test(packageName) ? 5 : 0);
-  if (!start || !years) return { status: 'insufficient', label: 'Thiếu thông tin bảo hành', package: packageName, model:model, modelStatus:modelStatus };
+  if (!start || !years) return Object.assign({ status: 'insufficient', label: 'Thiếu thông tin bảo hành', package: packageName, model:model, modelStatus:modelStatus },extra);
   const expires = new Date(start.getFullYear() + years, start.getMonth(), start.getDate());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return { status: today <= expires ? 'valid' : 'expired', label: today <= expires ? 'Còn bảo hành' : 'Hết bảo hành', package: packageName, startDate: iso_(start), expiryDate: iso_(expires), model:model, modelStatus:modelStatus };
+  return Object.assign({ status: today <= expires ? 'valid' : 'expired', label: today <= expires ? 'Còn bảo hành' : 'Hết bảo hành', package: packageName, startDate: iso_(start), expiryDate: iso_(expires), model:model, modelStatus:modelStatus },extra);
 }
 function lookupWarranty(idToken, serialNumber) {
   return lookupWarrantyBatch(idToken,[serialNumber]).items[0].result;
@@ -435,14 +438,14 @@ function lookupWarrantyBatch(idToken, serialNumbers) {
   if(!Array.isArray(serialNumbers)||!serialNumbers.length||serialNumbers.length>20)throw publicError_('Mỗi lần tra tối đa 20 S/N.');
   const serials=serialNumbers.map(function(value){const sn=clean_(value).toUpperCase();if(sn.length>100)throw publicError_('Số sê-ri quá dài.');return sn;});
   const cache=CacheService.getScriptCache(),day=iso_(new Date()),results={},missing=[];
-  serials.forEach(function(sn){if(Object.prototype.hasOwnProperty.call(results,sn))return;const key='warranty-v2:'+day+':'+digest_(sn);let hit;try{hit=cache.get(key);if(hit)hit=JSON.parse(hit);}catch(_){}if(hit)results[sn]=hit;else if(!sn)results[sn]={status:'no_information',label:'Không có thông tin',model:'',modelStatus:'not_found'};else if(missing.indexOf(sn)<0)missing.push(sn);});
+  serials.forEach(function(sn){if(Object.prototype.hasOwnProperty.call(results,sn))return;const key='warranty-v3:'+day+':'+digest_(sn);let hit;try{hit=cache.get(key);if(hit)hit=JSON.parse(hit);}catch(_){}if(hit)results[sn]=hit;else if(!sn)results[sn]={status:'no_information',label:'Không có thông tin',model:'',modelStatus:'not_found'};else if(missing.indexOf(sn)<0)missing.push(sn);});
   if(missing.length){
     const source=warrantyLookupSource_(),sheet=source.sheet;
     const expression='^(?:'+missing.map(function(sn){return sn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}).join('|')+')$';
     const matches=sheet.getRange(2,source.serialColumn,Math.max(1,sheet.getLastRow()-1),1).createTextFinder(expression).useRegularExpression(true).matchEntireCell(true).matchCase(false).findAll();
     const rows={};matches.forEach(function(cell){const row=cell.getRow();if(!rows[row])rows[row]=sheet.getRange(row,1,1,source.headers.length).getValues()[0];});
     Object.keys(rows).sort(function(a,b){return Number(a)-Number(b);}).forEach(function(row){const values=rows[row],sn=clean_(values[source.serialColumn-1]).toUpperCase();if(missing.indexOf(sn)>=0&&!Object.prototype.hasOwnProperty.call(results,sn))results[sn]=warrantyLookupResult_(values,source);});
-    missing.forEach(function(sn){if(!results[sn])results[sn]={status:'no_information',label:'Không có thông tin',model:'',modelStatus:'not_found'};try{cache.put('warranty-v2:'+day+':'+digest_(sn),JSON.stringify(results[sn]),300);}catch(_){} });
+    missing.forEach(function(sn){if(!results[sn])results[sn]={status:'no_information',label:'Không có thông tin',model:'',modelStatus:'not_found'};try{cache.put('warranty-v3:'+day+':'+digest_(sn),JSON.stringify(results[sn]),300);}catch(_){} });
   }
   return {items:serials.map(function(sn){return {serialNumber:sn,result:results[sn]};})};
 }
