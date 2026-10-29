@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Hiển thị phản hồi trợ lý — 29/10/2026
+
+Frontend assistantJS4/live170/entry151 ẩn nguồn tham chiếu và nhãn chế độ trả lời; giữ thời điểm đọc. Trong khi chờ hiển thị Đang xử lý… N giây, sau phản hồi ghi thời gian chờ thực tế phía trình duyệt. Hiệu ứng hiện chữ theo text node giữ định dạng và escape; chạy sau khi nhận toàn bộ RPC, không phải streaming từ model, tối đa2.4giây; tắt khi reduced-motion và hủy khi đổi tài khoản. Giữ busy đến hết hiệu ứng. UI Edge kiểm thử timer, hiện chữ, ẩn nguồn, escaped text, logout trong hiệu ứng và scope callbacks. Chỉ cập nhật docs, không cần thay Apps Script. Trạng thái chuẩn bị phát hành: local đã kiểm thử, source push được ghi sau khi thành công.
+
 ## Trợ lý đọc dữ liệu thực tế 1.3.0 — 29/10/2026
 
 Mã nguồn đã push main và codex/quick-assistant-20261028 tại 8f68482. Bộ 3 file đã xuất vào Cap-nhat-tro-ly-doc-du-lieu-20261029 ở workspace chính. Apps Script 1.3.0 vẫn chờ người dùng cập nhật thủ công; không có thay đổi frontend trong bản này.

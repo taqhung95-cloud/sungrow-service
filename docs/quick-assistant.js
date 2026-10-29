@@ -75,6 +75,22 @@
     root.querySelector('.sgqa-log').append(box);return box;
   }
   function date(value) { return /^\d{4}-\d{2}-\d{2}/.test(value||'') ? value.slice(0,10).split('-').reverse().join('/') : value || '—'; }
+  async function reveal(box,signal) {
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const walker=document.createTreeWalker(box,NodeFilter.SHOW_TEXT),nodes=[];let node;
+    while((node=walker.nextNode()))nodes.push({node,chars:Array.from(node.data)});
+    const total=nodes.reduce((n,item)=>n+item.chars.length,0);if(!total)return;
+    nodes.forEach(item=>item.node.data='');box.setAttribute('aria-busy','true');
+    const start=performance.now(),duration=Math.min(2400,total*12);
+    try{await new Promise(resolve=>{
+      let timer;const finish=()=>{clearTimeout(timer);signal.removeEventListener('abort',finish);resolve();};
+      const tick=()=>{if(signal.aborted||!box.isConnected){finish();return;}
+        let remaining=Math.ceil(total*Math.min(1,(performance.now()-start)/duration));
+        nodes.forEach(item=>{const count=Math.min(item.chars.length,remaining);item.node.data=item.chars.slice(0,count).join('');remaining-=count;});
+        if(performance.now()-start>=duration)finish();else timer=setTimeout(tick,24);
+      };signal.addEventListener('abort',finish,{once:true});tick();
+    });}finally{box.removeAttribute('aria-busy');}
+  }
   function record(c) {
     const wrap=el('section','sgqa-record'),title=el('h3','',c.model || c.deviceType || c.caseId);
     title.append(el('span','sgqa-badge',c.status||c.caseStatus||'Chưa cập nhật'));wrap.append(title);
@@ -99,16 +115,22 @@
     const input=root.querySelector('input'),message=input.value.trim();if(!message)return;
     const seq=generation,localRoot=root;pendingId=pendingId||uuid();
     textMessage(message,'sgqa-user');input.value='';setBusy(true);
-    const pending=textMessage('Đang tìm thông tin…','sgqa-pending');pending.setAttribute('role','status');
+    const started=performance.now();
+    const pending=textMessage('Đang xử lý… 0 giây','sgqa-pending');pending.setAttribute('role','status');
+    const seconds=()=>Math.floor((performance.now()-started)/1000);
+    const clock=setInterval(()=>{pending.firstChild.textContent='Đang xử lý… '+seconds()+' giây';},1000);
     const log=root.querySelector('.sgqa-log');log.scrollTop=log.scrollHeight;
     controller=new AbortController();const timeout=setTimeout(()=>controller?.abort(),120000);
     try {
       const result=await config.request({message,conversationId:conversation,requestId:pendingId},controller.signal);
       if(seq!==generation||root!==localRoot)return;
+      clearInterval(clock);clearTimeout(timeout);const elapsed=seconds();
       pending.remove();const box=textMessage(result.answer||'Chưa có câu trả lời. Vui lòng thử diễn đạt lại.');
-      const mode=el('div','sgqa-read-time',({ai:'Trả lời bằng Gemini',guide:'Hướng dẫn nội bộ',lookup:'Tra cứu hệ thống'})[result.mode]||'Phản hồi hệ thống');if(result.fallbackReason)mode.title=result.fallbackReason;box.append(mode);
+      log.scrollTop=Math.max(0,box.offsetTop-log.offsetTop-12);
+      await reveal(box,controller.signal);
+      if(seq!==generation||root!==localRoot)return;
       (Array.isArray(result.cases)?result.cases:[]).slice(0,5).forEach(c=>{if(c.caseId)box.append(record(c));});
-      if(result.sources?.length)box.append(el('div','sgqa-sources','Tham chiếu: '+result.sources.map(s=>s.title).join(' · ')));
+      box.append(el('div','sgqa-read-time','Đã xử lý trong '+elapsed+' giây'));
       if(result.generatedAt){const at=new Date(result.generatedAt);if(!isNaN(at)){const stamp=el('div','sgqa-read-time','Đọc lúc '+at.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}));if(result.rulesVersion)stamp.title='Phiên bản backend: '+result.rulesVersion;box.append(stamp);}}
       pendingId='';log.scrollTop=Math.max(0,box.offsetTop-log.offsetTop-12);
     } catch(error) {
@@ -119,7 +141,7 @@
       // Retain the request ID only for the same question, so a lost response can be deduplicated server-side.
       input.dataset.retryMessage=message;
       log.scrollTop=log.scrollHeight;
-    } finally {clearTimeout(timeout);if(seq===generation){controller=null;setBusy(false);}}
+    } finally {clearInterval(clock);clearTimeout(timeout);if(seq===generation){controller=null;setBusy(false);}}
   }
   function mount() {
     uiEvents=new AbortController();isOpen=false;anchor=null;
