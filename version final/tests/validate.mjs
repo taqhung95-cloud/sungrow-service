@@ -27,6 +27,8 @@ import './stable-transport.mjs';
 import './fan-legacy-migration.mjs';
 import './fan-lots.mjs';
 import './fan-lot-analytics.mjs';
+import './parts-report.mjs';
+import './dashboard-issue-labels.mjs';
 import './fan-shared-work.mjs';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.20-sla-holds';
+const LEGACY_API_VERSION = '1.11.24-parts-report';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -244,7 +244,7 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       sparePartDate: parts.map(function (part) { return date_(part['Ngày nhận linh kiện']); }).filter(Boolean)[0] || null,
       parts: parts.map(function (part) {
         const work = works.find(function (w) { return clean_(w['Mã công việc']) === clean_(part['Mã công việc']); }) || {};
-        return { pn: clean_(part['Mã linh kiện (Part Number)']) || clean_(part['Tên linh kiện']), qty: knownQuantity_(part['Số lượng']), usedDate: iso_(date_(part['Ngày sử dụng'])), center: resolveCenter_(work['Trung tâm xử lý'], centers) };
+        return { pn: clean_(part['Mã linh kiện (Part Number)']) || clean_(part['Tên linh kiện']), partNumber: clean_(part['Mã linh kiện (Part Number)']), name: clean_(part['Tên linh kiện']), partUsageId: clean_(part['Mã sử dụng linh kiện']), workOrderId: clean_(part['Mã công việc']), qty: knownQuantity_(part['Số lượng']), usedDate: iso_(date_(part['Ngày sử dụng'])), center: resolveCenter_(work['Trung tâm xử lý'], centers) };
       }).filter(function (part) { return part.pn; }),
       holds: holds,
       returnDate: date_(item['Ngày trả khách']),
@@ -825,6 +825,16 @@ function normalizeRow_(row, rowNumber, year, centers, schema) {
   };
 }
 
+// Presentation only: preserve issue rows and quantities for history/analytics.
+function dashboardIssueLabels_(issues) {
+  const seen = new Set();
+  return (issues || []).reduce(function (labels, value) {
+    const label = clean_(value).replace(/\s+/g, ' '),key=label.toLocaleLowerCase('vi');
+    if(label&&!seen.has(key)){seen.add(key);labels.push(label);}
+    return labels;
+  }, []);
+}
+
 function publicTicket_(r) {
   const deliveredWithoutReturn = /đã\s*giao/i.test(r.deliveryStatus) && !r.returnDate;
   const processingState = r.returnDate ? 'completed' : (deliveredWithoutReturn ? 'missing_return_date' : 'open');
@@ -842,7 +852,7 @@ function publicTicket_(r) {
     receivedDate: iso_(r.receivedDate),
     returnDate: iso_(r.returnDate),
     center: r.center,
-    error: r.issues.join(', ') || r.errorCode || 'Chưa ghi nhận',
+    error: dashboardIssueLabels_(r.issues).join(', ') || r.errorCode || 'Chưa ghi nhận',
     warranty: r.warrantyConfirmation,
     warrantyStatus: r.warrantyStatus,
     deliveryStatus: r.deliveryStatus,
@@ -1260,6 +1270,7 @@ function readReportData_(request, actor) {
   if (!Array.isArray(defs)) throw apiError_('INVALID_REPORT','Mẫu báo cáo không hợp lệ.');
   const basis=String(request.dateBasis||'received');
   if (['received','technical','returned','open'].indexOf(basis)<0) throw apiError_('INVALID_REPORT','Loại ngày không hợp lệ.');
+  if(type==='parts'&&(basis!=='received'||request.status||request.warrantyStatus||request.deviceType))throw apiError_('INVALID_REPORT','Linh kiện chỉ lọc theo ngày sử dụng, center và mã/tên linh kiện.');
   const columns=request.columns;
   if (!Array.isArray(columns)||!columns.length||columns.length>defs.length||new Set(columns).size!==columns.length||columns.some(function(key){return !defs.some(function(c){return c[0]===key;});})) throw apiError_('INVALID_REPORT','Chọn các cột báo cáo hợp lệ.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(request.start||''))||!/^\d{4}-\d{2}-\d{2}$/.test(String(request.end||'')))throw apiError_('INVALID_PERIOD','Chọn ngày bắt đầu và ngày kết thúc hợp lệ.');
@@ -1278,9 +1289,20 @@ function readReportData_(request, actor) {
   if(request.revision&&String(request.revision)!==revision)throw apiError_('REPORT_CHANGED','Dữ liệu đã thay đổi. Vui lòng xem trước và xuất lại báo cáo.');
   const spreadsheetId=String(PropertiesService.getScriptProperties().getProperty('SOURCE_SPREADSHEET_ID')||DEFAULT_SPREADSHEET_ID).trim();
   const snapshot=readCanonicalSnapshot_(spreadsheetId,centers,revision);
-  const records=snapshot.records.filter(function(r){return r.hasData&&recordInScope_(r,scope,includeUnassigned,centers);});
+  const records=snapshot.records.filter(function(r){return r.hasData&&(type==='parts'||recordInScope_(r,scope,includeUnassigned,centers));});
   let selected;
-  if(type==='centers'){
+  if(type==='parts'){
+    // Read the usage ledger once, never expand Fan event links into extra usage rows.
+    selected=[];
+    records.forEach(function(r){(r.parts||[]).forEach(function(p){
+      const center=clean_(p.center),usedAt=date_(p.usedDate);
+      if(!p.qty||!usedAt||!inPeriod_(usedAt,period)||!(scope.indexOf(center)>=0||(includeUnassigned&&all.indexOf(center)<0)))return;
+      const partNumber=clean_(p.partNumber),partName=clean_(p.name);
+      if(query&&[partNumber,partName].join(' ').toLowerCase().indexOf(query)<0)return;
+      selected.push({usedAt:iso_(usedAt),partNumber:partNumber,partName:partName,quantity:p.qty,center:center,caseId:r.id,workOrderId:p.workOrderId||'',model:r.model});
+    });});
+    selected.sort(function(a,b){return b.usedAt.localeCompare(a.usedAt)||a.caseId.localeCompare(b.caseId)||a.workOrderId.localeCompare(b.workOrderId)||a.partNumber.localeCompare(b.partNumber);});
+  }else if(type==='centers'){
     const dashboard=buildDashboard_(records,period,scope,snapshot.sheetName,snapshot.lastRow,spreadsheetId,{role:'service_manager',email:actor.email},[],records);
     selected=dashboard.centers.map(function(c){const local=records.filter(function(r){return c.unassigned?scope.indexOf(r.center)<0:r.center===c.center;});return Object.assign({},c,{returned:c.completed,technicalCompleted:sumDevices_(local.filter(function(r){return validTechnicalDate_(r)&&inPeriod_(r.technicalCompletedDate,period);})),waitingDelivery:sumDevices_(local.filter(function(r){return isWaitingAt_(r,period.asOf);} ))});});
   }else{
@@ -1302,7 +1324,7 @@ function readReportData_(request, actor) {
   });
   assertCanonicalRevision_(revision);
   const spec={type:type,start:iso_(period.start),end:iso_(period.end),asOf:period.asOf.toISOString(),dateBasis:basis,centers:request.centers.slice().sort(),columns:columns.slice(),query:query,status:status,warrantyStatus:warranty,deviceType:deviceType};
-  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: Fan nhập thường tính 1 thiết bị; mỗi lô Fan tính 1 hồ sơ, kể cả lô chuyển đổi. Các loại thiết bị khác giữ số lượng đã biết. Số Fan thực tế ở chi tiết lô; hồ sơ nguồn đã nhập lô không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
+  return {rows:rows,total:selected.length,knownDevices:knownDevices,unknownQuantityCases:unknownQuantityCases,offset:offset,nextOffset:offset+rows.length<selected.length?offset+rows.length:null,revision:revision,asOf:spec.asOf,fingerprint:digest_(JSON.stringify(spec)),spec:spec,columns:columns.map(function(key){const c=defs.find(function(d){return d[0]===key;});return {key:c[0],label:c[1],type:c[2]};}),definitions:type==='parts'?['Mỗi dòng là một lần ghi nhận trong sổ Linh kiện sử dụng; không nhân theo số Fan hoặc số liên kết.','Lọc theo ngày sử dụng thực tế và center của công việc sử dụng, không theo ngày nhận hồ sơ hoặc center đang giữ.','Chỉ xuất bản ghi có số lượng dương và ngày sử dụng hợp lệ trong kỳ; hồ sơ đã hủy hoặc nguồn đã nhập lô không cộng lại.','Không bao gồm tồn kho, kế hoạch nhập hoặc dữ liệu linh kiện chỉ nằm trong tab lịch sử chưa chuyển vào sổ sử dụng.']:['Hồ sơ: một dòng mỗi lượt tiếp nhận; không gộp theo S/N.','Thiết bị/Hồ sơ: Fan nhập thường tính 1 thiết bị; mỗi lô Fan tính 1 hồ sơ, kể cả lô chuyển đổi. Các loại thiết bị khác giữ số lượng đã biết. Số Fan thực tế ở chi tiết lô; hồ sơ nguồn đã nhập lô không cộng thêm.','Tồn tính tại ngày chốt, gồm hồ sơ tiếp nhận trước kỳ.','Trung tâm/trạng thái/bảo hành là thông tin hiện tại hoặc chặng gần nhất, không tái dựng lịch sử từng ngày.','SLA dùng ngày nhận–trả hợp lệ, trọng số thiết bị; bảng tổng hợp giữ quy tắc dashboard.'],generatedAt:new Date().toISOString()};
 }
 if (typeof installReportReader_==='function') installReportReader_(readReportData_);
 return { handlePost: doPost, readDiagnostics: diagnoseReadPaths_, slaDays: slaDays_, assistantRules: function(){
