@@ -98,6 +98,8 @@ live.ask('A200918S82');assert.deepEqual(calls.at(-1),['warranty','A200918S82']);
 live.context.lookupWarranty=(_,sn)=>{calls.push(['warranty',sn]);return {label:'Không có thông tin',partNumber:'PRIVATE_PART',companyName:'PRIVATE_COMPANY'};};
 const extraWarranty=live.ask('A26A0804967 cái này thì sao?');assert.match(extraWarranty.answer,/PRIVATE_PART/);assert.match(extraWarranty.answer,/PRIVATE_COMPANY/);
 live.ask('A200918S82 cái này thì sao?');assert.deepEqual(calls.at(-1),['warranty','A200918S82']);assert.equal(live.network.length,0);
+assert.match(live.ask('A1902210321, SN này của công ty nào?').answer,/PRIVATE_COMPANY/);assert.deepEqual(calls.at(-1),['warranty','A1902210321']);
+assert.match(live.ask('Part number của A1902210321 là gì?').answer,/PRIVATE_PART/);assert.equal(live.network.length,0);
 live.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');live.props.set('ASSISTANT_AI_ENABLED','true');live.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');
 const action=(name,query='',extra={})=>live.context.answer={action:name,query,period:'none',center:'',status:'',answer:'',sourceIds:[],...extra};
 live.context.listNotifications=token=>{assert.equal(token,'valid-session');calls.push(['notifications']);return {unreadCount:2,items:[{at:'2026-10-28',title:'PRIVATE_NOTICE',caseId:'DAT-001',unread:true}]};};
@@ -105,6 +107,8 @@ action('notifications');assert.match(live.ask('Tôi đang có thông báo nào?'
 live.context.getEntrySuggestions=()=>({parts:[{partNumber:'PN1',name:'Relay'}],issues:['Lỗi quạt']});
 action('suggestions','Relay');assert.match(live.ask('Tìm linh kiện Relay trong danh mục').answer,/PN1/);
 action('case_detail','[MA_1]');assert.match(live.ask('Chi tiết DAT-001 ra sao?').answer,/Ngày nhận/);
+action('case_detail','MA_1');assert.match(live.ask('Chi tiết DAT-001 ra sao nữa?').answer,/Ngày nhận/);
+action('case_detail','MA_99');assert.doesNotMatch(live.ask('Chi tiết DAT-001 có gì?').answer,/Ngày nhận/);
 action('case_detail','BKE-001');assert.doesNotMatch(live.ask('Cho tôi xem thông tin').answer,/PRIVATE_/,'Invented query must not run');
 action('report','',{period:'today'});assert.doesNotMatch(live.ask('Báo cáo hôm nay').answer,/LIVE_REPORT/);
 live.setActor({...live.actor(),isGlobalManager:true,capabilities:{viewCases:true,viewDashboard:true}});

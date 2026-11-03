@@ -1,5 +1,5 @@
 /* Read-only assistant. Gemini receives masked questions and generic guides only. */
-var QUICK_ASSISTANT_VERSION_ = '1.3.1';
+var QUICK_ASSISTANT_VERSION_ = '1.3.2';
 
 function quickAssistantChat(idToken, request) {
   var startedAt=Date.now();
@@ -35,6 +35,7 @@ function quickAssistantChat(idToken, request) {
     // Local routing only controls scoped lookup. Gemini interprets and answers in one call.
     var greeting=qaGreeting_(message,actor);if(greeting)useAI=false;
     var liveResult=null,normalized=qaNormalize_(message),directAction=null;
+    if(!simple&&!/cach|huong dan|quy trinh|nghia la/.test(normalized)&&/cong ty|company|part\s*number|\bpn\b/.test(normalized)&&(plan.query||state.lastSerial&&/nay|do|tren/.test(normalized)))directAction={action:'warranty',query:plan.query||'__previous__'};
     // A new identifier replaces the old object while a neutral follow-up keeps the task.
     var warrantyFollowup=state.lastAction==='warranty'&&/^(?:[a-z0-9._!\/-]+\s*)?(?:(?:con|va)\s+)?(?:(?:cai|may|sn|thiet bi)\s*)?(?:nay|do)?\s*(?:thi sao|the nao|con han khong)?\s*[?!.]*$/.test(normalized);
     if(!greeting&&warrantyFollowup&&(plan.query||state.lastSerial))directAction={action:'warranty',query:plan.query||'__previous__'};
@@ -209,7 +210,7 @@ function qaModel_(actor,spec){
       if(value.action!=='guide'){
         if(typeof value.query!=='string'||value.query.length>150||properties.period.enum.indexOf(value.period)<0||properties.center.enum.indexOf(value.center)<0||properties.status.enum.indexOf(value.status)<0)throw Error('arguments');
         if(value.query==='__previous__'){if(!spec.data.hasPrevious)throw Error('previous');}
-        else if(Object.prototype.hasOwnProperty.call(question.queries,value.query))value.query=question.queries[value.query];
+        else if(/^\[?MA_\d+\]?$/.test(value.query.trim())&&Object.prototype.hasOwnProperty.call(question.queries,'['+value.query.trim().replace(/[\[\]]/g,'')+']'))value.query=question.queries['['+value.query.trim().replace(/[\[\]]/g,'')+']'];
         else if(value.query&&question.text.toLowerCase().indexOf(value.query.toLowerCase())<0)throw Error('invented query');
       }else if(typeof value.answer!=='string'||!Array.isArray(value.sourceIds)||!value.sourceIds.some(function(id){return safeData.knowledge.some(function(d){return d.id===id;});}))throw Error('answer');
     }
