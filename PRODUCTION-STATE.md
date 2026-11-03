@@ -2,6 +2,10 @@
 
 ## Xuất linh kiện trong Báo cáo — 03/11/2026, backend chờ cập nhật
 
+Nguồn đã push lên main và codex/parts-report-20261103 tại e536bc0. GitHub Pages run41602374315 success; kiểm tra website public thấy reports.js?v=4 và reports.css?v=4. Backend vẫn chờ người dùng thay file/New version; chưa đọc hoặc xuất báo cáo nghiệp vụ production.
+
+
+
 Thêm mẫu Linh kiện sử dụng ngay trong thẻ Báo cáo, dùng chung Xem trước/Xuất Excel. Frontend reportsJS4/CSS4 chỉ hiện mẫu khi bootstrap có schema parts; backend cũ tiếp tục dùng hai mẫu cũ. Khoảng ngày là ngày sử dụng; center là center của công việc sử dụng, kể cả hồ sơ đã luân chuyển. Tìm theo mã/tên; chọn cột ngày dùng, Part Number, tên, số lượng, center, mã hồ sơ, tùy chọn mã công việc/model thiết bị. Mỗi dòng là một ledger usage thực; không nhân theo Fan/events/liên kết, không gộp mất các lần dùng cùng PN, không xuất tồn kho hoặc kế hoạch nhập. Chỉ lấy số lượng/ngày hợp lệ trong kỳ; thiếu ngày không tự đoán, tab lịch sử chưa chuyển vào ledger không nằm trong báo cáo. Dùng snapshot/cache revision và export phân trang 200 dòng, tối đa20.000; revision thay đổi thì dừng file.
 
 Nguồn dựa trên main282a886, giữ assistantRules/SLA/assistant hiện hành; LegacyDashboardApi1.11.24 có thêm metadata parts và reader mẫu mới, giữ sửa tên lỗi trùng1.11.23. Thay ReportExport.gs + LegacyDashboardApi.gs trên backend chính, New version cùngURL; QuickAssistantKnowledge.gs cập nhật hướng dẫn nếu đang dùng module trợ lý. Không thay Code.gs, Cloud, worker hoặc dữ liệu Sheets. Full validator và UI Edge fixture đã đạt (201 dòng phân trang, escape, backend cũ, scope center, dữ liệu Fan và cache). Mã frontend có thể publish an toàn trước backend nhờ schema gate; runtime backend chưa được người dùng xác nhận cập nhật, chưa thử báo cáo production. Xem DEPLOY-1.11.24-PARTS-REPORT.md.
