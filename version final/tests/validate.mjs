@@ -323,6 +323,7 @@ const operationalSandbox = {
   SpreadsheetApp:{openById:() => ({getSheetByName:name => operationalFixture[name] ? {getLastRow:() => operationalFixture[name].length,getDataRange:() => ({getValues:() => operationalFixture[name]})} : null})},
   clean_:value => value == null ? '' : String(value).trim(),
   date_:value => value instanceof Date ? value : null,
+  iso_:value => value instanceof Date ? value.toISOString().slice(0,10) : null,
   resolveCenter_:value => value,
   number_:value => Number(value) || 1
 };

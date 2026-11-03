@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.24-parts-report';
+const LEGACY_API_VERSION = '1.11.25-confirmed-issue-period';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -232,7 +232,8 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       workshop: clean_(item['Trung tâm đang giữ hàng']),
       errorCode: errorCode,
       issues: issueNames,
-      fanIssues: fanState?confirmedIssues.map(function(i){return {name:clean_(i['Tên lỗi']),lineId:clean_(i['Mã dòng Fan']),quantity:Number(i['Số Fan xác nhận'])};}):[],
+      confirmedIssueDetails: confirmedIssues.map(function(i){return {name:clean_(i['Tên lỗi']),confirmedAt:iso_(date_(i['Ngày xác nhận lỗi']))};}),
+      fanIssues: fanState?confirmedIssues.map(function(i){return {name:clean_(i['Tên lỗi']),confirmedAt:iso_(date_(i['Ngày xác nhận lỗi'])),lineId:clean_(i['Mã dòng Fan']),quantity:Number(i['Số Fan xác nhận'])};}):[],
       warrantyConfirmation: clean_(item['Người xác nhận bảo hành']),
       warrantyStatus: fanState&&typeof flWarrantyLabel_==='function'?flWarrantyLabel_(item):clean_(item['Tình trạng bảo hành']),
       center: resolveCenter_(latest['Trung tâm xử lý'] || item['Trung tâm đang giữ hàng'] || item['Trung tâm tiếp nhận khách'], centers),
@@ -702,7 +703,7 @@ function buildDashboard_(records, period, scope, sheetName, sourceLastRow, sprea
     return catalog;
   }, {})).sort(function (a, b) { return a.localeCompare(b, 'vi', { sensitivity: 'base', numeric: true }); });
   const modelTypes = groupModelTypes_(periodRows);
-  const errors = groupConfirmedIssueCategories_(periodRows);
+  const errors = groupConfirmedIssueCategories_(records, period);
   const parts = groupPartsForPeriod_(partRecords || records, period, scope);
   const quality = qualitySummary_(records, periodRows, sourceLastRow);
   quality.kpi = {
@@ -1002,12 +1003,13 @@ function groupModelTypes_(rows) {
   }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
 }
 
-function groupConfirmedIssueCategories_(rows) {
+function groupConfirmedIssueCategories_(rows, period) {
   const counts = {};
   const labels = {};
   rows.forEach(function (record) {
-    if(record.fanLot){const categories={};(record.fanIssues||[]).forEach(function(i){if(!i.name||!i.lineId||!Number.isSafeInteger(i.quantity)||i.quantity<1)return;const issueName=typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(i.name):clean_(i.name),category=/\bfan\b|quạt/i.test(issueName)?'Lỗi quạt':issueName,key=category.toLocaleLowerCase('vi'),line=record.fanLot.lines.find(function(l){return l.lineId===i.lineId;});if(!line)return;if(!categories[key])categories[key]={label:category,lines:{}};categories[key].lines[i.lineId]=Math.min(line.quantity,(categories[key].lines[i.lineId]||0)+i.quantity);});Object.keys(categories).forEach(function(k){counts[k]=(counts[k]||0)+Object.keys(categories[k].lines).reduce(function(n,id){return n+categories[k].lines[id];},0);labels[k]=categories[k].label;});return;}
-    const issues = (record.issues || []).map(function (name) { return typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(name):clean_(name).replace(/\s+/g, ' '); }).filter(Boolean);
+    if(record.fanLot){const categories={};(record.fanIssues||[]).forEach(function(i){if(period&&!inPeriod_(date_(i.confirmedAt),period))return;if(!i.name||!i.lineId||!Number.isSafeInteger(i.quantity)||i.quantity<1)return;const issueName=typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(i.name):clean_(i.name),category=/\bfan\b|quạt/i.test(issueName)?'Lỗi quạt':issueName,key=category.toLocaleLowerCase('vi'),line=record.fanLot.lines.find(function(l){return l.lineId===i.lineId;});if(!line)return;if(!categories[key])categories[key]={label:category,lines:{}};categories[key].lines[i.lineId]=Math.min(line.quantity,(categories[key].lines[i.lineId]||0)+i.quantity);});Object.keys(categories).forEach(function(k){counts[k]=(counts[k]||0)+Object.keys(categories[k].lines).reduce(function(n,id){return n+categories[k].lines[id];},0);labels[k]=categories[k].label;});return;}
+    const names=period?(record.confirmedIssueDetails||[]).filter(function(i){return inPeriod_(date_(i.confirmedAt),period);}).map(function(i){return i.name;}):(record.issues||[]);
+    const issues = names.map(function (name) { return typeof SungrowIssueCatalog!=='undefined'?SungrowIssueCatalog.normalize(name):clean_(name).replace(/\s+/g, ' '); }).filter(Boolean);
     const hasFanIssue = issues.some(function (name) { return /\bfan\b|quạt/i.test(name); });
     const categoriesForDevice = {};
     issues.forEach(function (name) {

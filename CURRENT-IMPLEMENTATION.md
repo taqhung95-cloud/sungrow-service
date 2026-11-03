@@ -1,5 +1,11 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Mốc kỳ thống kê lỗi — 03/11/2026, backend1.11.25 chờ deploy
+
+Theo thống nhất người dùng: tỷ trọng model vẫn theo ngày nhận hồ sơ; Lỗi phổ biến chuyển sang Ngày xác nhận lỗi; linh kiện giữ Ngày sử dụng đã nhập. Reader canonical giữ confirmedIssueDetails và ngày xác nhận từng fanIssues; buildDashboard chọn lỗi theo kỳ từ toàn bộ hồ sơ trong scope, không giới hạn hồ sơ nhận trong kỳ. Một nhóm lỗi của thiết bị thường chỉ tính một lần trong kỳ; Fan vẫn giữ số Fan xác nhận theo dòng inverter, giới hạn số Fan dòng. Không đổi alias/category hiện hành hoặc cộng tên lặp. Lỗi thiếu/ngày không hợp lệ không tự suy từ ngày nhận, chẩn đoán hoặc hoàn tất. Không ghi lại nguồn, không đổi mốc model/parts/KPI tiếp nhận.
+
+LegacyDashboardApi1.11.25-confirmed-issue-period đổi cache version để tránh dùng kết quả1.11.24. Không sửa frontend hoặc ReportExport. QuickAssistantKnowledge2026-11-03.2 đồng bộ giải thích ba mốc ngày; manifest đã cập nhật. Full validator đạt: hồ sơ nhận kỳ trước xác nhận lỗi kỳ này, lỗi khác kỳ/thiếu ngày/hiện tượng/hủy, lỗi trùng, số Fan và model/linh kiện giữ nguyên. Cần người dùng thay LegacyDashboardApi.gs và New version cùngURL; cập nhật Knowledge nếu đang dùng trợ lý. Chưa có xác nhận deploy runtime1.11.25. Xem DEPLOY-1.11.25-ISSUE-PERIOD.md.
+
 ## Xuất linh kiện trong Báo cáo — 03/11/2026, backend chờ cập nhật
 
 Nguồn đã push lên main và codex/parts-report-20261103 tại e536bc0. GitHub Pages run41602374315 success; kiểm tra website public thấy reports.js?v=4 và reports.css?v=4. Backend vẫn chờ người dùng thay file/New version; chưa đọc hoặc xuất báo cáo nghiệp vụ production.
