@@ -1,5 +1,11 @@
 # Trạng thái production và đồng bộ repository
 
+## Tải danh sách không che thanh tìm kiếm — 05/11/2026
+
+Frontend liveJS171/CSS37 chuyển class sg-is-loading từ cả panel sang sg-tickets-table. Loading chỉ phủ vùng kết quả; tìm kiếm, trạng thái, thứ tự ngày và chọn cỡ trang vẫn thao tác được. Giữ bảng cũ phía dưới lớp tải và lưu/khôi phục scrollTop/scrollLeft khi render để refresh cùng kết quả không kéo vị trí xem. Giữ debounce300ms, tìm toàn bộ dữ liệu, hủy request cũ/sequence guard, trạng thái đồng bộ trung thực và trang hiện tại khi manual/auto sync. Không reload document hoặc đổi backend/quyền. Từ khóa và focus không bị thay DOM bởi render bảng.
+
+Full validator và UI Edge local đã đạt: tải chậm vẫn click/gõ tiếp được trong ô tìm kiếm, lớp tải nằm dưới toolbar, query mới nhất thắng, manual sync giữ trang3, lỗi request và revision recovery. Test UI dùng đúng workspace route hiện tại. Kiểm tra coverage cũ được cập nhật từ panel sang vùng bảng. Chỉ publish docs/index.html, docs/live-data.js và docs/visual-polish.css trên GitHub; không cần thao tác Apps Script. Mã nguồn và tài liệu được đồng bộ cùng release; trạng thái Pages được kiểm tra sau push.
+
 ## Mốc kỳ thống kê lỗi — 03/11/2026, backend1.11.25 chờ deploy
 
 Theo thống nhất người dùng: tỷ trọng model vẫn theo ngày nhận hồ sơ; Lỗi phổ biến chuyển sang Ngày xác nhận lỗi; linh kiện giữ Ngày sử dụng đã nhập. Reader canonical giữ confirmedIssueDetails và ngày xác nhận từng fanIssues; buildDashboard chọn lỗi theo kỳ từ toàn bộ hồ sơ trong scope, không giới hạn hồ sơ nhận trong kỳ. Một nhóm lỗi của thiết bị thường chỉ tính một lần trong kỳ; Fan vẫn giữ số Fan xác nhận theo dòng inverter, giới hạn số Fan dòng. Không đổi alias/category hiện hành hoặc cộng tên lặp. Lỗi thiếu/ngày không hợp lệ không tự suy từ ngày nhận, chẩn đoán hoặc hoàn tất. Không ghi lại nguồn, không đổi mốc model/parts/KPI tiếp nhận.

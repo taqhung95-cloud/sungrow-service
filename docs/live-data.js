@@ -552,8 +552,10 @@
     syncTicketStatusOptions(ticketSearchState.statuses.length ? ticketSearchState.statuses : (live.tickets || []));
     q('#sg-ticket-page-size').value = String(ticketSearchState.pageSize || 20);
     q('#sg-tickets-table').setAttribute('aria-busy',ticketSearchState.loading?'true':'false');
-    q('#sg-tickets .sg-panel').classList.toggle('sg-is-loading',ticketSearchState.loading);
-    q('#sg-tickets-table').innerHTML = ticketSearchState.loading ? ticketLoading() : ticketTable(rows);
+    const table=q('#sg-tickets-table'),scrollTop=table.scrollTop,scrollLeft=table.scrollLeft;
+    table.classList.toggle('sg-is-loading',ticketSearchState.loading);
+    table.innerHTML = ticketSearchState.loading ? (rows.length?ticketTable(rows):'')+ticketLoading() : ticketTable(rows);
+    table.scrollTop=scrollTop;table.scrollLeft=scrollLeft;
     if (ticketSearchState.loading) q('#sg-result-count').textContent = 'Đang tải danh sách thiết bị…';
     else if (ticketSearchState.error) q('#sg-result-count').textContent = ticketSearchState.error;
     else {
