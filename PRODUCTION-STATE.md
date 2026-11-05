@@ -1,5 +1,11 @@
 # Trạng thái production và đồng bộ repository
 
+## Tổng hợp báo cáo linh kiện theo PN — 05/11/2026, backend1.11.26 chờ deploy
+
+Trong cùng Báo cáo → Linh kiện sử dụng, reportsJS5 mặc định Tổng hợp theo Part Number khi bootstrap có schema partsSummary; giữ Chi tiết từng lần sử dụng. Bản tổng hợp chỉ có PN, tên và tổng số lượng, không gộp theo center/hồ sơ/ngày/cột được chọn. Chọn center lọc nguồn trước tổng hợp; mã dùng ở nhiều center đã chọn cộng chung thành một dòng. Gộp toàn bộ kỳ trước phân trang, giữ guardrevision/20.000dòng kết quả. Chuẩn hóa PN trim/hoa; tên khác cùng PN hiển thị đủ, mã thiếu giữ nhóm riêng theo tên. Tìm tên ở chế độ tổng hợp lọc sau gộp để không mất lượng cùng PN có tên ghi khác. Hiển thị số mã/nhóm hoặc số lần dùng và tổng số lượng; hai chế độ cùng nguồn ngày sử dụng/công việc, không nhân Fan/link. 365 dòng chi tiết không phải365chiếc.
+
+ReportExport thêm schema partsSummary; LegacyDashboardApi1.11.26-parts-summary thêm aggregate và totalQuantity. Không sửa nguồn hoặc mốc dashboard. Frontend tương thích backend cũ: chỉ hiện chọn kiểu khi có schema tổng hợp; không gửi type mới trước deploy. Knowledge2026-11-05.1 và manifest cập nhật. Fullvalidate và UIEdge đạt: PN cùng mã trên nhiều case/center, 205lần dùng gộp trướcpage1, chọncột không đổi tổng, tìm tên khác, mã thiếu, 201dòng export và đổi summary/detail/oldbackend. Cần thay ReportExport.gs + LegacyDashboardApi.gs, Knowledge nếu đã dùng trợ lý, Newversion cùngURL. Chưa có xác nhận deploy1.11.26. Frontend được publish qua GitHub, không có tồn kho/kế hoạch nhập hoặc tab chức năng mới. Xem DEPLOY-1.11.26-PARTS-SUMMARY.md.
+
 ## Tải danh sách không che thanh tìm kiếm — 05/11/2026
 
 Frontend liveJS171/CSS37 chuyển class sg-is-loading từ cả panel sang sg-tickets-table. Loading chỉ phủ vùng kết quả; tìm kiếm, trạng thái, thứ tự ngày và chọn cỡ trang vẫn thao tác được. Giữ bảng cũ phía dưới lớp tải và lưu/khôi phục scrollTop/scrollLeft khi render để refresh cùng kết quả không kéo vị trí xem. Giữ debounce300ms, tìm toàn bộ dữ liệu, hủy request cũ/sequence guard, trạng thái đồng bộ trung thực và trang hiện tại khi manual/auto sync. Không reload document hoặc đổi backend/quyền. Từ khóa và focus không bị thay DOM bởi render bảng.

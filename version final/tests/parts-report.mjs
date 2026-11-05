@@ -26,6 +26,11 @@ const api=vm.runInContext('LEGACY_DASHBOARD_API',ctx),actor={isGlobalManager:tru
 let result=api.readReportData_(spec,actor);assert.equal(result.total,3);assert.equal(result.rows[0].caseId,'lot');assert.equal(result.rows[0].quantity,3,'Fan links/quantity do not multiply usage ledger rows');
 const all=api.readReportData_({...spec,limit:200},actor);assert.equal(all.rows.reduce((n,r)=>n+r.quantity,0),9);assert.equal(all.rows.filter(r=>r.partNumber==='PN-A').length,3,'Separate usage entries for same PN remain separate');
 const scoped=api.readReportData_({...spec,centers:[center],limit:200},actor);assert.equal(scoped.total,2,'Transferred case still exports originating work center usage');assert.equal(scoped.rows[0].center,center);
+const summarySpec={...spec,type:'partsSummary',columns:['partNumber','partName','quantity'],limit:200};
+const summary=api.readReportData_(summarySpec,actor);assert.equal(summary.total,1);assert.equal(summary.rows[0].quantity,9);assert.equal(summary.totalQuantity,9);assert.equal(all.totalQuantity,summary.totalQuantity,'Summary and ledger export must reconcile');
+assert.equal(api.readReportData_({...summarySpec,centers:[center]},actor).rows[0].quantity,6,'Filter work center before grouping PN');
+assert.equal(api.readReportData_({...summarySpec,columns:['quantity']},actor).rows[0].quantity,9,'Selecting columns must not change group grain');
+assert.throws(()=>api.readReportData_({...summarySpec,columns:['caseId']},actor),{code:'INVALID_REPORT'});
 assert.equal(api.readReportData_({...spec,query:'fan'},actor).total,3);assert.equal(api.readReportData_({...spec,query:'pn-b'},actor).total,0);
 const next=api.readReportData_({...spec,offset:1,revision:result.revision,asOf:result.asOf},actor);assert.equal(next.fingerprint,result.fingerprint);assert.equal(next.total,3);
 const cold=reads;api.readReportData_(spec,actor);assert.equal(reads,cold,'Repeated export pages reuse canonical revision cache');
@@ -42,5 +47,9 @@ assert.throws(()=>api.readReportData_(spec,{isGlobalManager:false}),{code:'FORBI
 assert.throws(()=>api.readReportData_({...spec,columns:['customerEmail']},actor),{code:'INVALID_REPORT'});
 assert.throws(()=>api.readReportData_({...spec,dateBasis:'returned'},actor),{code:'INVALID_REPORT'});
 revision='parts-r2';assert.throws(()=>api.readReportData_({...spec,revision:result.revision},actor),{code:'REPORT_CHANGED'});
+tables['Linh kiện sử dụng'].push(part('moved','pn-a',1,'2026-10-24','Alternate name'),...Array.from({length:205},(_,i)=>({...part('moved','PN-BULK',1,'2026-10-24'),'Mã sử dụng linh kiện':'BULK-'+i})),part('moved','',1,'2026-10-24','Unnamed A'),part('moved','',2,'2026-10-24','Unnamed B'));
+revision='parts-r3';const bulk=api.readReportData_({...summarySpec,limit:1},actor);assert.equal(bulk.total,4);assert.equal(bulk.rows[0].quantity,205,'Combine every usage entry before server pagination');assert.equal(bulk.totalQuantity,218);const bulkNext=api.readReportData_({...summarySpec,offset:1,limit:1,revision:bulk.revision,asOf:bulk.asOf},actor);assert.equal(bulkNext.rows[0].partNumber,'PN-A');assert.equal(bulkNext.rows[0].quantity,10,'Normalize PN case when aggregating');assert.equal(bulkNext.fingerprint,bulk.fingerprint);
+assert.equal(api.readReportData_({...summarySpec,query:'alternate'},actor).rows[0].quantity,10,'Name search keeps complete totals of a matching PN');assert.equal(api.readReportData_({...summarySpec,query:'unnamed'},actor).total,2,'Do not collapse different names without PN');
 console.log('Parts report passed: ledger grain, Fan links, transfer center, date/query, cancelled/invalid rows, stable pages/cache, role and revision guards.');
+console.log('PN summary passed: cross-center/entry totals, detail reconciliation, grouping before paging, selected columns, PN case and unknown-code separation.');
 console.log('Dashboard date bases passed: prior-month receipt/current-month confirmed faults, distinct dates, Fan quantities, missing dates and unchanged model/part periods.');

@@ -8,6 +8,9 @@ const REPORT_COLUMN_DEFS_ = Object.freeze({
     ['gsp','GSP','text',false],['ma','MA','text',false],['customerName','Tên khách hàng','text',false],['customerPhone','Số điện thoại','text',false],
     ['customerEmail','Email','text',false],['customerAddress','Địa chỉ','text',false],['note','Ghi chú nội bộ','text',false]
   ],
+  partsSummary: [
+    ['partNumber','Part Number','text',true],['partName','Tên linh kiện','text',true],['quantity','Tổng số lượng sử dụng','number',true]
+  ],
   parts: [
     ['usedAt','Ngày sử dụng','date',true],['partNumber','Part Number','text',true],['partName','Tên linh kiện','text',true],['quantity','Số lượng','number',true],
     ['center','Center sử dụng','text',true],['caseId','Mã hồ sơ','text',true],['workOrderId','Mã công việc','text',false],['model','Model thiết bị','text',false]
