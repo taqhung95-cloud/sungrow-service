@@ -19,6 +19,7 @@ function harness(){
   listCases:(token,filter)=>{assert.equal(token,'valid-session');reads.push(filter);const allowed=data.filter(c=>actor.isGlobalManager||actor.centers.includes(c.currentCenter));const items=allowed.filter(c=>[c.caseId,c.serialNumber,c.gsp,c.ma,c.model].join(' ').toLowerCase().includes(filter.query.toLowerCase()));return{items,total:items.length};},
   getCaseDetail:(token,id)=>{assert.equal(token,'valid-session');details.push(id);const c=data.find(c=>c.caseId===id);if(!c||!actor.isGlobalManager&&!actor.centers.includes(c.currentCenter))throw Error('Forbidden');return c;},
   UrlFetchApp:{fetch:(url,options)=>{assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');const payload=JSON.parse(options.payload);network.push(payload);let answer=!!payload.generationConfig.responseJsonSchema.properties.intent?context.route:(context.answer||{answer:'Giải thích dựa trên bằng chứng.',sourceIds:['entry','not-a-real-source']});return{getResponseCode:()=>http,getContentText:()=>bad?'invalid json':JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(answer)}]}}]})};}},
+  lookupWarranty:()=>({label:'Không có thông tin',status:'no_information'}),
   route:{intent:'kpi',query:'',usePrevious:true}
  };
  vm.createContext(context);vm.runInContext(fs.readFileSync(new URL('../WorkOrderRules.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../LegacyDashboardApi.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../QuickAssistantKnowledge.gs',import.meta.url),'utf8'),context);vm.runInContext(fs.readFileSync(new URL('../QuickAssistantActions.gs',import.meta.url),'utf8'),context);vm.runInContext(code,context);
@@ -100,6 +101,13 @@ const extraWarranty=live.ask('A26A0804967 cái này thì sao?');assert.match(ext
 live.ask('A200918S82 cái này thì sao?');assert.deepEqual(calls.at(-1),['warranty','A200918S82']);assert.equal(live.network.length,0);
 assert.match(live.ask('A1902210321, SN này của công ty nào?').answer,/PRIVATE_COMPANY/);assert.deepEqual(calls.at(-1),['warranty','A1902210321']);
 assert.match(live.ask('Part number của A1902210321 là gì?').answer,/PRIVATE_PART/);assert.equal(live.network.length,0);
+const history=harness();let warrantyReads=0;
+history.context.lookupWarranty=()=>{warrantyReads++;return {label:'Còn bảo hành'};};
+history.context.listCases=(_,f)=>{assert.equal(f.exactKey,true);assert.equal(f.query,'A2382202379');return {total:f.warrantyStatus?2:3,items:f.warrantyStatus?[]:[{...fixture('DAT-001'),serialNumber:f.query}]};};
+const times=history.ask('A2382202379 đã bảo hành bao nhiêu lần rồi');assert.match(times.answer,/Số hồ sơ tiếp nhận: 3/);assert.match(times.answer,/Trong bảo hành: 2/);assert.equal(warrantyReads,0);assert.equal(history.network.length,0);
+history.ask('A2382202379');assert.equal(warrantyReads,0,'Bare SN retains history task');
+const fresh=harness();fresh.context.lookupWarranty=(_,sn)=>{assert.equal(sn,'A2009204533');return {label:'Còn bảo hành'};};assert.match(fresh.ask('A2009204533').answer,/Còn bảo hành/);
+const scopedHistory=harness();assert.match(scopedHistory.ask('SAME123456 đã sửa bao nhiêu lần?').answer,/Số hồ sơ tiếp nhận: 1/);scopedHistory.setActor({...scopedHistory.actor(),isGlobalManager:true});assert.match(scopedHistory.ask('SAME123456 đã sửa bao nhiêu lần?').answer,/Số hồ sơ tiếp nhận: 2/);
 live.props.set('ASSISTANT_GEMINI_KEY','test-fixture-key');live.props.set('ASSISTANT_AI_ENABLED','true');live.props.set('ASSISTANT_FREE_TIER_CONFIRMED','true');
 const action=(name,query='',extra={})=>live.context.answer={action:name,query,period:'none',center:'',status:'',answer:'',sourceIds:[],...extra};
 live.context.listNotifications=token=>{assert.equal(token,'valid-session');calls.push(['notifications']);return {unreadCount:2,items:[{at:'2026-10-28',title:'PRIVATE_NOTICE',caseId:'DAT-001',unread:true}]};};

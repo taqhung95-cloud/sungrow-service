@@ -1,5 +1,5 @@
 /* Read-only capability adapter. Calls existing authorized APIs; results never go to Gemini. */
-function qaActionNames_(actor){return ['guide','warranty','cases','case_detail','fan_history','notifications','suggestions'].concat(qaManagement_(actor)?['report']:[]);}
+function qaActionNames_(actor){return ['guide','warranty','repair_history','cases','case_detail','fan_history','notifications','suggestions'].concat(qaManagement_(actor)?['report']:[]);}
 function qaActionResult_(answer,source,cases,total){return {answer:answer,cases:cases||[],total:total||0,sources:[{id:'api:'+source,title:source}],mode:'lookup'};}
 function qaActionCase_(token,query,state){
   if(query==='__previous__'){
@@ -15,11 +15,22 @@ function qaRunAction_(token,actor,action,message,state){
   var name=action.action,query=String(action.query||'').trim();
   if(qaActionNames_(actor).indexOf(name)<0||name==='guide')throw publicError_('Thao tác đọc chưa được cấp quyền.');
   var available={warranty:typeof lookupWarranty==='function',cases:typeof listCases==='function',case_detail:typeof getCaseDetail==='function',fan_history:typeof getFanLotHistory==='function',notifications:typeof listNotifications==='function',suggestions:typeof getEntrySuggestions==='function',report:typeof readReportPage==='function'};
+  available.repair_history=typeof listCases==='function';
   if(!available[name])throw publicError_('Chức năng tra cứu này chưa được nạp trong deployment hiện tại. Quản trị cần kiểm tra module tương ứng.');
   // Identifiers must be supplied by the user or resolve from server-side conversation state.
   if(query&&query!=='__previous__'&&String(message).toLowerCase().indexOf(query.toLowerCase())<0)throw publicError_('Bạn gửi lại mã cần tra để xác nhận đúng đối tượng.');
   state.lastAction=name;
   if(query==='__previous__'&&!state.caseIds?.length&&!state.lastSerial)return qaActionResult_('Bạn gửi mã hồ sơ hoặc S/N cần tra.','Tra cứu');
+  if(name==='repair_history'){
+    var serial=query==='__previous__'?state.lastSerial:query;
+    if(!serial)return qaActionResult_('Bạn gửi S/N cần xem lịch sử tiếp nhận/bảo hành.','Lịch sử tiếp nhận');
+    if(/^HS-/i.test(serial)){var resolvedHistory=qaActionCase_(token,serial,state);if(!resolvedHistory.item)return qaActionResult_(resolvedHistory.answer,'Hồ sơ',resolvedHistory.cases,resolvedHistory.total);serial=resolvedHistory.item.serialNumber;}
+    if(!serial)return qaActionResult_('Hồ sơ chưa có S/N để đối chiếu lịch sử.','Lịch sử tiếp nhận');
+    var visits=listCases(token,{query:serial,exactKey:true,page:1,pageSize:10,refresh:true});
+    var covered=listCases(token,{query:serial,exactKey:true,warrantyStatus:'Trong bảo hành',page:1,pageSize:10,refresh:true});
+    state.lastSerial=serial;state.caseIds=[];
+    return qaActionResult_('## Lịch sử của '+serial+'\n- Số hồ sơ tiếp nhận: '+visits.total+'.\n- Hồ sơ phân loại Trong bảo hành: '+covered.total+'.\n\nĐếm theo mã hồ sơ riêng biệt, không đếm số công việc hoặc số lần chuyển center. Đây là số hồ sơ trong phạm vi tài khoản và dữ liệu đã được lập chỉ mục; chưa đồng nghĩa với số lần đã hoàn tất sửa chữa bảo hành.\n\n'+(visits.total?'Các hồ sơ gần nhất bên dưới (tối đa 5).':'Chưa có hồ sơ tiếp nhận phù hợp; điều này không kết luận thiết bị chưa từng sửa chữa ở nơi khác.'),'listCases — lịch sử tiếp nhận',(visits.items||[]).slice(0,5).map(qaCase_),visits.total);
+  }
   if(name==='warranty'){
     var sn=query==='__previous__'?state.lastSerial:query;
     if(!sn&&query==='__previous__'){var previous=qaActionCase_(token,query,state);if(previous.item)sn=previous.item.serialNumber;}
