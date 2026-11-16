@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Đồng bộ điều khiển Liquid Glass — 16/11/2026
+
+Ô quét S/N và trạng thái tra cứu chia sẻ một khung. Hai bộ lọc danh sách và các bảng nổi Thông báo, Trợ lý dùng cùng kích thước chữ và lớp kính. Frontend GitHub Pages.
+
 ## Liquid Glass dùng chung — 16/11/2026
 
 Dashboard, dải tab, bảng và biểu mẫu Nhập liệu dùng bộ kiểu kính sáng chung. Công tắc Transparency điều khiển hiệu ứng và đồng bộ giữa dashboard với iframe theo tùy chọn trình duyệt. Giữ bố cục bốn mục Nhập liệu trong khung dashboard. Landing 3D tiếp tục dùng giao diện riêng. Phát hành frontend qua GitHub Pages.
