@@ -35,7 +35,6 @@
   let caseIndex = 0;
   let caseButtons = [];
   let map;
-  let simulation = false;
   let signature = '';
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let queueFrame = 0;
@@ -270,13 +269,6 @@
       onOpenCase(button.dataset.ticket);
       return;
     }
-    if(button.hasAttribute('data-sc-simulate')) {
-      simulation=!simulation;button.setAttribute('aria-pressed',String(simulation));
-      button.textContent=simulation?'Dừng mô phỏng':'Mô phỏng chuyển line';
-      map?.simulate(simulation);
-      if(simulation&&!playing){playing=true;syncPlayback();}
-      landing.querySelector('.sc-process-state').hidden=!simulation;
-    }
     if (button.dataset.scView) select(button.dataset.scView);
     if (button.hasAttribute('data-sc-case')) showCase(Number(button.dataset.scCase),true);
     if (button === playbackButton) {
@@ -330,7 +322,7 @@
     const rim = new T.DirectionalLight('#9dbbf0', .60);
     rim.position.set(18, 13, -20);
     scene.add(rim);
-    const {hitGroups, markers, rings, animate, setWorkload, setCases, setSimulation, getSimulation} = buildWorld(scene);
+    const {hitGroups, markers, rings, animate, setWorkload, setCases} = buildWorld(scene);
 
     const bulbs = [];
     for (const id of ['receive','repair','test','handover']) {
@@ -396,11 +388,8 @@
 
     const metricsPanel = landing.querySelector('.sc-metrics');
     const informationPanel = landing.querySelector('.sc-information');
-    const processLabel = landing.querySelector('[data-sc-process-label]');
-    const workflowButtons = landing.querySelectorAll('.sc-stations [data-sc-view]');
     let cameraState = '';
     let markerLayoutDirty = true;
-    let displayedProcess = '';
 
     function invalidateMarkerLayout() {
       markerLayoutDirty = true;
@@ -482,17 +471,6 @@
       if (playing) {
         motionTime += elapsed;
         animate(motionTime);
-        const state=getSimulation();
-        const process = state.enabled
-          ? (state.moving ? 'Đang chuyển đến ' : 'Đang thao tác tại ') + stations[state.stage].label
-          : '';
-        if (process !== displayedProcess) {
-          displayedProcess = process;
-          processLabel.textContent = process;
-          workflowButtons.forEach(button => {
-            button.classList.toggle('is-simulated', state.enabled && button.dataset.scView === state.stage);
-          });
-        }
         if(++shadowFrame%4===0)renderer.shadowMap.needsUpdate=true;
       }
       const nextCameraState = [width, height, span, azimuth, elevation, target.x, target.y, target.z, current].join(',');
@@ -656,14 +634,7 @@
       }
       invalidateMarkerLayout();
     }
-    function simulate(enabled) {
-      setSimulation(enabled);
-      displayedProcess = '';
-      processLabel.textContent = '';
-      workflowButtons.forEach(button => button.classList.remove('is-simulated'));
-      renderer.shadowMap.needsUpdate=true;invalidate();
-    }
-    return {focus, zoom, light, highlight, syncCases, simulate, wake:()=>{renderer.shadowMap.needsUpdate=true;invalidate();}};
+    return {focus, zoom, light, highlight, syncCases, wake:()=>{renderer.shadowMap.needsUpdate=true;invalidate();}};
   }
 
   try {

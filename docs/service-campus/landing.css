@@ -576,25 +576,16 @@
 #sg-preview [data-playback="playing"] .sc-case-highlight .sc-case-status::before { animation: sc-status-beacon 2s ease-in-out infinite; }
 @media(prefers-reduced-motion:reduce) { #sg-preview .sc-case-highlight .sc-case-status::before { animation: none !important; } }
 #sg-preview .sc-distribution h2 { font-size: 11px !important; line-height: 1.4; }
-#sg-preview .sc-process-state { position: absolute; z-index: 5; bottom: 114px; left: 50%; transform: translateX(-50%); padding: 10px 16px; border: 1px solid #ffd4a9; border-radius: 16px; background: #fff5e7ec; color: #713c12; display: grid; grid-template-columns: auto 1fr; gap: 4px 9px; box-shadow: 0 5px 20px #213f4815; }
-#sg-preview .sc-process-state[hidden] { display: none; }
-#sg-preview .sc-process-state b { font-size: 9px; background: #ff7900; color: #fff; padding: 4px 6px; border-radius: 6px; grid-row: span 2; align-self: center; }
-#sg-preview .sc-process-state span { font-size: 11px; font-weight: 600; }
-#sg-preview .sc-process-state small { font-size: 8px; }
-#sg-preview [data-sc-simulate][aria-pressed="true"] { background: #fff0df; color: #a94b00; border-color: #ff9b49; }
 #sg-preview .sc-workflow { max-width: calc(100% - 310px); padding: 10px 14px; }
 #sg-preview .sc-stations { gap: 13px; }
 #sg-preview .sc-service .sc-stations button { padding: 9px 10px; }
 @media(max-width:760px) {
  #sg-preview .sc-header { flex-wrap: wrap; gap: 6px; }
- #sg-preview [data-sc-simulate] { font-size: 8px !important; }
  #sg-preview .sc-brand { max-width: 110px; }
  #sg-preview .sc-header-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 250px; }
  #sg-preview .sc-metrics,#sg-preview .sc-feed { top: 100px; }
  #sg-preview .sc-workflow { max-width: none; }
- #sg-preview .sc-process-state { bottom: 98px; width: 240px; }
 }
-#sg-preview .sc-service .sc-stations button.is-simulated { box-shadow: inset 0 0 0 2px #ff7900; background: #fff1df; color: #a94800; }
 /* Shared left rail, with layered translucent glass and soft specular edges. */
 #sg-preview .sc-information { position: absolute; z-index: 6; top: 88px; left: 16px; width: 232px; display: flex; flex-direction: column; padding: 2px; }
 #sg-preview :is(.sc-information > .sc-metrics,.sc-operations > .sc-feed) { position: relative; inset: auto; width: 100%; max-height: none; height: auto; flex: none; border-radius: 26px; background: linear-gradient(135deg,#ffffff8c,#ffffff24 46%,#e5f1f038), radial-gradient(ellipse at 0% 0%,#ffffff55,transparent 65%); border: 1px solid #ffffffa6; -webkit-backdrop-filter: blur(26px) saturate(155%); backdrop-filter: blur(26px) saturate(155%); box-shadow: inset 0 1px 1px #ffffffed,inset 1px 0 1px #ffffff90,inset 0 -1px 1px #ffffff55,0 8px 24px #213d441a; }

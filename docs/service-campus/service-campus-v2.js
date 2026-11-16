@@ -477,8 +477,8 @@
     }
     productGallery(root);
     for(const [id,x,z,y]of [['storage',39,3,5.2],['energy',40,-10,3],['fpv',2,31,2]]){const g=group(root,x,0,z);g.userData.station=id;hitGroups.push(g);markers.set(id,new T.Vector3(x,y,z));const ring=group(g);ring.visible=false;rings.set(id,ring);}
-    const units=new Map();let simulation=false,simTime=0,simPhase=-1;const demo=createCarrier('DEMO',true);demo.visible=false;
-    function createCarrier(id,isDemo=false){const g=group(root);g.userData.caseId=id;g.userData.isDemo=isDemo;box(g,isDemo?orange:'#5f787e',0,.39,0,1.10,.25,1.05,true);for(const x of [-.48,.48])for(const z of [-.35,.35]){const wheel=object(g,cylinder,'#273c41',x,.22,z,.13,.07,.13);wheel.rotation.z=Math.PI/2;}inverter(g,0,.53,0,.72);board(g,id,0,1.34,.25,1.35,.23,'#fff',isDemo?'#b95000':'#304c58');return g;}
+    const units=new Map();
+    function createCarrier(id){const g=group(root);g.userData.caseId=id;box(g,'#5f787e',0,.39,0,1.10,.25,1.05,true);for(const x of [-.48,.48])for(const z of [-.35,.35]){const wheel=object(g,cylinder,'#273c41',x,.22,z,.13,.07,.13);wheel.rotation.z=Math.PI/2;}inverter(g,0,.53,0,.72);board(g,id,0,1.34,.25,1.35,.23,'#fff','#304c58');return g;}
     function pathTo(from,to){return [from.clone(),new T.Vector3(from.x,.2,2.8),new T.Vector3(to.x,.2,2.8),to.clone()].filter((p,i,a)=>!i||p.distanceTo(a[i-1])>.001);}
     function assignRoute(item,to){item.route=pathTo(item.mesh.position,to);item.target=to.clone();item.segment=0;item.moving=item.route.length>1;}
     function setCases(rows){
@@ -497,18 +497,14 @@
     }
     function removeUnit(id,item){root.remove(item.mesh);item.mesh.traverse(o=>{if(o.material?.map){o.material.map.dispose();o.material.dispose();o.geometry?.dispose();}});units.delete(id);}
     function travel(item,delta){if(!item.moving)return;let budget=delta*2.5;while(budget>0&&item.segment<item.route.length-1){const next=item.route[item.segment+1],dir=next.clone().sub(item.mesh.position),distance=dir.length();if(distance<.001){item.segment++;continue;}const step=Math.min(distance,budget);item.mesh.position.addScaledVector(dir.normalize(),step);item.mesh.rotation.y=Math.atan2(dir.x,dir.z);budget-=step;if(step===distance)item.segment++;}if(item.segment>=item.route.length-1){item.moving=false;item.mesh.rotation.y=0;}item.mesh.userData.moving=item.moving;}
-    const demoItem={mesh:demo,moving:false,route:[],segment:0};
     animateDocks(0);
     return {hitGroups,markers,rings,
       setCases,
-      setSimulation(enabled){simulation=enabled;demo.visible=enabled;simTime=0;simPhase=0;demoItem.moving=false;demo.position.set(stageX.receive,.2,-1.1);},
-      getSimulation(){return {enabled:simulation,stage:stageIds[Math.max(0,simPhase)],moving:demoItem.moving};},
       setWorkload(value){workload={...value};},
       inspect(){return [...units.entries()].map(([id,item])=>({id,stage:item.stage,position:item.mesh.position.toArray(),moving:item.moving}));},
       animate(t){const delta=Math.max(0,Math.min(.1,t-previousTime));previousTime=t;animateLandscape(t);animateLake(t);animateDocks(t);
-        for(const id of stageIds)clocks[id]=(clocks[id]||0)+(workload[id]>0||simulation?delta:0);
+        for(const id of stageIds)clocks[id]=(clocks[id]||0)+(workload[id]>0?delta:0);
         crew.forEach(({stage,update})=>update(clocks[stage]||0));units.forEach((item,id)=>{travel(item,delta);if(item.removing&&!item.moving)removeUnit(id,item);});
-        if(simulation){if(!demoItem.moving){simTime+=delta;if(simTime>4){simTime=0;simPhase=(simPhase+1)%4;assignRoute(demoItem,new T.Vector3(stageX[stageIds[simPhase]],.2,-1.1));}}travel(demoItem,delta);demo.userData.stage=stageIds[simPhase];}
       }
     };
   }
