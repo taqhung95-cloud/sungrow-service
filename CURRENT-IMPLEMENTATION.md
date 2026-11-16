@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Liquid Glass dùng chung — 16/11/2026
+
+Dashboard, dải tab, bảng và biểu mẫu Nhập liệu dùng bộ kiểu kính sáng chung. Công tắc Transparency điều khiển hiệu ứng và đồng bộ giữa dashboard với iframe theo tùy chọn trình duyệt. Giữ bố cục bốn mục Nhập liệu trong khung dashboard. Landing 3D tiếp tục dùng giao diện riêng. Phát hành frontend qua GitHub Pages.
+
+
 ## Sa bàn Service Center 3D — 16/11/2026
 
 Logo dashboard mở sa bàn trong cùng phiên. Sa bàn đọc danh sách hồ sơ theo kỳ và trung tâm đã được API dashboard trả về cho tài khoản hiện hành, cập nhật sau đồng bộ của dashboard và mở chi tiết bằng luồng hiện có. Dữ liệu tồn tại trong bộ nhớ phiên. Cảnh giới hạn sáu xe đẩy mỗi công đoạn để chừa lối di chuyển, còn danh sách và bộ đếm dùng toàn bộ hồ sơ trong phản hồi dashboard (tối đa 250 hồ sơ gần nhất theo giới hạn API). Frontend GitHub Pages, triển khai từ main.
