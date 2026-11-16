@@ -1,0 +1,30 @@
+/* Browser-local appearance preference only; no API, tokens or account data. */
+(() => {
+  'use strict';
+  const key='sungrow-glass-enabled-v1';
+  const theme=document.getElementById('sg-glass-theme');
+  if(!theme)return;
+  const read=()=>{try{return localStorage.getItem(key)!=='off'}catch{return true}};
+  let enabled=read();
+  function apply(){
+    theme.media=enabled?'all':'not all';
+    document.documentElement.dataset.glassTheme=enabled?'on':'off';
+    document.querySelectorAll('[data-glass-switch]').forEach(input=>{input.checked=enabled;input.setAttribute('aria-checked',String(enabled));});
+  }
+  function mount(){
+    const anchor=document.querySelector('#sg-preview .sg-side-foot')||document.querySelector('#appView .sidebar-user');
+    if(!anchor||anchor.parentElement.querySelector('.sg-glass-toggle-slot'))return;
+    const slot=document.createElement('div');slot.className='sg-glass-toggle-slot';
+    slot.innerHTML='<button type="button" class="sc-home-link" data-sc-home aria-controls="sc-landing" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><span>Trang chủ</span></button><label class="sg-glass-toggle" title="Nền ảnh và giao diện trong suốt"><span class="sg-glass-toggle-copy">Transparency</span><input type="checkbox" role="switch" aria-label="Transparency" data-glass-switch></label>';
+    slot.querySelector('input').addEventListener('change',event=>{
+      enabled=event.target.checked;
+      try{localStorage.setItem(key,enabled?'on':'off')}catch{}
+      apply();
+    });
+    anchor.before(slot);apply();
+  }
+  apply();
+  function start(){mount();new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  window.addEventListener('storage',event=>{if(event.key===key||event.key===null){enabled=read();apply();}});
+})();

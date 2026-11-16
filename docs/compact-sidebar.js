@@ -6,7 +6,52 @@
   {button:root.querySelector('.sg-dashboard-parent'),panel:root.querySelector('.sg-dashboard-subnav'),short:'Quản lý',full:'Dashboard quản lý',path:'M4 20V4m0 16h17M9 16v-5m5 5V7m5 9V3'},
   {button:root.querySelector('.sg-platform-parent'),panel:root.querySelector('.sg-subnav'),short:'Nhập liệu',full:'Platform nhập liệu',path:'M5 3h14v18H5zM9 8h6m-6 4h6m-6 4h4'}
  ];if(groups.some(g=>!g.button||!g.panel))return;
- const icon=document.createElement('img');icon.className='sg-rail-brand';icon.src='./favicon-tight.svg?v=1';icon.alt='Sungrow';root.querySelector('.sg-brand')?.append(icon);
+ const campusLink = document.createElement('a');
+ campusLink.className = 'sg-campus-link';
+ campusLink.href = './service-campus/';
+ campusLink.setAttribute('aria-label', 'Mở sa bàn Service Center 3D');
+ campusLink.title = 'Mở sa bàn Service Center 3D';
+ const icon = document.createElement('img');
+ icon.className = 'sg-rail-brand';
+ icon.src = './favicon-tight.svg?v=1';
+ icon.alt = '';
+ campusLink.append(icon);
+ const brand = root.querySelector('.sg-side .sg-brand');
+ if (brand) brand.append(campusLink);
+
+ const campusDialog = document.createElement('dialog');
+ campusDialog.className = 'sg-campus-dialog';
+ campusDialog.setAttribute('aria-label', 'Sa bàn Service Center 3D');
+ campusLink.setAttribute('aria-haspopup', 'dialog');
+ root.append(campusDialog);
+ const closeCampus = () => { if (campusDialog.open) campusDialog.close(); };
+ campusDialog.addEventListener('close', () => {
+   campusDialog.replaceChildren();
+   if (!root.hidden) campusLink.focus();
+ });
+ campusLink.addEventListener('click', event => {
+   if (event.button !== 0) return;
+   event.preventDefault();
+   if (root.hidden || campusDialog.open) return;
+   const frame = document.createElement('iframe');
+   frame.title = 'Service Center 3D';
+   frame.src = campusLink.href;
+   frame.addEventListener('load', () => {
+     frame.contentWindow?.SungrowServiceScene?.connect({
+       read: () => root.readCampusCases?.() || [],
+       label: 'Tối đa 250 hồ sơ gần nhất trong phạm vi dashboard',
+       onReturn: closeCampus,
+       onOpenCase: id => {
+         closeCampus();
+         root.openCampusCase?.(id);
+       }
+     });
+   });
+   campusDialog.replaceChildren(frame);
+   campusDialog.showModal();
+ });
+ new MutationObserver(() => { if (root.hidden) closeCampus(); })
+   .observe(root, {attributes:true, attributeFilter:['hidden']});
  let leaveTimer;
  function close(focus=false){clearTimeout(leaveTimer);const owner=groups.find(g=>g.button.getAttribute('aria-expanded')==='true');groups.forEach(g=>{g.button.setAttribute('aria-expanded','false');g.panel.hidden=true;});if(focus)owner?.button.focus();}
  function place(g){if(g.panel.hidden)return;const rect=g.button.getBoundingClientRect();g.panel.style.top=Math.max(12,Math.min(rect.top,innerHeight-g.panel.offsetHeight-12))+'px';}

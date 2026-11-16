@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Sa bàn Service Center 3D — 16/11/2026
+
+Logo dashboard mở sa bàn trong cùng phiên. Sa bàn đọc danh sách hồ sơ theo kỳ và trung tâm đã được API dashboard trả về cho tài khoản hiện hành, cập nhật sau đồng bộ của dashboard và mở chi tiết bằng luồng hiện có. Dữ liệu tồn tại trong bộ nhớ phiên. Cảnh giới hạn sáu xe đẩy mỗi công đoạn để chừa lối di chuyển, còn danh sách và bộ đếm dùng toàn bộ hồ sơ trong phản hồi dashboard (tối đa 250 hồ sơ gần nhất theo giới hạn API). Frontend GitHub Pages, triển khai từ main.
+
+
 ## Tổng hợp báo cáo linh kiện theo PN — 05/11/2026, backend1.11.26 chờ deploy
 
 Trong cùng Báo cáo → Linh kiện sử dụng, reportsJS5 mặc định Tổng hợp theo Part Number khi bootstrap có schema partsSummary; giữ Chi tiết từng lần sử dụng. Bản tổng hợp chỉ có PN, tên và tổng số lượng, không gộp theo center/hồ sơ/ngày/cột được chọn. Chọn center lọc nguồn trước tổng hợp; mã dùng ở nhiều center đã chọn cộng chung thành một dòng. Gộp toàn bộ kỳ trước phân trang, giữ guardrevision/20.000dòng kết quả. Chuẩn hóa PN trim/hoa; tên khác cùng PN hiển thị đủ, mã thiếu giữ nhóm riêng theo tên. Tìm tên ở chế độ tổng hợp lọc sau gộp để không mất lượng cùng PN có tên ghi khác. Hiển thị số mã/nhóm hoặc số lần dùng và tổng số lượng; hai chế độ cùng nguồn ngày sử dụng/công việc, không nhân Fan/link. 365 dòng chi tiết không phải365chiếc.

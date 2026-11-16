@@ -1,0 +1,41 @@
+/* ESS backdrop: transparency belongs to surfaces, never to text or controls. */
+:root{--glass-panel:rgba(255,255,255,.86);--glass-chrome:rgba(255,255,255,.82);--glass-border:rgba(255,255,255,.72)}
+html{background:#e8eff3}
+body{position:relative;isolation:isolate;background:transparent!important}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(120deg,rgba(238,245,249,.22),rgba(255,255,255,.32)),url('./login-ess-background.jpg') center/cover no-repeat}
+#sg-preview,#sg-preview .sg-shell,#sg-preview .sg-main,#sg-preview .sg-content,
+.app-shell,.workspace,.content{background:transparent!important}
+#sg-preview .sg-side,#sg-preview .sg-top,.sidebar,.topbar{background:var(--glass-chrome)!important;border-color:rgba(211,222,229,.75)!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#sg-preview .sg-panel,#sg-preview .sg-kpi,
+#sg-preview :is(#sg-overview,#sg-centers,#sg-tickets,#sg-parts,#sg-quality) :is(.sg-panel,.sg-kpi),
+#appView .panel{background:var(--glass-panel)!important;border-color:var(--glass-border)!important;box-shadow:0 4px 20px rgba(24,46,62,.07)!important}
+#sg-preview .sg-portal-frame{background:transparent!important}
+#sg-preview .sg-mini-table-head,#sg-preview th,#appView th{background:rgba(239,244,247,.92)!important;color:#45545f!important}
+#sg-preview .sg-card-list-body,#sg-preview .sg-compare-list-body,
+#appView .table-wrap,#appView .filter-panel{background:transparent!important}
+#sg-preview .sg-control,#sg-preview input,#sg-preview select,
+#appView input,#appView select,#appView textarea{background:rgba(255,255,255,.96)!important;color:#26333d!important}
+#sg-preview .sg-footer{color:#45545f!important}
+#sg-preview{--sg-muted:#4c5b66}
+#sg-preview :is(.sg-kpi-label,.sg-kpi-unit,.sg-kpi-note,.sg-sub,.sg-eyebrow,.sg-small),
+#sg-preview :is(#sg-overview,#sg-centers,#sg-tickets,#sg-parts,#sg-quality) small{color:#4c5b66!important}
+#appView{--muted:#4c5b66;--line:rgba(210,221,229,.85)}
+#appView input::placeholder,#appView textarea::placeholder{color:#596773;opacity:1}
+#appView .work,#appView .drawer,#appView .drawer-panel{background:rgba(255,255,255,.96)!important}
+html.embedded,html.embedded body{background:transparent!important}
+html.embedded body::before{display:none}
+/* Keep the established login design and Google sign-in flow unchanged. */
+.sg-auth-layout{background:transparent}
+@media(max-width:760px){
+ :root{--glass-panel:rgba(255,255,255,.95);--glass-chrome:rgba(255,255,255,.96)}
+ #sg-preview .sg-side,#sg-preview .sg-top,.sidebar,.topbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+ body::before{background-position:58% center}
+}
+@media(prefers-reduced-transparency:reduce){
+ :root{--glass-panel:#fff;--glass-chrome:#fff}
+ #sg-preview .sg-side,#sg-preview .sg-top,.sidebar,.topbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media(forced-colors:active){
+ body::before{display:none}
+ :root{--glass-panel:Canvas;--glass-chrome:Canvas;--glass-border:CanvasText}
+}

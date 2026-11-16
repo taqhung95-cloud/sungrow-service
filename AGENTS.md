@@ -41,3 +41,7 @@ git diff --check
 
 Sau khi hoàn tất một thay đổi có ảnh hưởng quy tắc hoặc deploy, cập nhật `CURRENT-IMPLEMENTATION.md` trong cùng commit.
 Khi thay trạng thái triển khai, cập nhật thêm `PRODUCTION-STATE.md`; phân biệt code local, đã push nhánh, đã vào main, đã deploy và người dùng đã thử. Không ghi “chưa deploy” cho bản đã được xác nhận, hoặc coi một module local là đã đối chiếu byte-for-byte với runtime khi chưa có bằng chứng.
+
+## Modern Web Guidance
+
+Dùng bộ skill Modern Web Guidance ở `.agents/skills/modern-web-guidance/SKILL.md` trước khi sửa HTML, CSS hoặc JavaScript chạy trên trình duyệt trong dự án. Tra theo đúng tác vụ và kiểm tra tương thích trình duyệt trước khi đổi API.

@@ -14,6 +14,27 @@
   let authSequence = 0;
   let live = null;
   let previousLive = null;
+  root.readCampusCases = () => {
+    if (!token || root.hidden || !Array.isArray(live?.tickets)) return [];
+    return live.tickets.filter(ticket => ticket.id).map(ticket => ({
+      id: String(ticket.id),
+      model: String(ticket.model || ''),
+      center: String(ticket.center || ''),
+      status: /đã\s*(giao|trả)/i.test(ticket.deliveryStatus || '')
+        ? 'Đã giao máy' : String(ticket.status || ticket.deliveryStatus || '').trim()
+    }));
+  };
+  root.openCampusCase = id => {
+    if (!token || root.hidden) return;
+    const ticket = live?.tickets?.find(row => String(row.id) === id);
+    if (!ticket) return;
+    if (window.SungrowWorkspace) {
+      window.SungrowWorkspace.open(/^HS-/i.test(id) ? {kind:'case',id} :
+        {kind:'history',id,title:(ticket.model || 'Hồ sơ')+' | '+id,ticket});
+    } else {
+      showTicketDetail(id);
+    }
+  };
   let loadSequence = 0;
   let activeController = null;
   let lastSuccessfulSync = 0;
