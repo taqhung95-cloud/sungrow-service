@@ -738,3 +738,28 @@
 #sg-preview .sc-feed .sc-queue { scroll-behavior: auto; }
 
 #sg-preview a.sc-exit { text-decoration: none; }
+
+#sg-preview .sc-distribution button.sc-bar-row {
+  width:100%; padding:4px; border:0; border-radius:8px;
+  text-align:left; font:inherit; color:inherit; background:transparent;
+}
+#sg-preview .sc-distribution button.sc-bar-row:hover {background:#ffffff66;}
+#sg-preview .sc-audit {
+  width:min(620px,calc(100% - 24px)); max-height:min(76vh,650px);
+  padding:20px; border:1px solid #fff; border-radius:21px;
+  color:#17384b; background:#eef7fbed; backdrop-filter:blur(16px);
+  box-shadow:0 16px 48px #15364b45;
+}
+#sg-preview .sc-audit::backdrop {background:#13304455;}
+#sg-preview .sc-audit-header {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#sg-preview .sc-audit p {font-size:12px;line-height:1.5;margin:10px 0;}
+#sg-preview .sc-audit ul {list-style:none;padding:0;margin:10px 0 0;}
+#sg-preview .sc-audit li {
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
+  padding:9px 3px;border-top:1px solid #48667a35;font-size:12px;overflow-wrap:anywhere;
+}
+#sg-preview .sc-audit li span {flex:1 1 180px;}
+#sg-preview .sc-audit button {
+  border:1px solid #6d8a9c65;border-radius:10px;background:#f9fcff;color:#17384b;
+  padding:6px 9px;font-size:12px;cursor:pointer;
+}

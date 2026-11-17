@@ -8,7 +8,7 @@
  ];if(groups.some(g=>!g.button||!g.panel))return;
  const campusLink = document.createElement('a');
  campusLink.className = 'sg-campus-link';
- campusLink.href = './service-campus/?v=3';
+ campusLink.href = './service-campus/?v=4';
  campusLink.setAttribute('aria-label', 'Mở sa bàn Service Center 3D');
  campusLink.title = 'Mở sa bàn Service Center 3D';
  const icon = document.createElement('img');

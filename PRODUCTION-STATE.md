@@ -1,5 +1,9 @@
 # Trạng thái production và đồng bộ repository
 
+## Đối chiếu hồ sơ theo công đoạn sa bàn — 17/11/2026
+
+Bấm nhãn công đoạn trên cảnh hoặc bảng phân bổ để mở danh sách chính xác đã dùng để tính số. Bản đối chiếu giải thích phạm vi tối đa 250 hồ sơ gần nhất, liệt kê trạng thái và mở hồ sơ bằng luồng hiện có. Thanh chọn góc nhìn bên dưới giữ chức năng điều khiển camera.
+
 ## Giảm độ đậm hai bảng danh sách — 17/11/2026
 
 Giữ Sungrow Montserrat. Hai bảng dùng 400 cho dữ liệu và S/N, 500 cho model và nhãn trạng thái, 600 cho đầu cột. Quy tắc dùng chung khi bật và tắt Transparency.

@@ -348,6 +348,12 @@
       <a class="sc-chip sc-exit" href="../">Về dashboard <svg class="sc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a>
     </div>
   </header>
+  <dialog class="sc-audit" aria-labelledby="sc-audit-title" aria-describedby="sc-audit-source">
+    <div class="sc-audit-header"><h2 id="sc-audit-title">Hồ sơ theo công đoạn</h2><form method="dialog"><button type="submit" autofocus>Đóng</button></form></div>
+    <p id="sc-audit-source">Đếm hồ sơ chưa đóng trong tối đa 250 hồ sơ gần nhất đã được Dashboard trả cho tài khoản đang đăng nhập. Đây là số hồ sơ, không phải số thiết bị hoặc tổng toàn kỳ.</p>
+    <p data-sc-audit-statuses></p>
+    <ul data-sc-audit-list></ul>
+  </dialog>
   <div class="sc-operations">
     <div class="sc-stage">
       <div class="sc-world">
@@ -359,7 +365,7 @@
         <div class="sc-analytics-head"><span>SERVICE ANALYTICS</span><strong id="sc-landing-title" tabindex="-1">Nhịp vận hành</strong><small data-sc-summary-scope>Trong phạm vi dashboard</small></div>
         <div class="sc-total"><span>Tiếp nhận trong kỳ</span><strong data-sc-metric="total">0</strong><small><b data-sc-metric="active">0</b> thiết bị/hồ sơ tồn cuối kỳ</small></div>
         <div class="sc-completion"><div class="sc-donut" role="img" aria-label="Tỷ lệ đạt SLA 7 ngày"><strong data-sc-percent>0%</strong></div><div><strong>Đạt SLA 7 ngày</strong><small data-sc-ratio>—</small><small>Thiết bị đã trả đủ dữ liệu</small></div></div>
-        <div class="sc-distribution"><h2>Phân bổ công đoạn</h2><div data-sc-bars></div><small>Hồ sơ chưa đóng trong danh sách gần nhất</small></div>
+        <div class="sc-distribution"><h2>Phân bổ công đoạn</h2><div data-sc-bars></div><small>Bấm công đoạn để xem các hồ sơ được tính</small></div>
         <div class="sc-waiting"><span>Chờ giao</span><strong data-sc-metric="waiting">0</strong><div class="sc-progress"><i data-sc-wait-bar></i></div><small data-sc-wait-ratio></small></div>
       </aside>
       <div class="sc-controls">
@@ -607,7 +613,7 @@ function navigate(page){state.page=page;qa('button[data-page]').forEach(b=>{if(b
 <link rel="stylesheet" href="glass-controls.css">
 <link id="sg-glass-theme" rel="stylesheet" href="glass-theme.css" media="not all">
 <link rel="stylesheet" href="mobile-ui.css">
-<link rel="stylesheet" href="landing.css?v=2">
+<link rel="stylesheet" href="landing.css?v=3">
 <script src="mobile-ui.js"></script>
 <script src="glass-theme.js"></script>
 <script src="landing.js"></script>
@@ -616,5 +622,5 @@ function navigate(page){state.page=page;qa('button[data-page]').forEach(b=>{if(b
 
 <script src="service-campus-v2.js?v=2"></script>
 <script src="service-charts.js?v=2"></script>
-<script src="campus.js?v=3"></script>
+<script src="campus.js?v=4"></script>
 </body></html>

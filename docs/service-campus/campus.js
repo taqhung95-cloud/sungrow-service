@@ -197,6 +197,43 @@
     }
   }
 
+  const auditDialog = landing.querySelector('.sc-audit');
+  let auditStage = '';
+  let stageCases = new Map();
+  function showStageAudit(stage) {
+    auditStage = stage;
+    const rows = stageCases.get(stage) || [];
+    auditDialog.querySelector('#sc-audit-title').textContent = stations[stage].label+' · '+rows.length+' hồ sơ';
+    const statuses = [...statusToStage].filter(([status,id]) => id === stage && !completed.has(status)).map(([status])=>status);
+    auditDialog.querySelector('[data-sc-audit-statuses]').textContent = 'Trạng thái được tính: '+statuses.join(', ')+'.';
+    const list = auditDialog.querySelector('[data-sc-audit-list]');
+    list.replaceChildren();
+    for (const item of rows) {
+      const li = document.createElement('li');
+      const id = document.createElement('strong');
+      id.textContent = item.id;
+      const details = document.createElement('span');
+      details.textContent = [item.model,item.center,item.status].filter(Boolean).join(' · ');
+      li.append(id,details);
+      if (onOpenCase) {
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.textContent = 'Mở hồ sơ';
+        open.setAttribute('aria-label','Mở hồ sơ '+item.id);
+        open.addEventListener('click',()=>onOpenCase(item.id));
+        li.append(open);
+      }
+      list.append(li);
+    }
+    if (!rows.length) {
+      const empty = document.createElement('li');
+      empty.textContent = 'Không có hồ sơ phù hợp trong danh sách gần nhất.';
+      list.append(empty);
+    }
+    if (!auditDialog.open) auditDialog.showModal();
+  }
+  auditDialog.addEventListener('close',()=>{auditStage='';});
+
   function refreshCases() {
     refreshSummary();
     const next = readCases();
@@ -207,11 +244,15 @@
     const previous = cases[caseIndex]?.id;
     cases = next.map(item => ({...item}));
     const counts = {}, working = {};
+    stageCases = new Map();
     for (const item of cases) {
       if (completed.has(item.status)) continue;
       const stage = statusToStage.get(item.status);
       if (!stage) continue;
-      counts[stage] = (counts[stage] || 0) + 1;
+      const members = stageCases.get(stage) || [];
+      members.push(item);
+      stageCases.set(stage,members);
+      counts[stage] = members.length;
       if (!waiting.has(item.status)) working[stage] = (working[stage] || 0) + 1;
     }
     const slots = new Map();
@@ -228,7 +269,7 @@
     const bars=landing.querySelector('[data-sc-bars]');
     bars.replaceChildren();
     for(const stage of ['receive','repair','test','handover']) {
-      const row=document.createElement('div');row.className='sc-bar-row';
+      const row=document.createElement('button');row.type='button';row.className='sc-bar-row';row.dataset.scAudit=stage;row.setAttribute('aria-haspopup','dialog');
       const label=document.createElement('span');label.textContent=stations[stage].label;
       const value=document.createElement('b');value.textContent=String(counts[stage]||0);
       const track=document.createElement('div');track.className='sc-progress';
@@ -242,6 +283,7 @@
       count.textContent=String(counts[stage] || 0);
       button.title=(counts[stage] || 0)+' hồ sơ tại công đoạn';
     }
+    if (auditDialog.open && auditStage) showStageAudit(auditStage);
     caseButtons = cases.map((item,index) => {
       const button = document.createElement('button');
       button.className = 'sc-case-row';
@@ -293,6 +335,11 @@
     if (button === destination && onOpenCase && button.dataset.ticket) {
       event.preventDefault();
       onOpenCase(button.dataset.ticket);
+      return;
+    }
+    const stage = button.dataset.scAudit || (button.classList.contains('sc-marker') ? button.dataset.scView : '');
+    if (stage && ['receive','repair','test','handover'].includes(stage)) {
+      showStageAudit(stage);
       return;
     }
     if (button.dataset.scView) select(button.dataset.scView);
