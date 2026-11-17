@@ -1,5 +1,9 @@
 # Trạng thái production và đồng bộ repository
 
+## Đầu bảng cố định và thao tác lô Fan — 17/11/2026
+
+Đầu bảng khi cuộn dùng nền xanh nhạt đặc để ngăn dữ liệu bên dưới xuyên qua. Các nút thao tác lô Fan dùng cùng kích thước và màu với điều khiển Liquid Glass. Phát hành frontend GitHub Pages.
+
 ## Đồng bộ điều khiển Liquid Glass — 16/11/2026
 
 Ô quét S/N và trạng thái tra cứu chia sẻ một khung. Hai bộ lọc danh sách và các bảng nổi Thông báo, Trợ lý dùng cùng kích thước chữ và lớp kính. Frontend GitHub Pages.

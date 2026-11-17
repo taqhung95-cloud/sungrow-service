@@ -447,3 +447,54 @@ html[data-glass-theme="on"] :is(.sgqa-subtitle,.sgqa-read-time,.sg-notification-
 @media (prefers-reduced-transparency:reduce) {
   html[data-glass-theme="on"] {--lg-overlay-fill:#eef6fa;--lg-filter-fill:#eef6fa;}
 }
+
+/* Sticky headers need a solid tint so scrolled records cannot bleed through. */
+html[data-glass-theme="on"] {
+  --lg-sticky-header:#deedf5;
+}
+html[data-glass-theme="on"] #appView#appView#appView#appView#appView #cases .case-table thead th,
+html[data-glass-theme="on"] #appView#appView#appView#appView#appView .dashboard-table thead th,
+html[data-glass-theme="on"] #sg-preview#sg-preview#sg-preview#sg-preview#sg-preview :is(#sg-tickets,#sg-parts,.sg-command-parts) thead th,
+html[data-glass-theme="on"] #sg-preview#sg-preview#sg-preview#sg-preview#sg-preview .sg-mini-table-head {
+  background:var(--lg-sticky-header)!important;
+  background-clip:border-box!important;
+}
+html[data-glass-theme="on"] #appView .fl-native-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px;
+}
+html[data-glass-theme="on"] #appView .fl-native-heading .actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+html[data-glass-theme="on"] #appView#appView#appView .fl-intake :is(.fl-native-heading button,.fl-rows button,.fl-paste-box button) {
+  min-height:36px;
+  padding-inline:12px;
+  border:1px solid var(--lg-edge);
+  border-radius:11px;
+  background:var(--lg-field);
+  color:var(--lg-ink);
+  box-shadow:inset 0 1px 0 #fff,0 2px 5px #23425b15;
+  font-family:inherit;
+  font-size:var(--lg-control-font);
+  font-weight:600;
+}
+html[data-glass-theme="on"] #appView .fl-intake :is(.fl-native-heading button,.fl-rows button,.fl-paste-box button):hover {
+  background:#e1eff7;
+}
+html[data-glass-theme="on"] #appView .fl-intake .fl-native-columns {
+  background:var(--lg-sticky-header);
+  border-radius:10px 10px 0 0;
+  color:var(--lg-column-ink);
+  font-weight:700;
+}
+
+html[data-glass-theme="on"] #appView .fl-intake .fl-total {
+  color:var(--lg-secondary);
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+}
