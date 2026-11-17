@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Font và bảng danh sách — 17/11/2026
+
+Dashboard và Nhập liệu nạp cùng bốn mặt chữ Sungrow Montserrat đã dùng trong dashboard. Danh sách hồ sơ và Danh sách thiết bị dùng chung kiểu chữ, cỡ chữ, phân cấp và màu bảng. Phát hành frontend GitHub Pages.
+
 ## Đầu bảng cố định và thao tác lô Fan — 17/11/2026
 
 Đầu bảng khi cuộn dùng nền xanh nhạt đặc để ngăn dữ liệu bên dưới xuyên qua. Các nút thao tác lô Fan dùng cùng kích thước và màu với điều khiển Liquid Glass. Phát hành frontend GitHub Pages.

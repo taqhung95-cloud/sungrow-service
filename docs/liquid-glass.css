@@ -498,3 +498,46 @@ html[data-glass-theme="on"] #appView .fl-intake .fl-total {
   font-size:12px;
   font-variant-numeric:tabular-nums;
 }
+
+/* Shared typography applies to both lists, with or without Transparency. */
+:is(#sg-preview #sg-tickets,#appView #cases) {
+  --list-font:"Sungrow Montserrat",Montserrat,Arial,sans-serif;
+  --list-ink:#172b38;
+  --list-secondary:#344f61;
+  --list-size:13px;
+  --list-meta-size:11px;
+  --list-rule:#42647a35;
+  font-family:var(--list-font)!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(
+  table,th,td,button,select,input,.sg-small,.sg-sn,.device-name,.pagination,.sg-ticket-footer) {
+  font-family:var(--list-font)!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(th,td) {
+  font-size:var(--list-size)!important;
+  line-height:1.45!important;
+  padding-block:10px!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) thead th {
+  color:#19384b!important;
+  font-weight:700!important;
+}
+:is(#sg-preview#sg-preview#sg-preview#sg-preview #sg-tickets,#appView#appView#appView#appView #cases) tbody td {
+  color:var(--list-ink)!important;
+  border-bottom-color:var(--list-rule)!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(.sg-sn,.device-name) {
+  color:var(--list-ink)!important;
+  font-size:var(--list-size)!important;
+  font-weight:600!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(
+  .sg-small,.sg-sn + *, .device-name + *, .sg-ticket-footer,.pagination) {
+  color:var(--list-secondary)!important;
+  font-size:var(--list-meta-size)!important;
+  font-weight:500!important;
+}
+:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(.sg-status,.badge) {
+  font-size:var(--list-meta-size)!important;
+  font-weight:600;
+}
