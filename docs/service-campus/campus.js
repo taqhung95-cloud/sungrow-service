@@ -106,7 +106,8 @@
     wakeQueue();
   });
   new ResizeObserver(measureQueue).observe(queue);
-  let readCases = () => [];
+  let readCases = () => null;
+  let caseDataReady = false;
   let readSummary = () => null;
   let summarySignature;
   let onOpenCase = null;
@@ -130,7 +131,7 @@
       refreshCases();
     },
     refresh: () => refreshCases(),
-    clear() { globalThis.ServiceSessionChart?.reset(); readCases = () => []; readSummary = () => null; summarySignature = undefined; signature = ''; sourceLabel.textContent = 'Chưa kết nối dữ liệu'; refreshCases(); }
+    clear() { globalThis.ServiceSessionChart?.reset(); readCases = () => null; readSummary = () => null; summarySignature = undefined; signature = ''; sourceLabel.textContent = 'Chưa kết nối dữ liệu'; refreshCases(); }
   });
 
   function select(id) {
@@ -203,7 +204,7 @@
   function showStageAudit(stage) {
     auditStage = stage;
     const rows = stageCases.get(stage) || [];
-    auditDialog.querySelector('#sc-audit-title').textContent = stations[stage].label+' · '+rows.length+' hồ sơ';
+    auditDialog.querySelector('#sc-audit-title').textContent = stations[stage].label+' · '+(caseDataReady ? rows.length+' hồ sơ' : 'Chưa có dữ liệu');
     const statuses = [...statusToStage].filter(([status,id]) => id === stage && !completed.has(status)).map(([status])=>status);
     auditDialog.querySelector('[data-sc-audit-statuses]').textContent = 'Trạng thái được tính: '+statuses.join(', ')+'.';
     const list = auditDialog.querySelector('[data-sc-audit-list]');
@@ -213,7 +214,7 @@
       const id = document.createElement('strong');
       id.textContent = item.id;
       const details = document.createElement('span');
-      details.textContent = [item.model,item.center,item.status].filter(Boolean).join(' · ');
+      details.textContent = [item.model,item.center,item.status,item.receivedDate?.split('-').reverse().join('/')].filter(Boolean).join(' · ');
       li.append(id,details);
       if (onOpenCase) {
         const open = document.createElement('button');
@@ -227,7 +228,7 @@
     }
     if (!rows.length) {
       const empty = document.createElement('li');
-      empty.textContent = 'Không có hồ sơ phù hợp trong danh sách gần nhất.';
+      empty.textContent = caseDataReady ? 'Không có hồ sơ phù hợp trong kỳ.' : sourceLabel.textContent;
       list.append(empty);
     }
     if (!auditDialog.open) auditDialog.showModal();
@@ -236,9 +237,12 @@
 
   function refreshCases() {
     refreshSummary();
-    const next = readCases();
-    if (!Array.isArray(next)) return;
-    const nextSignature = JSON.stringify(next.map(({id,model,center,status}) => ({id,model,center,status})));
+    const data = readCases();
+    const rows = Array.isArray(data) ? data : data?.rows;
+    const next = rows || [];
+    caseDataReady = Array.isArray(rows);
+    if (data?.label && sourceLabel.textContent !== data.label) sourceLabel.textContent = data.label;
+    const nextSignature = JSON.stringify([caseDataReady, data?.label, next]);
     if (signature === nextSignature) return;
     signature = nextSignature;
     const previous = cases[caseIndex]?.id;
@@ -264,14 +268,14 @@
       slots.set(stage,(slots.get(stage) || 0)+1);
       return [{id:item.id,stage,closed,status:item.status}];
     });
-    map?.syncCases(counts,working,sceneRows);
+    map?.syncCases(counts,working,sceneRows,caseDataReady);
     const recentOpen = cases.filter(item => !completed.has(item.status)).length;
     const bars=landing.querySelector('[data-sc-bars]');
     bars.replaceChildren();
     for(const stage of ['receive','repair','test','handover']) {
       const row=document.createElement('button');row.type='button';row.className='sc-bar-row';row.dataset.scAudit=stage;row.setAttribute('aria-haspopup','dialog');
       const label=document.createElement('span');label.textContent=stations[stage].label;
-      const value=document.createElement('b');value.textContent=String(counts[stage]||0);
+      const value=document.createElement('b');value.textContent=caseDataReady ? String(counts[stage]||0) : '—';
       const track=document.createElement('div');track.className='sc-progress';
       const fill=document.createElement('i');fill.style.width=(recentOpen?(counts[stage]||0)/recentOpen*100:0)+'%';
       track.append(fill);row.append(label,value,track);bars.append(row);
@@ -280,8 +284,8 @@
       const button=landing.querySelector('.sc-stations [data-sc-view="'+stage+'"]');
       let count=button.querySelector('.sc-flow-count');
       if (!count) { count=document.createElement('b'); count.className='sc-flow-count'; button.append(count); }
-      count.textContent=String(counts[stage] || 0);
-      button.title=(counts[stage] || 0)+' hồ sơ tại công đoạn';
+      count.textContent=caseDataReady ? String(counts[stage] || 0) : '—';
+      button.title=caseDataReady ? (counts[stage] || 0)+' hồ sơ tại công đoạn' : 'Chưa có dữ liệu';
     }
     if (auditDialog.open && auditStage) showStageAudit(auditStage);
     caseButtons = cases.map((item,index) => {
@@ -693,7 +697,7 @@
     });
     resize();
     light(night);
-    function syncCases(counts,working,rows) {
+    function syncCases(counts,working,rows,ready) {
       setWorkload(working);
       setCases(rows);
       renderer.shadowMap.needsUpdate=true;
@@ -701,9 +705,9 @@
         if (id === 'storage' || id === 'energy' || id === 'fpv') continue;
         let badge = button.querySelector('.sc-work-count');
         if (!badge) { badge = document.createElement('small'); badge.className='sc-work-count'; button.append(badge); }
-        badge.textContent = String(counts[id] || 0);
+        badge.textContent = ready ? String(counts[id] || 0) : '—';
         button.toggleAttribute('data-working', Boolean(working[id]));
-        button.title = (counts[id] || 0) + ' case · ' + (working[id] || 0) + ' đang xử lý';
+        button.title = ready ? (counts[id] || 0) + ' hồ sơ · ' + (working[id] || 0) + ' đang xử lý' : 'Chưa có dữ liệu';
       }
       invalidateMarkerLayout();
     }

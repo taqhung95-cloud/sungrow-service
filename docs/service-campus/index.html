@@ -350,7 +350,7 @@
   </header>
   <dialog class="sc-audit" aria-labelledby="sc-audit-title" aria-describedby="sc-audit-source">
     <div class="sc-audit-header"><h2 id="sc-audit-title">Hồ sơ theo công đoạn</h2><form method="dialog"><button type="submit" autofocus>Đóng</button></form></div>
-    <p id="sc-audit-source">Đếm hồ sơ chưa đóng trong tối đa 250 hồ sơ gần nhất đã được Dashboard trả cho tài khoản đang đăng nhập. Đây là số hồ sơ, không phải số thiết bị hoặc tổng toàn kỳ.</p>
+    <p id="sc-audit-source">Đếm hồ sơ tiếp nhận trong kỳ và trung tâm đã chọn trên Dashboard, phân theo trạng thái hiện tại của hồ sơ chưa đóng.</p>
     <p data-sc-audit-statuses></p>
     <ul data-sc-audit-list></ul>
   </dialog>
@@ -395,7 +395,7 @@
       <div class="sc-feed-head">
         <p class="sc-kicker"><span></span> HỒ SƠ DỊCH VỤ</p>
         <h2 id="sc-feed-title">Case dịch vụ</h2>
-        <p class="sc-feed-source">Mở từ dashboard để xem hồ sơ được cấp quyền</p>
+        <p class="sc-feed-source" role="status">Mở từ dashboard để xem hồ sơ được cấp quyền</p>
       </div>
       <div class="sc-case-highlight">
         <div class="sc-case-index"><span>CASE ĐANG XEM</span><span data-sc-count>—</span></div>
@@ -622,5 +622,5 @@ function navigate(page){state.page=page;qa('button[data-page]').forEach(b=>{if(b
 
 <script src="service-campus-v2.js?v=2"></script>
 <script src="service-charts.js?v=2"></script>
-<script src="campus.js?v=4"></script>
+<script src="campus.js?v=5"></script>
 </body></html>

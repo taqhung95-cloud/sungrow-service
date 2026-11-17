@@ -31,7 +31,7 @@ Dashboard, dải tab, bảng và biểu mẫu Nhập liệu dùng bộ kiểu k�
 
 ## Sa bàn Service Center 3D — 16/11/2026
 
-Logo dashboard mở sa bàn trong cùng phiên. Sa bàn đọc danh sách hồ sơ theo kỳ và trung tâm đã được API dashboard trả về cho tài khoản hiện hành, cập nhật sau đồng bộ của dashboard và mở chi tiết bằng luồng hiện có. Dữ liệu tồn tại trong bộ nhớ phiên. Cảnh giới hạn sáu xe đẩy mỗi công đoạn để chừa lối di chuyển, còn danh sách và bộ đếm dùng toàn bộ hồ sơ trong phản hồi dashboard (tối đa 250 hồ sơ gần nhất theo giới hạn API). Frontend GitHub Pages, triển khai từ main.
+Logo dashboard mở sa bàn trong cùng phiên. Sa bàn đọc danh sách hồ sơ theo kỳ và trung tâm đã được API dashboard trả về cho tài khoản hiện hành, cập nhật sau đồng bộ của dashboard và mở chi tiết bằng luồng hiện có. Dữ liệu tồn tại trong bộ nhớ phiên. Cảnh giới hạn sáu xe đẩy mỗi công đoạn để chừa lối di chuyển. Danh sách lấy hồ sơ theo ngày tiếp nhận trong kỳ (đến ngày chốt) và theo bộ lọc trung tâm của dashboard. Khi 250 hồ sơ gần nhất chưa phủ hết kỳ, sa bàn lấy thêm qua API danh sách thiết bị đã phân trang. Bộ đếm công đoạn phân loại hồ sơ chưa đóng trong kỳ theo trạng thái hiện tại. KPI lấy từ bảng tổng hợp Dashboard theo định nghĩa riêng của từng chỉ số. Frontend GitHub Pages, triển khai từ main.
 
 
 ## Tổng hợp báo cáo linh kiện theo PN — 05/11/2026, backend1.11.26 chờ deploy

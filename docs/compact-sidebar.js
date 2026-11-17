@@ -8,7 +8,7 @@
  ];if(groups.some(g=>!g.button||!g.panel))return;
  const campusLink = document.createElement('a');
  campusLink.className = 'sg-campus-link';
- campusLink.href = './service-campus/?v=4';
+ campusLink.href = './service-campus/?v=5';
  campusLink.setAttribute('aria-label', 'Mở sa bàn Service Center 3D');
  campusLink.title = 'Mở sa bàn Service Center 3D';
  const icon = document.createElement('img');
@@ -26,6 +26,7 @@
  root.append(campusDialog);
  const closeCampus = () => { if (campusDialog.open) campusDialog.close(); };
  campusDialog.addEventListener('close', () => {
+   root.setCampusOpen?.(false);
    campusDialog.replaceChildren();
    if (!root.hidden) campusLink.focus();
  });
@@ -33,14 +34,14 @@
    if (event.button !== 0) return;
    event.preventDefault();
    if (root.hidden || campusDialog.open) return;
+   root.setCampusOpen?.(true);
    const frame = document.createElement('iframe');
    frame.title = 'Service Center 3D';
    frame.src = campusLink.href;
    frame.addEventListener('load', () => {
      frame.contentWindow?.SungrowServiceScene?.connect({
-       read: () => root.readCampusCases?.() || [],
+       read: () => root.readCampusCases?.(),
        readSummary: () => root.readCampusSummary?.() || null,
-       label: 'Tối đa 250 hồ sơ gần nhất trong phạm vi dashboard',
        onReturn: closeCampus,
        onOpenCase: id => {
          closeCampus();

@@ -14,31 +14,110 @@
   let authSequence = 0;
   let live = null;
   let previousLive = null;
+  let liveCampusCenter = '';
+  let liveCampusAuth;
+  let campusRequest;
+  let campusOpen = false;
+
+  root.setCampusOpen = open => {
+    campusOpen = open;
+    if (!open) {
+      campusRequest?.controller.abort();
+      campusRequest = undefined;
+    }
+  };
+
+  function campusSnapshot() {
+    return token && liveCampusAuth === authSequence && !root.hidden && live?.period?.key === selectedPeriod() &&
+      liveCampusCenter === q('#sg-center').value ? live : null;
+  }
+
+  async function loadCampusTickets(snapshot, signal) {
+    const {start, end, asOf} = snapshot.period;
+    if (!start || !end) throw new Error('Thiếu khoảng ngày từ Dashboard');
+    const lastDate = asOf && asOf < end ? asOf : end;
+    if (lastDate < start) return [];
+    const inPeriod = ticket => ticket.id && ticket.receivedDate >= start && ticket.receivedDate <= lastDate;
+    const preview = snapshot.tickets;
+    if (Array.isArray(preview) && (preview.length < 250 ||
+        !preview.at(-1)?.receivedDate || preview.at(-1).receivedDate < start)) {
+      return preview.filter(inPeriod);
+    }
+
+    const center = liveCampusCenter;
+    const credential = token;
+    const readPage = page => fetchDashboard({
+      action: 'tickets.page', idToken: credential, center, sortOrder: 'newest', page, pageSize: 100
+    }, signal, 2);
+    const first = await readPage(1);
+    // Find the first page that can contain a receipt on or before the period end.
+    let low = 1;
+    let high = first.totalPages;
+    let result = first;
+    while (result.tickets.at(-1)?.receivedDate > lastDate && low < high) {
+      const middle = Math.floor((low + high) / 2);
+      const candidate = middle === 1 ? first : await readPage(middle);
+      if (candidate.tickets.at(-1)?.receivedDate > lastDate) low = middle + 1;
+      else high = middle;
+    }
+    if (low !== 1) result = await readPage(low);
+    const tickets = new Map();
+    for (let page = low; ; page++) {
+      if (page !== low) result = await readPage(page);
+      for (const ticket of result.tickets) {
+        if (inPeriod(ticket)) tickets.set(String(ticket.id), ticket);
+      }
+      const oldest = result.tickets.at(-1)?.receivedDate;
+      if (page >= result.totalPages || !oldest || oldest < start) break;
+    }
+    return [...tickets.values()];
+  }
+
   root.readCampusCases = () => {
-    if (!token || root.hidden || !Array.isArray(live?.tickets)) return [];
-    return live.tickets.filter(ticket => ticket.id).map(ticket => ({
-      id: String(ticket.id),
-      model: String(ticket.model || ''),
-      center: String(ticket.center || ''),
-      status: /đã\s*(giao|trả)/i.test(ticket.deliveryStatus || '')
-        ? 'Đã giao máy' : String(ticket.status || ticket.deliveryStatus || '').trim()
-    }));
+    const snapshot = campusSnapshot();
+    if (campusRequest && (campusRequest.snapshot !== snapshot || campusRequest.credential !== token)) {
+      campusRequest.controller.abort();
+      campusRequest = undefined;
+    }
+    if (!campusOpen || !snapshot) return {rows:null, label:'Đang chờ dữ liệu theo kỳ Dashboard…'};
+    if (!campusRequest) {
+      const request = {snapshot, credential:token, controller:new AbortController(), rows:null};
+      campusRequest = request;
+      loadCampusTickets(snapshot, request.controller.signal).then(tickets => {
+        request.tickets = tickets;
+        request.rows = tickets.map(ticket => ({
+          id: String(ticket.id),
+          model: String(ticket.model || ''),
+          center: String(ticket.center || ''),
+          receivedDate: ticket.receivedDate,
+          status: /đã\s*(giao|trả)/i.test(ticket.deliveryStatus || '')
+            ? 'Đã giao máy' : String(ticket.status || ticket.deliveryStatus || '').trim()
+        }));
+      }).catch(() => { request.failed = true; });
+    }
+    const scope = snapshot.period.label;
+    return {
+      rows:campusRequest.rows,
+      label: campusRequest.failed ? scope + ' · Không tải được hồ sơ. Mở lại để thử lại.'
+        : scope + (campusRequest.rows ? ' · Theo ngày tiếp nhận' : ' · Đang tải hồ sơ…')
+    };
   };
   root.readCampusSummary = () => {
-    if (!token || root.hidden || !live?.summary) return null;
+    if (!campusSnapshot()?.summary) return null;
     const {received,processing,waitingDelivery,returned,slaRate,slaMet,slaEligible} = live.summary;
     return {received,processing,waitingDelivery,returned,slaRate,slaMet,slaEligible,
       scope: live.period?.label || ''};
   };
   root.openCampusCase = id => {
     if (!token || root.hidden) return;
-    const ticket = live?.tickets?.find(row => String(row.id) === id);
+    if (campusRequest?.snapshot !== campusSnapshot()) return;
+    const ticket = campusRequest?.tickets?.find(row => String(row.id) === id);
     if (!ticket) return;
     if (window.SungrowWorkspace) {
       window.SungrowWorkspace.open(/^HS-/i.test(id) ? {kind:'case',id} :
         {kind:'history',id,title:(ticket.model || 'Hồ sơ')+' | '+id,ticket});
     } else {
-      showTicketDetail(id);
+      showTicketDetail(id, ticket);
     }
   };
   let loadSequence = 0;
@@ -330,6 +409,8 @@
       if (periodKey.includes('..') && currentData.period?.key !== periodKey) throw new Error('Backend chưa hỗ trợ khoảng ngày. Cần triển khai Apps Script 1.10.15.');
       if (sequence !== loadSequence) return;
       live = currentData;
+      liveCampusCenter = center;
+      liveCampusAuth = authSequence;
       root.dataset.liveData = 'true';
       renderIdentity(live.actor);
       syncCenterOptions(live);
