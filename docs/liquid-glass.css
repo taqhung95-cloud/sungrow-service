@@ -233,12 +233,6 @@ html[data-glass-theme="on"] :is(#sg-preview#sg-preview#sg-preview,#appView#appVi
 html[data-glass-theme="on"] :is(#sg-preview#sg-preview#sg-preview,#appView#appView#appView) :is(td small,td .sg-muted) {
   color:var(--lg-secondary)!important;
 }
-html[data-glass-theme="on"] #sg-preview#sg-preview#sg-preview #sg-tickets td:first-child {
-  font-weight:600;
-}
-html[data-glass-theme="on"] #sg-preview#sg-preview#sg-preview #sg-tickets td:first-child small {
-  font-weight:500;
-}
 html[data-glass-theme="on"] #sg-preview#sg-preview#sg-preview #sg-tickets #sg-tickets-table thead th {
   background:transparent!important;
 }
@@ -518,26 +512,27 @@ html[data-glass-theme="on"] #appView .fl-intake .fl-total {
   line-height:1.45!important;
   padding-block:10px!important;
 }
-:is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) thead th {
+:is(#sg-preview#sg-preview#sg-preview#sg-preview#sg-preview #sg-tickets,#appView#appView#appView#appView#appView #cases) thead th {
   color:#19384b!important;
-  font-weight:700!important;
+  font-weight:600!important;
 }
 :is(#sg-preview#sg-preview#sg-preview#sg-preview #sg-tickets,#appView#appView#appView#appView #cases) tbody td {
   color:var(--list-ink)!important;
   border-bottom-color:var(--list-rule)!important;
+  font-weight:400!important;
 }
 :is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(.sg-sn,.device-name) {
   color:var(--list-ink)!important;
   font-size:var(--list-size)!important;
-  font-weight:600!important;
+  font-weight:500!important;
 }
 :is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(
-  .sg-small,.sg-sn + *, .device-name + *, .sg-ticket-footer,.pagination) {
+  .sg-small,.device-sn,.sg-ticket-footer,.pagination) {
   color:var(--list-secondary)!important;
   font-size:var(--list-meta-size)!important;
-  font-weight:500!important;
+  font-weight:400!important;
 }
 :is(#sg-preview#sg-preview #sg-tickets,#appView#appView #cases) :is(.sg-status,.badge) {
   font-size:var(--list-meta-size)!important;
-  font-weight:600;
+  font-weight:500!important;
 }

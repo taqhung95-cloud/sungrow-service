@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Giảm độ đậm hai bảng danh sách — 17/11/2026
+
+Giữ Sungrow Montserrat. Hai bảng dùng 400 cho dữ liệu và S/N, 500 cho model và nhãn trạng thái, 600 cho đầu cột. Quy tắc dùng chung khi bật và tắt Transparency.
+
 ## Chỉ số dashboard trên sa bàn — 17/11/2026
 
 Sa bàn dùng summary của dashboard cho tiếp nhận, tồn cuối kỳ, chờ giao, đã giao và SLA. Danh sách gần nhất tối đa 250 hồ sơ chỉ phục vụ băng case và phân bổ công đoạn minh họa. Phát hành frontend GitHub Pages.
