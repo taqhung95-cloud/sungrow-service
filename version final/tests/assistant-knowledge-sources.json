@@ -30,7 +30,7 @@
   "docs/entry-notifications.js": "a7b7cac1fe06aee45d819208d4fa2435c08c3a396de62f31565368ad2ee4d835",
   "docs/session-client.js": "11a0a22a421b8c2c0059284c0ccea04ddde363623d5e9e8fd4cc64ace1130e0f",
   "version final/PortalSessions.gs": "b2a430a3645f8a46edd2d4c4173430fa4e5939e30832cfaf843d7abf201dec35",
-  "docs/live-data.js": "0f20b1f84ebc34a68e252dcbea4bfd1b7b6749c449d81c004d131e7ccdc5d01c",
+  "docs/live-data.js": "9342a687d8d408448cd66945dfcf344374a58f00ad5cc53bc2d776eb1df517e4",
   "version final/LegacyDashboardApi.gs": "d1757d5c152ca5fa44af2f5a979b6d7b030f7fe963e3a271076fd7114aa31291",
   "docs/dashboard-period.js": "eabf0dfa4f699ef198e90eab1f3ab97339790d1530e523fd6b9e94ef2793caaa",
   "docs/range-calendar.js": "053b0ff52107cefb8c5ad4be2ad103e7ebf0209b0b9ff078f9aa59184fd8a73b",
@@ -38,6 +38,6 @@
   "docs/report-xlsx.js": "b99565d43c68a2d4e2897f8faa1aab7c8c73b3dc6d2baf89da415bfc29c82d80",
   "version final/ReportExport.gs": "1ef30452947f81830fba0de88f2a003e69a38da6e5af8b8d8020746b63350427",
   "docs/glass-theme.js": "c9312a8c69e91f354db9f665e8854d5f85b7411342a04cdb6bda03e97fe63696",
-  "docs/compact-sidebar.js": "806e83a1c9f2ae2a085dfcb2549f3943781059c4d1ef1e7b07a44e7d0580a8f7",
+  "docs/compact-sidebar.js": "4b6d44173c64e6e0c2fb9d7226d2caf0128739bacd1acd570745e58376c260b9",
   "docs/mobile-ui.js": "31286b4ccc6e0fb51f6d380bd665c75a670b475c7f70e08341bae5c4c5a677ed"
 }

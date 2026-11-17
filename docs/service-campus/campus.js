@@ -107,6 +107,8 @@
   });
   new ResizeObserver(measureQueue).observe(queue);
   let readCases = () => [];
+  let readSummary = () => null;
+  let summarySignature;
   let onOpenCase = null;
   let onReturn = null;
   const completed = new Set(['Đã trả','Đã giao máy','Hoàn thành','Không sửa chữa']);
@@ -115,10 +117,12 @@
   const sourceLabel = landing.querySelector('.sc-feed-source');
   // Connect only to an authenticated, already scoped dashboard snapshot.
   globalThis.SungrowServiceScene = Object.freeze({
-    connect({read, label = 'Đồng bộ từ dashboard', onOpenCase: openCase, onReturn: returnToDashboard}) {
+    connect({read, readSummary: getSummary, label = 'Đồng bộ từ dashboard', onOpenCase: openCase, onReturn: returnToDashboard}) {
       if (typeof read !== 'function') throw new TypeError('read phải trả về danh sách case đã phân quyền');
       globalThis.ServiceSessionChart?.reset();
       readCases = read;
+      readSummary = typeof getSummary === 'function' ? getSummary : () => null;
+      summarySignature = undefined;
       onOpenCase = openCase;
       onReturn = returnToDashboard;
       sourceLabel.textContent = label;
@@ -126,7 +130,7 @@
       refreshCases();
     },
     refresh: () => refreshCases(),
-    clear() { globalThis.ServiceSessionChart?.reset(); readCases = () => []; signature = ''; sourceLabel.textContent = 'Chưa kết nối dữ liệu'; refreshCases(); }
+    clear() { globalThis.ServiceSessionChart?.reset(); readCases = () => []; readSummary = () => null; summarySignature = undefined; signature = ''; sourceLabel.textContent = 'Chưa kết nối dữ liệu'; refreshCases(); }
   });
 
   function select(id) {
@@ -160,7 +164,41 @@
     else if (current === 'all') map?.highlight(stage);
   }
 
+  function refreshSummary() {
+    const summary = readSummary();
+    const next = JSON.stringify(summary);
+    if (summarySignature === next) return;
+    const previousScope = summarySignature && JSON.parse(summarySignature)?.scope;
+    summarySignature = next;
+    landing.querySelector('[data-sc-summary-scope]').textContent = summary?.scope || 'Trong phạm vi dashboard';
+    const format = new Intl.NumberFormat('vi-VN');
+    const available = value => Number.isFinite(value);
+    const active = available(summary?.processing) && available(summary?.waitingDelivery)
+      ? summary.processing + summary.waitingDelivery : null;
+    const totals = {total:summary?.received, active, waiting:summary?.waitingDelivery};
+    landing.querySelectorAll('[data-sc-metric]').forEach(element => {
+      const value = totals[element.dataset.scMetric];
+      element.textContent = available(value) ? format.format(value) : '—';
+    });
+    const percent = available(summary?.slaRate) ? Math.round(summary.slaRate * 100) : null;
+    landing.querySelector('[data-sc-percent]').textContent = percent === null ? '—' : percent + '%';
+    const donut = landing.querySelector('.sc-donut');
+    donut.style.setProperty('--progress',(percent ?? 0)+'%');
+    donut.setAttribute('aria-label',percent === null ? 'Chưa có tỷ lệ SLA' : percent+'% đạt SLA 7 ngày');
+    landing.querySelector('[data-sc-ratio]').textContent = available(summary?.slaMet) && available(summary?.slaEligible)
+      ? format.format(summary.slaMet)+' / '+format.format(summary.slaEligible)+' đạt' : '—';
+    const waitingShare = active > 0 && available(summary?.waitingDelivery)
+      ? Math.round(summary.waitingDelivery / active * 100) : null;
+    landing.querySelector('[data-sc-wait-bar]').style.width = (waitingShare ?? 0)+'%';
+    landing.querySelector('[data-sc-wait-ratio]').textContent = waitingShare === null ? '—' : waitingShare+'% tồn cuối kỳ';
+    if (!summary || previousScope !== summary.scope) globalThis.ServiceSessionChart?.reset();
+    if (available(active) && available(summary?.returned)) {
+      globalThis.ServiceSessionChart?.update({active,finished:summary.returned});
+    }
+  }
+
   function refreshCases() {
+    refreshSummary();
     const next = readCases();
     if (!Array.isArray(next)) return;
     const nextSignature = JSON.stringify(next.map(({id,model,center,status}) => ({id,model,center,status})));
@@ -168,19 +206,6 @@
     signature = nextSignature;
     const previous = cases[caseIndex]?.id;
     cases = next.map(item => ({...item}));
-    const done = cases.filter(item => completed.has(item.status)).length;
-    const metrics = {total:cases.length,active:cases.length-done,waiting:cases.filter(item=>item.status==='Chờ linh kiện').length,done};
-    landing.querySelectorAll('[data-sc-metric]').forEach(el=>el.textContent=String(metrics[el.dataset.scMetric]));
-    const finished=cases.filter(item=>['Đã trả','Đã giao máy','Hoàn thành'].includes(item.status)).length;
-    globalThis.ServiceSessionChart?.update({active:metrics.active,finished});
-    const percent=cases.length?Math.round(finished/cases.length*100):0;
-    landing.querySelector('[data-sc-percent]').textContent=cases.length?percent+'%':'—';
-    landing.querySelector('.sc-donut').style.setProperty('--progress',percent+'%');
-    landing.querySelector('.sc-donut').setAttribute('aria-label',finished+' trên '+cases.length+' hồ sơ đã hoàn tất');
-    landing.querySelector('[data-sc-ratio]').textContent=finished+' / '+cases.length+' hồ sơ';
-    const waitPercent=cases.length?Math.round(metrics.waiting/cases.length*100):0;
-    landing.querySelector('[data-sc-wait-bar]').style.width=waitPercent+'%';
-    landing.querySelector('[data-sc-wait-ratio]').textContent=cases.length?waitPercent+'% tổng hồ sơ':'Chưa có hồ sơ';
     const counts = {}, working = {};
     for (const item of cases) {
       if (completed.has(item.status)) continue;
@@ -199,6 +224,7 @@
       return [{id:item.id,stage,closed,status:item.status}];
     });
     map?.syncCases(counts,working,sceneRows);
+    const recentOpen = cases.filter(item => !completed.has(item.status)).length;
     const bars=landing.querySelector('[data-sc-bars]');
     bars.replaceChildren();
     for(const stage of ['receive','repair','test','handover']) {
@@ -206,7 +232,7 @@
       const label=document.createElement('span');label.textContent=stations[stage].label;
       const value=document.createElement('b');value.textContent=String(counts[stage]||0);
       const track=document.createElement('div');track.className='sc-progress';
-      const fill=document.createElement('i');fill.style.width=(metrics.active?(counts[stage]||0)/metrics.active*100:0)+'%';
+      const fill=document.createElement('i');fill.style.width=(recentOpen?(counts[stage]||0)/recentOpen*100:0)+'%';
       track.append(fill);row.append(label,value,track);bars.append(row);
     }
     for (const stage of ['receive','repair','test','handover']) {

@@ -24,6 +24,12 @@
         ? 'Đã giao máy' : String(ticket.status || ticket.deliveryStatus || '').trim()
     }));
   };
+  root.readCampusSummary = () => {
+    if (!token || root.hidden || !live?.summary) return null;
+    const {received,processing,waitingDelivery,returned,slaRate,slaMet,slaEligible} = live.summary;
+    return {received,processing,waitingDelivery,returned,slaRate,slaMet,slaEligible,
+      scope: live.period?.label || ''};
+  };
   root.openCampusCase = id => {
     if (!token || root.hidden) return;
     const ticket = live?.tickets?.find(row => String(row.id) === id);

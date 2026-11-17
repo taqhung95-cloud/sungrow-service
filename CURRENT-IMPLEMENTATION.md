@@ -1,5 +1,9 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Chỉ số dashboard trên sa bàn — 17/11/2026
+
+Sa bàn dùng summary của dashboard cho tiếp nhận, tồn cuối kỳ, chờ giao, đã giao và SLA. Danh sách gần nhất tối đa 250 hồ sơ chỉ phục vụ băng case và phân bổ công đoạn minh họa. Phát hành frontend GitHub Pages.
+
 ## Font và bảng danh sách — 17/11/2026
 
 Dashboard và Nhập liệu nạp cùng bốn mặt chữ Sungrow Montserrat đã dùng trong dashboard. Danh sách hồ sơ và Danh sách thiết bị dùng chung kiểu chữ, cỡ chữ, phân cấp và màu bảng. Phát hành frontend GitHub Pages.

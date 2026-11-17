@@ -356,11 +356,11 @@
         <p class="sc-fallback" hidden>Thiết bị này chưa mở được sa bàn 3D. Bạn vẫn có thể xem công đoạn và mở hồ sơ.</p>
       </div>
       <aside class="sc-metrics" aria-label="Biểu đồ vận hành">
-        <div class="sc-analytics-head"><span>SERVICE ANALYTICS</span><strong id="sc-landing-title" tabindex="-1">Nhịp vận hành</strong><small>Trong phạm vi dashboard</small></div>
-        <div class="sc-total"><span>Tổng hồ sơ</span><strong data-sc-metric="total">0</strong><small><b data-sc-metric="active">0</b> hồ sơ chưa đóng</small></div>
-        <div class="sc-completion"><div class="sc-donut" role="img" aria-label="Tỷ lệ hồ sơ hoàn tất"><strong data-sc-percent>0%</strong></div><div><strong>Đã hoàn tất</strong><small data-sc-ratio>0 / 0 hồ sơ</small><small>Trên tổng hồ sơ</small></div></div>
-        <div class="sc-distribution"><h2>Phân bổ công đoạn</h2><div data-sc-bars></div><small>Case chưa đóng · số lượng theo trạng thái</small></div>
-        <div class="sc-waiting"><span>Chờ linh kiện</span><strong data-sc-metric="waiting">0</strong><div class="sc-progress"><i data-sc-wait-bar></i></div><small data-sc-wait-ratio></small></div>
+        <div class="sc-analytics-head"><span>SERVICE ANALYTICS</span><strong id="sc-landing-title" tabindex="-1">Nhịp vận hành</strong><small data-sc-summary-scope>Trong phạm vi dashboard</small></div>
+        <div class="sc-total"><span>Tiếp nhận trong kỳ</span><strong data-sc-metric="total">0</strong><small><b data-sc-metric="active">0</b> thiết bị/hồ sơ tồn cuối kỳ</small></div>
+        <div class="sc-completion"><div class="sc-donut" role="img" aria-label="Tỷ lệ đạt SLA 7 ngày"><strong data-sc-percent>0%</strong></div><div><strong>Đạt SLA 7 ngày</strong><small data-sc-ratio>—</small><small>Thiết bị đã trả đủ dữ liệu</small></div></div>
+        <div class="sc-distribution"><h2>Phân bổ công đoạn</h2><div data-sc-bars></div><small>Hồ sơ chưa đóng trong danh sách gần nhất</small></div>
+        <div class="sc-waiting"><span>Chờ giao</span><strong data-sc-metric="waiting">0</strong><div class="sc-progress"><i data-sc-wait-bar></i></div><small data-sc-wait-ratio></small></div>
       </aside>
       <div class="sc-controls">
         <div class="sc-camera" aria-label="Điều khiển sa bàn">
@@ -615,6 +615,6 @@ function navigate(page){state.page=page;qa('button[data-page]').forEach(b=>{if(b
 <script src="service-floor.js"></script>
 
 <script src="service-campus-v2.js?v=2"></script>
-<script src="service-charts.js"></script>
-<script src="campus.js?v=2"></script>
+<script src="service-charts.js?v=2"></script>
+<script src="campus.js?v=3"></script>
 </body></html>
