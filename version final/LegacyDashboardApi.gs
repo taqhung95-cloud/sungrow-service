@@ -1276,7 +1276,12 @@ function readReportData_(request, actor) {
     assertCanonicalRevision_(revision);
     return {centers:registry.map(function(c){return c.name;}),statuses:choices('status'),warrantyStatuses:choices('warrantyStatus'),deviceTypes:choices('deviceType')};
   }
-  const type=String(request.type||'cases'),defs=REPORT_COLUMN_DEFS_[type];
+  const type=String(request.type||'cases');
+  const reportColumns=REPORT_COLUMN_DEFS_[type];
+  // Accept the old combined column for report tabs opened before deployment.
+  const defs=type==='partsDetail'&&Array.isArray(reportColumns)
+    ? reportColumns.concat([['partLabel','Linh kiện sử dụng','text',false]])
+    : reportColumns;
   const isParts=type==='parts'||type==='partsSummary'||type==='partsDetail';
   if (!Array.isArray(defs)) throw apiError_('INVALID_REPORT','Mẫu báo cáo không hợp lệ.');
   const basis=String(request.dateBasis||'received');
@@ -1315,6 +1320,8 @@ function readReportData_(request, actor) {
         row.receivedAt = iso_(r.receivedDate);
         row.customerName = r.distributor;
         row.serialNumber = r.fanLot ? (p.fanSerials || []).join(', ') : r.serialNumber;
+        row.gsp = r.gsp;
+        row.ma = r.ma;
         row.partLabel = partNumber && partName && partNumber !== partName ? partNumber + ' – ' + partName : partNumber || partName;
       }
       selected.push(row);

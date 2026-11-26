@@ -17,7 +17,10 @@ const REPORT_COLUMN_DEFS_ = Object.freeze({
     ['customerName','Tên khách hàng (Where sent to Workshop)','text',true],
     ['model','Product model (Model)','text',true],
     ['serialNumber','SN','text',true],
-    ['partLabel','Linh kiện sử dụng','text',true],
+    ['gsp','GSP','text',true],
+    ['ma','MA','text',true],
+    ['partNumber','Mã linh kiện','text',true],
+    ['partName','Tên linh kiện','text',true],
     ['quantity','Số lượng linh kiện sử dụng','number',true]
   ],
   parts: [
