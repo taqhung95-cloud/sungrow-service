@@ -11,6 +11,15 @@ const REPORT_COLUMN_DEFS_ = Object.freeze({
   partsSummary: [
     ['partNumber','Part Number','text',true],['partName','Tên linh kiện','text',true],['quantity','Tổng số lượng sử dụng','number',true]
   ],
+  partsDetail: [
+    ['center','Trung tâm sửa chữa (Service Center)','text',true],
+    ['receivedAt','Ngày nhận máy (Received date)','date',true],
+    ['customerName','Tên khách hàng (Where sent to Workshop)','text',true],
+    ['model','Product model (Model)','text',true],
+    ['serialNumber','SN','text',true],
+    ['partLabel','Linh kiện sử dụng','text',true],
+    ['quantity','Số lượng linh kiện sử dụng','number',true]
+  ],
   parts: [
     ['usedAt','Ngày sử dụng','date',true],['partNumber','Part Number','text',true],['partName','Tên linh kiện','text',true],['quantity','Số lượng','number',true],
     ['center','Center sử dụng','text',true],['caseId','Mã hồ sơ','text',true],['workOrderId','Mã công việc','text',false],['model','Model thiết bị','text',false]

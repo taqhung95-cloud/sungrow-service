@@ -1,5 +1,12 @@
 # Trạng thái production và đồng bộ repository
 
+## Mẫu chi tiết linh kiện theo SN (26/11/2026)
+
+Báo cáo Linh kiện sử dụng mở mặc định mẫu chi tiết bảy cột khi Apps Script cung cấp partsDetail. Xem trước và Excel dùng cùng thứ tự cột. Một bản ghi sử dụng là một dòng và lặp lại thông tin thiết bị. Trung tâm lấy từ công việc đã dùng linh kiện, ngày nhận và model lấy từ hồ sơ, tên khách hàng lấy từ hồ sơ với dữ liệu nơi gửi làm dự phòng. Với lô Fan, hiển thị các SN đã ghi phạm vi sử dụng trên cùng dòng để giữ đúng tổng số lượng. Lô nhiều SN thiếu phạm vi để trống SN. Kỳ lọc vẫn dùng ngày sử dụng linh kiện. Giữ mẫu tổng hợp Part Number trong Kiểu xuất.
+
+Frontend reports.js v6 và backend LegacyDashboardApi 1.11.27. Cập nhật ReportExport.gs và LegacyDashboardApi.gs trong cùng bản triển khai Apps Script. QuickAssistantKnowledge.gs đồng bộ hướng dẫn nếu đang dùng trợ lý. Bản kiểm thử dữ liệu và Edge headless đã đạt. Tính năng chờ cập nhật backend trên hệ thống.
+
+
 ## Đối chiếu hồ sơ theo công đoạn sa bàn — 17/11/2026
 
 Bấm nhãn công đoạn trên cảnh hoặc bảng phân bổ để mở danh sách chính xác đã dùng để tính số. Bản đối chiếu giải thích phạm vi tối đa 250 hồ sơ gần nhất, liệt kê trạng thái và mở hồ sơ bằng luồng hiện có. Thanh chọn góc nhìn bên dưới giữ chức năng điều khiển camera.

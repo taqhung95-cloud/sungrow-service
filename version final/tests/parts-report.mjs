@@ -8,9 +8,10 @@ const center='Sungrow Service Center',other='DAT Center';
 const source=(id,extra={})=>({'Mã hồ sơ':id,'Loại thiết bị':'Inverter','Số lượng':1,'Ngày nhận từ khách':'2026-09-01','Trung tâm đang giữ hàng':other,'Trung tâm tiếp nhận khách':center,'Model':'SG125CX','Trạng thái hồ sơ':'Đang xử lý',...extra});
 const work=(id,c)=>({'Mã hồ sơ':id,'Mã công việc':'W-'+id,'Trung tâm xử lý':c});
 const part=(id,pn,qty,date,name='Fan')=>({'Mã công việc':'W-'+id,'Mã sử dụng linh kiện':id+'-'+pn+'-'+date,'Mã linh kiện (Part Number)':pn,'Tên linh kiện':name,'Số lượng':qty,'Ngày sử dụng':date});
-const tables={'Hồ sơ thiết bị':[source('moved'),source('lot'),source('cancelled',{'Trạng thái hồ sơ':'Đã hủy'})],'Công việc trung tâm':[work('moved',center),work('lot',other),work('cancelled',center)],'Linh kiện sử dụng':[part('moved','PN-A',4,'2026-10-21'),part('moved','PN-A',2,'2026-10-22'),part('moved','PN-B',1,'2026-09-10','Relay'),part('moved','PN-NODATE',7,''),part('moved','PN-ZERO',0,'2026-10-21'),part('lot','PN-A',3,'2026-10-23'),part('cancelled','PN-A',99,'2026-10-23')]};
+const tables={'Hồ sơ thiết bị':[source('moved',{'Tên khách hàng':'Khách mẫu','Số sê-ri (S/N)':'00123'}),source('lot'),source('cancelled',{'Trạng thái hồ sơ':'Đã hủy'})],'Công việc trung tâm':[work('moved',center),work('lot',other),work('cancelled',center)],'Linh kiện sử dụng':[part('moved','PN-A',4,'2026-10-21'),part('moved','PN-A',2,'2026-10-22'),part('moved','PN-B',1,'2026-09-10','Relay'),part('moved','PN-NODATE',7,''),part('moved','PN-ZERO',0,'2026-10-21'),part('lot','PN-A',3,'2026-10-23'),part('cancelled','PN-A',99,'2026-10-23')]};
 const ctx={console,Date,APP_VERSION:'test',DATABASE_SPREADSHEET_ID:'fixture',Session:{getScriptTimeZone:()=> 'Asia/Saigon'},Utilities:{formatDate:d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(d),newBlob:s=>({getBytes:()=>Buffer.from(s)}),DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(a,s)=>crypto.createHash(a).update(s).digest(),base64EncodeWebSafe:b=>Buffer.from(b).toString('base64url')},PropertiesService:{getScriptProperties:()=>({getProperty:k=>k==='SOURCE_SPREADSHEET_ID'?'fixture':null})},CacheService:{getScriptCache:()=>({get:k=>cache.get(k),put:(k,v)=>cache.set(k,v),getAll:ks=>Object.fromEntries(ks.map(k=>[k,cache.get(k)])),putAll:e=>Object.entries(e).forEach(([k,v])=>cache.set(k,v))})},getPortalDatabaseRevision_:()=>revision,readTableShared_:(name)=>{assert.ok(!/^202[456]$/.test(name));reads++;return tables[name]||[];}};
 vm.createContext(ctx);vm.runInContext(read('FanLotRules.gs'),ctx);const rules=ctx.SungrowFanLotRules;tables['Hồ sơ thiết bị'][1]=source('lot',{'Loại thiết bị':'Fan','Kiểu hồ sơ':'Fan theo lô','Chi tiết lô Fan':rules.pack(rules.create([{serialNumber:'SN-A',quantity:2},{serialNumber:'SN-B',quantity:1}]))});ctx.flState_=r=>rules.parse(r['Chi tiết lô Fan']);
+tables['Linh kiện sử dụng'].find(r=>r['Mã công việc']==='W-lot')['Ghi chú']='Fan '+ctx.flState_(tables['Hồ sơ thiết bị'][1]).lines.map(l=>l.lineId).join(',')+'; ';
 vm.runInContext(read('ReportExport.gs'),ctx);
 tables['Lỗi thiết bị']=[
   {'Mã công việc':'W-moved','Loại ghi nhận':'Lỗi xác nhận','Tên lỗi':'Mất lưới','Ngày xác nhận lỗi':'2026-10-21'},
@@ -26,6 +27,14 @@ const api=vm.runInContext('LEGACY_DASHBOARD_API',ctx),actor={isGlobalManager:tru
 let result=api.readReportData_(spec,actor);assert.equal(result.total,3);assert.equal(result.rows[0].caseId,'lot');assert.equal(result.rows[0].quantity,3,'Fan links/quantity do not multiply usage ledger rows');
 const all=api.readReportData_({...spec,limit:200},actor);assert.equal(all.rows.reduce((n,r)=>n+r.quantity,0),9);assert.equal(all.rows.filter(r=>r.partNumber==='PN-A').length,3,'Separate usage entries for same PN remain separate');
 const scoped=api.readReportData_({...spec,centers:[center],limit:200},actor);assert.equal(scoped.total,2,'Transferred case still exports originating work center usage');assert.equal(scoped.rows[0].center,center);
+const detailColumns=['center','receivedAt','customerName','model','serialNumber','partLabel','quantity'];
+const detail=api.readReportData_({...spec,type:'partsDetail',columns:detailColumns,limit:200},actor);
+assert.deepEqual(Array.from(detail.columns,c=>c.key),detailColumns);
+assert.equal(detail.totalQuantity,all.totalQuantity);
+assert.deepEqual(Array.from(detail.rows.slice(1),r=>[r.serialNumber,r.partLabel,r.quantity]),[['00123','PN-A – Fan',2],['00123','PN-A – Fan',4]]);
+assert.equal(detail.rows[1].receivedAt,'2026-09-01');
+assert.equal(detail.rows[1].customerName,'Khách mẫu');
+assert.equal(detail.rows[0].serialNumber,'SN-A, SN-B','Shared Fan usage keeps its linked serials on one quantity row');
 const summarySpec={...spec,type:'partsSummary',columns:['partNumber','partName','quantity'],limit:200};
 const summary=api.readReportData_(summarySpec,actor);assert.equal(summary.total,1);assert.equal(summary.rows[0].quantity,9);assert.equal(summary.totalQuantity,9);assert.equal(all.totalQuantity,summary.totalQuantity,'Summary and ledger export must reconcile');
 assert.equal(api.readReportData_({...summarySpec,centers:[center]},actor).rows[0].quantity,6,'Filter work center before grouping PN');

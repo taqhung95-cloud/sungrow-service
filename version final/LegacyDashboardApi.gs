@@ -1,5 +1,5 @@
 const LEGACY_DASHBOARD_API = (function () {
-const LEGACY_API_VERSION = '1.11.26-parts-summary';
+const LEGACY_API_VERSION = '1.11.27-parts-detail';
 let runtimeTimeZone_ = null;
 const runtimeSerialHashes_ = Object.create(null);
 const SLA_DAYS = 7;
@@ -245,7 +245,7 @@ function readOperationalRecords_(spreadsheetId, centers, pinnedRevision) {
       sparePartDate: parts.map(function (part) { return date_(part['Ngày nhận linh kiện']); }).filter(Boolean)[0] || null,
       parts: parts.map(function (part) {
         const work = works.find(function (w) { return clean_(w['Mã công việc']) === clean_(part['Mã công việc']); }) || {};
-        return { pn: clean_(part['Mã linh kiện (Part Number)']) || clean_(part['Tên linh kiện']), partNumber: clean_(part['Mã linh kiện (Part Number)']), name: clean_(part['Tên linh kiện']), partUsageId: clean_(part['Mã sử dụng linh kiện']), workOrderId: clean_(part['Mã công việc']), qty: knownQuantity_(part['Số lượng']), usedDate: iso_(date_(part['Ngày sử dụng'])), center: resolveCenter_(work['Trung tâm xử lý'], centers) };
+        return { pn: clean_(part['Mã linh kiện (Part Number)']) || clean_(part['Tên linh kiện']), partNumber: clean_(part['Mã linh kiện (Part Number)']), name: clean_(part['Tên linh kiện']), partUsageId: clean_(part['Mã sử dụng linh kiện']), workOrderId: clean_(part['Mã công việc']), qty: knownQuantity_(part['Số lượng']), usedDate: iso_(date_(part['Ngày sử dụng'])), center: resolveCenter_(work['Trung tâm xử lý'], centers), fanSerials: fanState ? reportPartFanSerials_(fanState.lines,part) : [] };
       }).filter(function (part) { return part.pn; }),
       holds: holds,
       returnDate: date_(item['Ngày trả khách']),
@@ -1258,6 +1258,14 @@ function diagnoseReadPaths_(actor, period) {
   measure('devices-next-page', function () { return pageTickets_({ page: 2, pageSize: 20 }, actor); }, function (data) { return { total: data.total, returnedRows: data.tickets.length }; });
   return { version: LEGACY_API_VERSION, period: period, stages: stages };
 }
+function reportPartFanSerials_(lines, part) {
+  const match = /^Fan ([^;]+);/.exec(clean_(part['Ghi chú']));
+  const lineIds = match ? match[1].split(',').map(clean_) : [];
+  const linked = lines.filter(function (line) { return lineIds.includes(line.lineId); });
+  const relevant = linked.length ? linked : lines.length === 1 ? lines : [];
+  return Array.from(new Set(relevant.map(function (line) { return clean_(line.serialNumber); }).filter(Boolean)));
+}
+
 function readReportData_(request, actor) {
   if (!actor || actor.isGlobalManager !== true) throw apiError_('FORBIDDEN','Chỉ quản lý toàn bộ trung tâm được xuất báo cáo.');
   if(request.schema===true){
@@ -1269,7 +1277,7 @@ function readReportData_(request, actor) {
     return {centers:registry.map(function(c){return c.name;}),statuses:choices('status'),warrantyStatuses:choices('warrantyStatus'),deviceTypes:choices('deviceType')};
   }
   const type=String(request.type||'cases'),defs=REPORT_COLUMN_DEFS_[type];
-  const isParts=type==='parts'||type==='partsSummary';
+  const isParts=type==='parts'||type==='partsSummary'||type==='partsDetail';
   if (!Array.isArray(defs)) throw apiError_('INVALID_REPORT','Mẫu báo cáo không hợp lệ.');
   const basis=String(request.dateBasis||'received');
   if (['received','technical','returned','open'].indexOf(basis)<0) throw apiError_('INVALID_REPORT','Loại ngày không hợp lệ.');
@@ -1302,7 +1310,14 @@ function readReportData_(request, actor) {
       if(!p.qty||!usedAt||!inPeriod_(usedAt,period)||!(scope.indexOf(center)>=0||(includeUnassigned&&all.indexOf(center)<0)))return;
       const partNumber=clean_(p.partNumber),partName=clean_(p.name);
       if(type!=='partsSummary'&&query&&[partNumber,partName].join(' ').toLowerCase().indexOf(query)<0)return;
-      selected.push({usedAt:iso_(usedAt),partNumber:partNumber,partName:partName,quantity:p.qty,center:center,caseId:r.id,workOrderId:p.workOrderId||'',model:r.model});
+      const row = {usedAt:iso_(usedAt),partNumber:partNumber,partName:partName,quantity:p.qty,center:center,caseId:r.id,workOrderId:p.workOrderId||'',model:r.model};
+      if(type==='partsDetail'){
+        row.receivedAt = iso_(r.receivedDate);
+        row.customerName = r.distributor;
+        row.serialNumber = r.fanLot ? (p.fanSerials || []).join(', ') : r.serialNumber;
+        row.partLabel = partNumber && partName && partNumber !== partName ? partNumber + ' – ' + partName : partNumber || partName;
+      }
+      selected.push(row);
     });});
     if(type==='partsSummary'){
       // Aggregate the entire filtered ledger before paginating; column selection never changes grouping.

@@ -4,9 +4,14 @@
  const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const q=s=>pane.querySelector(s);
- const reportNames={cases:'Chi tiết hồ sơ',centers:'Tổng hợp trung tâm',parts:'Chi tiết sử dụng linh kiện',partsSummary:'Tổng hợp linh kiện theo Part Number'};
- const isParts=type=>type==='parts'||type==='partsSummary';
- const selectedType=()=>q('[name=type]').value==='parts'&&schema?.columns.partsSummary&&q('[name=partsView]').value==='summary'?'partsSummary':q('[name=type]').value;
+ const reportNames={cases:'Chi tiết hồ sơ',centers:'Tổng hợp trung tâm',parts:'Chi tiết sử dụng linh kiện',partsDetail:'Chi tiết sử dụng linh kiện',partsSummary:'Tổng hợp linh kiện theo Part Number'};
+ const isParts=type=>type==='parts'||type==='partsSummary'||type==='partsDetail';
+ function selectedType(){
+  const type=q('[name=type]').value;
+  if(type!=='parts')return type;
+  if(schema?.columns.partsSummary&&q('[name=partsView]').value==='summary')return 'partsSummary';
+  return schema?.columns.partsDetail?'partsDetail':'parts';
+ }
  const basisLabels={received:'Ngày tiếp nhận',technical:'Ngày hoàn tất kỹ thuật',returned:'Ngày giao trả',open:'Tồn tại ngày chốt'};
  function status(text,error=false){q('[data-report-status]').textContent=text;q('[data-report-status]').classList.toggle('error',error);}
  function setBusy(value){busy=value;pane.querySelectorAll('input,select,[data-preview],[data-export],[data-report-type]').forEach(el=>el.disabled=value);q('[data-cancel]').hidden=!value;q('[data-report-status]').dataset.busy=String(value);}
@@ -29,7 +34,11 @@
  function render(data){
   const formatted=(value,type)=>value===null||value===undefined?'—':type==='percent'?(value*100).toFixed(1)+'%':type==='date'?String(value).split('-').reverse().join('/'):String(value);
   q('[data-report-count]').textContent=data.spec.type==='cases'?data.total+' hồ sơ | '+data.knownDevices+' thiết bị đã biết số lượng'+(data.unknownQuantityCases?' | '+data.unknownQuantityCases+' hồ sơ thiếu số lượng':''):data.total+(data.spec.type==='partsSummary'?' mã/nhóm linh kiện':isParts(data.spec.type)?' lần sử dụng linh kiện':' dòng trung tâm')+(isParts(data.spec.type)&&Number.isFinite(data.totalQuantity)?' | Tổng số lượng: '+data.totalQuantity.toLocaleString('vi-VN'):'');
-  q('[data-report-table]').innerHTML='<table><thead><tr>'+data.columns.map(c=>'<th>'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+data.rows.slice(0,20).map(row=>'<tr>'+data.columns.map(c=>'<td>'+esc(formatted(row[c.key],c.type))+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+  const table=q('[data-report-table]');
+  table.tabIndex=0;
+  table.setAttribute('role','region');
+  table.setAttribute('aria-label','Bảng xem trước báo cáo');
+  table.innerHTML='<table><thead><tr>'+data.columns.map(c=>'<th scope="col">'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+data.rows.slice(0,20).map(row=>'<tr>'+data.columns.map(c=>'<td>'+esc(formatted(row[c.key],c.type))+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
  }
  async function run(exportFile){
   if(busy||!schema)return;let spec;try{spec=request()}catch(error){status(error.message,true);return}
@@ -49,10 +58,10 @@
    if(rows.length!==data.total)throw Error('Chưa lấy đủ các dòng báo cáo. Vui lòng xuất lại.');
    status('Đang tạo file Excel…');await new Promise(resolve=>setTimeout(resolve,0));valid(generation);
    const info=[['Mẫu báo cáo',reportNames[spec.type]],['Từ ngày',spec.start],['Đến ngày',spec.end],['Loại ngày',isParts(spec.type)?'Ngày sử dụng linh kiện':spec.type==='centers'?'Kỳ báo cáo và tồn tại ngày chốt':basisLabels[spec.dateBasis]],['Ngày chốt (giờ Việt Nam)',new Date(data.asOf).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})],['Trung tâm',spec.centers.length?spec.centers.join(', '):'Tất cả, gồm chưa xác định'],['Trạng thái',spec.status||'Tất cả'],['Bảo hành',spec.warrantyStatus||'Tất cả'],['Loại thiết bị',spec.deviceType||'Tất cả'],['Từ khóa',spec.query],['Số dòng xuất',String(rows.length)],['Revision dữ liệu',data.revision],['Thời gian tạo (giờ Việt Nam)',new Date(data.generatedAt).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})],...data.definitions.map((text,i)=>['Quy tắc '+(i+1),text])];
-   const bytes=window.SungrowXlsx.build([{name:'Thông tin báo cáo',columns:[{key:'name',label:'Thông tin',type:'text'},{key:'value',label:'Giá trị',type:'text'}],rows:info.map(([name,value])=>({name,value}))},{name:spec.type==='partsSummary'?'Tổng hợp linh kiện':spec.type==='parts'?'Chi tiết linh kiện':spec.type==='cases'?'Hồ sơ':'Tổng hợp trung tâm',columns:data.columns,rows}]);
+   const bytes=window.SungrowXlsx.build([{name:'Thông tin báo cáo',columns:[{key:'name',label:'Thông tin',type:'text'},{key:'value',label:'Giá trị',type:'text'}],rows:info.map(([name,value])=>({name,value}))},{name:spec.type==='partsSummary'?'Tổng hợp linh kiện':isParts(spec.type)?'Chi tiết linh kiện':spec.type==='cases'?'Hồ sơ':'Tổng hợp trung tâm',columns:data.columns,rows}]);
    const final=await config.request('readReportPage',{...spec,offset:data.total,limit:1,revision:data.revision,asOf:data.asOf},controller.signal);valid(generation);
    if(final.revision!==data.revision||final.fingerprint!==data.fingerprint||final.total!==data.total)throw Error('Dữ liệu đã thay đổi. Vui lòng xuất lại.');
-   const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download='Sungrow_'+(spec.type==='partsSummary'?'LinhKien_TongHop':spec.type==='parts'?'LinhKien_ChiTiet':spec.type==='cases'?'HoSo':'TongHop')+'_'+spec.start+'_'+spec.end+'.xlsx';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+   const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),link=document.createElement('a');link.href=url;link.download='Sungrow_'+(spec.type==='partsSummary'?'LinhKien_TongHop':isParts(spec.type)?'LinhKien_ChiTiet':spec.type==='cases'?'HoSo':'TongHop')+'_'+spec.start+'_'+spec.end+'.xlsx';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
    status('Đã xuất '+rows.length+' dòng vào file Excel.');
   }catch(error){if(generation===epoch)status(error.name==='AbortError'?'Đã hủy báo cáo.':error.message,true);}
   finally{if(generation===epoch){setBusy(false);q('[data-progress]').hidden=true;}if(controller===operation)controller=null;}
@@ -70,7 +79,7 @@
   if(config?.actor?.isGlobalManager!==true||busy)return;install();main.classList.remove('sg-portal-mode');main.classList.add('sg-reports-mode');main.dataset.reportMode='true';pane.hidden=false;navButton.dataset.active='true';root.querySelector('#sg-crumb').textContent='Báo cáo';
   if(!config.available){status('Cần cập nhật Apps Script 1.10.19 và ReportExport.gs để sử dụng Báo cáo.',true);return}
   if(schema)return;const generation=epoch,operation=new AbortController();controller=operation;setBusy(true);status('Đang tải mẫu báo cáo…');
-  try{const data=await config.request('getReportBootstrap',{},controller.signal);valid(generation);schema=data;q('[data-parts-view-label]').hidden=!Array.isArray(data.columns.partsSummary);q('[name=partsView]').value=data.columns.partsSummary?'summary':'detail';q('[data-report-type=parts]').hidden=!Array.isArray(data.columns.parts);if(!data.columns[q('[name=type]').value])q('[name=type]').value='cases';
+  try{const data=await config.request('getReportBootstrap',{},controller.signal);valid(generation);schema=data;q('[data-parts-view-label]').hidden=!Array.isArray(data.columns.partsSummary);q('[name=partsView]').value=data.columns.partsDetail?'detail':data.columns.partsSummary?'summary':'detail';q('[data-report-type=parts]').hidden=!Array.isArray(data.columns.parts);if(!data.columns[q('[name=type]').value])q('[name=type]').value='cases';
    q('[data-centers]').innerHTML=data.centers.map(name=>'<label><input type="checkbox" data-center value="'+esc(name)+'"> '+esc(name)+'</label>').join('');
    for(const [field,list] of [['status',data.statuses],['warrantyStatus',data.warrantyStatuses],['deviceType',data.deviceTypes]])q('[name='+field+']').innerHTML='<option value="">Tất cả</option>'+list.map(value=>'<option value="'+esc(value)+'">'+esc(value)+'</option>').join('');
    columns();status('Chọn bộ lọc và các cột, sau đó xem trước hoặc xuất Excel.');
