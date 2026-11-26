@@ -1,5 +1,10 @@
 # Sungrow Service Center - Current Implementation Handbook
 
+## Kích thước nút báo cáo
+
+Hai nút Xem trước và Xuất Excel dùng cùng kích thước tối thiểu 104 × 36 px trên máy tính và 104 × 44 px khi có con trỏ cảm ứng. GitHub Pages nạp reports.css v5.
+
+
 ## Mẫu chi tiết linh kiện theo SN (26/11/2026)
 
 Báo cáo Linh kiện sử dụng mở mặc định mẫu chi tiết mười cột khi Apps Script cung cấp partsDetail. Xem trước và Excel dùng cùng thứ tự cột. GSP và MA lấy từ hồ sơ, đặt sau SN. Mã linh kiện và tên linh kiện xuất thành hai cột riêng. Một bản ghi sử dụng là một dòng và lặp lại thông tin thiết bị. Trung tâm lấy từ công việc đã dùng linh kiện, ngày nhận và model lấy từ hồ sơ, tên khách hàng lấy từ hồ sơ với dữ liệu nơi gửi làm dự phòng. Với lô Fan, hiển thị các SN đã ghi phạm vi sử dụng trên cùng dòng để giữ đúng tổng số lượng. Lô nhiều SN thiếu phạm vi để trống SN. Kỳ lọc vẫn dùng ngày sử dụng linh kiện. Giữ mẫu tổng hợp Part Number trong Kiểu xuất.
