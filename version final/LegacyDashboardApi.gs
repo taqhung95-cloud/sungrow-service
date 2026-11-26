@@ -1318,6 +1318,7 @@ function readReportData_(request, actor) {
       const row = {usedAt:iso_(usedAt),partNumber:partNumber,partName:partName,quantity:p.qty,center:center,caseId:r.id,workOrderId:p.workOrderId||'',model:r.model};
       if(type==='partsDetail'){
         row.receivedAt = iso_(r.receivedDate);
+        row.returnedAt = r.returnDate ? iso_(r.returnDate) : null;
         row.customerName = r.distributor;
         row.serialNumber = r.fanLot ? (p.fanSerials || []).join(', ') : r.serialNumber;
         row.gsp = r.gsp;

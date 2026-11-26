@@ -14,6 +14,7 @@ const REPORT_COLUMN_DEFS_ = Object.freeze({
   partsDetail: [
     ['center','Trung tâm sửa chữa (Service Center)','text',true],
     ['receivedAt','Ngày nhận máy (Received date)','date',true],
+    ['returnedAt','Ngày hoàn tất (Return date)','date',true],
     ['customerName','Tên khách hàng (Where sent to Workshop)','text',true],
     ['model','Product model (Model)','text',true],
     ['serialNumber','SN','text',true],
